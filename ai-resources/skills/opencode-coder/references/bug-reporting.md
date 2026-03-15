@@ -207,7 +207,7 @@ Running `bd ready` returns no results even though open issues exist in .beads/
 
 ## Environment
 - OS: Ubuntu 22.04
-- Node.js: v20.10.0
+- Node.js: v24.14.0
 - bd version: 1.2.3
 - Plugin version: 1.0.0
 
@@ -293,7 +293,7 @@ Two identical commits are created for each task closure:
 
 ## Environment
 - OS: Ubuntu 22.04 LTS
-- Node.js: v20.10.0
+- Node.js: v24.14.0
 - bd CLI: 1.2.3
 - Plugin: opencode-coder@1.0.0
 - Shell: bash 5.1.16
