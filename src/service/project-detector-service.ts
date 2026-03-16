@@ -86,8 +86,6 @@ export interface ProjectContext {
     coderPackageInstalled: boolean;
   };
 
-  /** Detection metadata */
-  detectedAt: string;
   /** Plugin version string */
   pluginVersion: string;
 }
@@ -480,7 +478,6 @@ export class ProjectDetectorService {
         resourcesHealthy,
         coderPackageInstalled,
       },
-      detectedAt: new Date().toISOString(),
       pluginVersion: versionInfo.version,
     };
 

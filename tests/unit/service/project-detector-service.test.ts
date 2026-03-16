@@ -497,7 +497,6 @@ describe("ProjectDetectorService", () => {
         git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        detectedAt: "2026-03-02T00:00:00.000Z",
         pluginVersion: "1.0.0",
       };
 
@@ -530,7 +529,6 @@ describe("ProjectDetectorService", () => {
         git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        detectedAt: "2026-03-02T00:00:00.000Z",
         pluginVersion: "1.0.0",
       };
 
@@ -563,7 +561,6 @@ describe("ProjectDetectorService", () => {
         git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        detectedAt: "2026-03-02T00:00:00.000Z",
         pluginVersion: "1.0.0",
       };
 
@@ -592,7 +589,6 @@ describe("ProjectDetectorService", () => {
         git: { initialized: true },
         beads: { initialized: false, stealthMode: true, bdCliInstalled: true },
         aimgr: { installed: true, packageYaml: true, resourcesHealthy: true, coderPackageInstalled: true },
-        detectedAt: "2026-03-02T00:00:00.000Z",
         pluginVersion: "2.3.4",
       };
 

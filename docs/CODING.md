@@ -207,7 +207,6 @@ interface ProjectContext {
     resourcesHealthy: boolean;
     coderPackageInstalled: boolean;
   };
-  detectedAt: string;   // ISO 8601 timestamp
   pluginVersion: string;
 }
 ```

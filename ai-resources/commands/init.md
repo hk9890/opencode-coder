@@ -131,7 +131,7 @@ grep -qF '.coder/' .gitignore 2>/dev/null || echo '.coder/' >> .gitignore
 # The .beads/beads.db file is already handled by .beads/.gitignore (created by bd init)
 ```
 
-> **Note**: `.coder/project.yaml` is regenerated on every plugin startup with changing timestamps.
+> **Note**: `.coder/project.yaml` is regenerated on every plugin startup.
 > The plugin also auto-creates `.coder/.gitignore` (containing `*`) on startup, so this step
 > ensures the exclusion is explicit in `.gitignore` as well.
 

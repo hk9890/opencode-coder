@@ -24,7 +24,6 @@ function createProjectContext(overrides?: Partial<ProjectContext>): ProjectConte
       resourcesHealthy: true,
       coderPackageInstalled: true,
     },
-    detectedAt: "2026-03-12T00:00:00.000Z",
     pluginVersion: "1.0.0",
     ...overrides,
   };
