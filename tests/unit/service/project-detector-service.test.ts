@@ -616,7 +616,7 @@ describe("ProjectDetectorService", () => {
   describe("detectAndWrite", () => {
     const versionInfo = { name: "@dynatrace-oss/opencode-coder", version: "1.2.3" };
 
-    it("should write context with team mode for initialized beads repo", async () => {
+    it("should write context with team mode for initialized beads repo", () => {
       // .git exists
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
         // Allow .git and .beads, reject everything else
@@ -643,7 +643,7 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.mode).toBe("team");
       expect(result.ecosystemReady).toBe(false);
@@ -660,7 +660,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should write context with stealth mode when marker present", async () => {
+    it("should write context with stealth mode when marker present", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
 
       const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
@@ -680,7 +680,7 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.mode).toBe("stealth");
       expect(result.ecosystemReady).toBe(false);
@@ -695,7 +695,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should write context with uninitialized mode when no .beads", async () => {
+    it("should write context with uninitialized mode when no .beads", () => {
       // .git exists, .beads does NOT
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
         if (String(p).endsWith(".git")) return undefined;
@@ -719,7 +719,7 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.mode).toBe("uninitialized");
       expect(result.ecosystemReady).toBe(false);
@@ -733,7 +733,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should set ecosystemReady true when all components operational", async () => {
+    it("should set ecosystemReady true when all components operational", () => {
       // .git and .beads both exist
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
 
@@ -757,7 +757,7 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.ecosystemReady).toBe(true);
       expect(result.mode).toBe("team");
@@ -771,7 +771,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should set installReady true when all install prerequisites are met", async () => {
+    it("should set installReady true when all install prerequisites are met", () => {
       // .git exists, .beads exists
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
 
@@ -801,7 +801,7 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.installReady).toBe(true);
       expect(result.beads.bdCliInstalled).toBe(true);
@@ -818,7 +818,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should set installReady false when bd CLI is missing", async () => {
+    it("should set installReady false when bd CLI is missing", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
         if (String(p).endsWith(".git")) return undefined;
         throw new Error("ENOENT");
@@ -842,7 +842,7 @@ describe("ProjectDetectorService", () => {
       const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
       const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       expect(result.installReady).toBe(false);
       expect(result.beads.bdCliInstalled).toBe(false);
@@ -855,7 +855,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should not call detectCoderPackageInstalled when aimgr is not installed", async () => {
+    it("should not call detectCoderPackageInstalled when aimgr is not installed", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
         if (String(p).endsWith(".git")) return undefined;
         throw new Error("ENOENT");
@@ -873,7 +873,7 @@ describe("ProjectDetectorService", () => {
       const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
       const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
 
-      const result = await service.detectAndWrite(versionInfo as any);
+      const result = service.detectAndWrite(versionInfo as any);
 
       // coderPackageInstalled should be false since aimgr is not installed
       expect(result.aimgr.coderPackageInstalled).toBe(false);
@@ -888,7 +888,7 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
-    it("should create .coder/ directory if it does not exist", async () => {
+    it("should create .coder/ directory if it does not exist", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => {
         throw new Error("ENOENT");
       });
@@ -903,7 +903,7 @@ describe("ProjectDetectorService", () => {
       const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
       const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
 
-      await service.detectAndWrite(versionInfo as any);
+      service.detectAndWrite(versionInfo as any);
 
       expect(mkdirSyncSpy).toHaveBeenCalledWith(
         path.join("/test/project", ".coder"),
@@ -939,7 +939,7 @@ describe("ProjectDetectorService", () => {
       accessSyncSpy.mockRestore();
     });
 
-    it("should use resourcesHealthyOverride as authoritative health state", async () => {
+    it("should use resourcesHealthyOverride as authoritative health state", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
       const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue("# default excludes\n" as any);
       const existsSyncSpy = spyOn(fs, "existsSync").mockReturnValue(true);
@@ -959,10 +959,42 @@ describe("ProjectDetectorService", () => {
       const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
       const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
 
-      const result = await service.detectAndWrite(versionInfo as any, { resourcesHealthyOverride: true });
+      const result = service.detectAndWrite(versionInfo as any, { resourcesHealthyOverride: true });
 
       expect(result.aimgr.resourcesHealthy).toBe(true);
       expect(result.ecosystemReady).toBe(true);
+
+      accessSyncSpy.mockRestore();
+      readFileSyncSpy.mockRestore();
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+      mkdirSyncSpy.mockRestore();
+      writeFileSyncSpy.mockRestore();
+    });
+
+    it("should avoid a second aimgr availability shell-out when detectAndWrite already knows aimgr is installed", () => {
+      const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
+      const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue("# default excludes\n" as any);
+      const existsSyncSpy = spyOn(fs, "existsSync").mockReturnValue(true);
+
+      let aimgrAvailabilityChecks = 0;
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
+        if (cmd === "command -v aimgr") {
+          aimgrAvailabilityChecks += 1;
+          return "/usr/local/bin/aimgr" as any;
+        }
+        if (cmd === "aimgr verify --format json") return JSON.stringify({ status: "ok", issues: [] }) as any;
+        if (cmd === 'aimgr list "package/opencode-coder" --format json') return JSON.stringify([]) as any;
+        return "" as any;
+      });
+
+      const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
+      const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      service.detectAndWrite(versionInfo as any);
+
+      expect(aimgrAvailabilityChecks).toBe(1);
 
       accessSyncSpy.mockRestore();
       readFileSyncSpy.mockRestore();

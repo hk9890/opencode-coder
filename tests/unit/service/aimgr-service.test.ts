@@ -113,6 +113,15 @@ describe("AimgrService", () => {
       });
       expect(mockLogger.debug).not.toHaveBeenCalledWith("aimgr CLI not found on PATH");
     });
+
+    it("should cache the availability result for the service lifetime", () => {
+      execSyncMock.mockReturnValue(Buffer.from("/usr/bin/aimgr"));
+
+      expect(aimgrService.isAimgrAvailable()).toBe(true);
+      expect(aimgrService.isAimgrAvailable()).toBe(true);
+
+      expect(execSyncMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("hasPackageYaml", () => {

@@ -113,7 +113,7 @@ const aimgrService = new AimgrService({ logger: log, client, workdir });
 // Startup flow
 await aimgrService.autoInitialize();
 const health = await aimgrService.verifyAndAutoRepairResources();
-await detectorService.detectAndWrite(versionInfo, {
+detectorService.detectAndWrite(versionInfo, {
   resourcesHealthyOverride: health.verifyResult === null ? undefined : health.resourcesHealthy,
 });
 ```
@@ -171,7 +171,7 @@ class ProjectDetectorService {
   detectAimgrInstalled(): boolean
   detectPackageYaml(): boolean
   detectCoderPackageInstalled(): boolean
-  detectResourcesHealthy(): boolean
+  detectResourcesHealthy(aimgrInstalled?: boolean): boolean
 
   // Mode derivation (synchronous, pure)
   deriveMode(beadsInitialized: boolean, stealthMode: boolean): "stealth" | "team" | "uninitialized"
@@ -181,8 +181,8 @@ class ProjectDetectorService {
   // YAML writing (synchronous)
   writeProjectContext(context: ProjectContext): void
 
-  // Main orchestration (async, never throws)
-  detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): Promise<ProjectContext>
+  // Main orchestration (synchronous, never throws)
+  detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): ProjectContext
 }
 ```
 
@@ -218,14 +218,16 @@ The service is called from `src/index.ts` during plugin startup:
 ```typescript
 const detectorService = new ProjectDetectorService({ logger: log });
 const health = await aimgrService.verifyAndAutoRepairResources();
-const projectContext = await detectorService.detectAndWrite(versionInfo, {
+const projectContext = detectorService.detectAndWrite(versionInfo, {
   resourcesHealthyOverride: health.verifyResult === null ? undefined : health.resourcesHealthy,
 });
 ```
 
 When `resourcesHealthyOverride` is provided, the detector uses that value instead of running
 its own `aimgr verify` call. This keeps startup health evaluation authoritative and avoids
-double-checking resources after repair.
+double-checking resources after repair. When `detectAndWrite` already knows whether aimgr is
+installed, it passes that result through to `detectResourcesHealthy` so startup does not shell
+out to `command -v aimgr` a second time.
 
 ### Testing
 

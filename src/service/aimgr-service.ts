@@ -41,6 +41,7 @@ export class AimgrService {
   private readonly logger: Logger;
   private readonly client: OpencodeClient;
   private readonly workdir: string;
+  private aimgrAvailable: boolean | undefined;
 
   constructor(options: AimgrServiceOptions) {
     this.logger = options.logger;
@@ -52,11 +53,17 @@ export class AimgrService {
    * Check if aimgr command is available on PATH
    */
   isAimgrAvailable(): boolean {
-    return isCommandAvailable("aimgr", this.logger, {
+    if (this.aimgrAvailable !== undefined) {
+      return this.aimgrAvailable;
+    }
+
+    this.aimgrAvailable = isCommandAvailable("aimgr", this.logger, {
       successMessage: "aimgr CLI is available",
       missingMessage: "aimgr CLI not found on PATH",
       timeoutMessage: "aimgr availability check timed out",
     });
+
+    return this.aimgrAvailable;
   }
 
   /**

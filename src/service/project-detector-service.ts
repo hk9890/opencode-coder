@@ -263,8 +263,8 @@ export class ProjectDetectorService {
    * Run `aimgr verify --format json` and return true when no issues are found.
    * Returns false when aimgr is not installed, the command fails, or issues exist.
    */
-  detectResourcesHealthy(): boolean {
-    if (!this.detectAimgrInstalled()) {
+  detectResourcesHealthy(aimgrInstalled = this.detectAimgrInstalled()): boolean {
+    if (!aimgrInstalled) {
       this.logger.debug("aimgr not available, skipping resource health check");
       return false;
     }
@@ -380,7 +380,7 @@ export class ProjectDetectorService {
    *
    * @returns The detected project context.
    */
-  async detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): Promise<ProjectContext> {
+  detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): ProjectContext {
     const start = Date.now();
     this.logger.debug("Starting project detection", { workdir: this.workdir });
 
@@ -401,7 +401,7 @@ export class ProjectDetectorService {
       options?.resourcesHealthyOverride !== undefined
         ? options.resourcesHealthyOverride
         : aimgrInstalled
-          ? this.detectResourcesHealthy()
+          ? this.detectResourcesHealthy(aimgrInstalled)
           : false;
     // Only check coder package when aimgr is installed (uses aimgr list CLI)
     const coderPackageInstalled = aimgrInstalled ? this.detectCoderPackageInstalled() : false;
