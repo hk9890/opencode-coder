@@ -716,7 +716,7 @@ bd mol distill <epic-id> --as "my-workflow" --var key=value
 3. **Discoverability** - Most users don't know feature exists
 4. **Not needed** - Basic beads solve 95% of problems
 5. **Tooling** - No GUI, must edit TOML by hand
-
+oder
 ### The Honest Assessment
 
 **Molecules work well for:**

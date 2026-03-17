@@ -1,8 +1,11 @@
 import { tool } from "@opencode-ai/plugin";
 import type { ToolContext, ToolDefinition } from "@opencode-ai/plugin/tool";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { homedir, platform } from "node:os";
 import { isAbsolute, join } from "node:path";
-import type { SessionExportService } from "../service/session-export-service";
-import type { VersionInfo } from "../core/version";
+import { isDebugLoggingEnabled, isPluginDisabled } from "../config";
+import type { SessionExportService } from "../service";
+import type { VersionInfo } from "../core";
 
 /**
  * Options for creating the coder tool.
@@ -86,8 +89,8 @@ Examples:
           return await sessionExportService.formatSessionList();
 
         case "plugin": {
-          const disabled = process.env["OPENCODE_CODER_DISABLED"] === "true";
-          const debugEnabled = process.env["OPENCODE_CODER_DEBUG"] === "1";
+          const disabled = isPluginDisabled();
+          const debugEnabled = isDebugLoggingEnabled();
 
           return `Plugin: ${versionInfo.name}
 Version: ${versionInfo.version}
@@ -96,19 +99,16 @@ Debug: ${debugEnabled ? "enabled" : "disabled"}`;
         }
 
         case "beads": {
-          const fs = await import("node:fs");
-          const path = await import("node:path");
+          const beadsDir = join(context.directory, ".beads");
+          const configPath = join(beadsDir, "config.json");
+          const preCommitPath = join(context.directory, ".git", "hooks", "pre-commit");
 
-          const beadsDir = path.join(context.directory, ".beads");
-          const configPath = path.join(beadsDir, "config.json");
-          const preCommitPath = path.join(context.directory, ".git", "hooks", "pre-commit");
-
-          const initialized = fs.existsSync(beadsDir);
+          const initialized = existsSync(beadsDir);
 
           let mode = "unknown";
-          if (initialized && fs.existsSync(configPath)) {
+          if (initialized && existsSync(configPath)) {
             try {
-              const configContent = fs.readFileSync(configPath, "utf-8");
+              const configContent = readFileSync(configPath, "utf-8");
               const config = JSON.parse(configContent);
               mode = config.mode || "unknown";
             } catch {
@@ -117,9 +117,9 @@ Debug: ${debugEnabled ? "enabled" : "disabled"}`;
           }
 
           let hooksInstalled = false;
-          if (fs.existsSync(preCommitPath)) {
+          if (existsSync(preCommitPath)) {
             try {
-              const hookContent = fs.readFileSync(preCommitPath, "utf-8");
+              const hookContent = readFileSync(preCommitPath, "utf-8");
               hooksInstalled = hookContent.includes("bd sync");
             } catch {
               hooksInstalled = false;
@@ -134,38 +134,34 @@ Directory: ${beadsDir}`;
         }
 
         case "logs": {
-          const os = await import("node:os");
-          const fs = await import("node:fs");
-          const path = await import("node:path");
-
           // Determine log path based on OS
           let logDir: string;
-          const platform = os.platform();
-          const homeDir = os.homedir();
+          const currentPlatform = platform();
+          const homeDir = homedir();
 
-          if (platform === "darwin") {
-            logDir = path.join(homeDir, "Library", "Logs", "opencode");
-          } else if (platform === "win32") {
-            logDir = path.join(
-              process.env["APPDATA"] || path.join(homeDir, "AppData", "Roaming"),
+          if (currentPlatform === "darwin") {
+            logDir = join(homeDir, "Library", "Logs", "opencode");
+          } else if (currentPlatform === "win32") {
+            logDir = join(
+              process.env["APPDATA"] || join(homeDir, "AppData", "Roaming"),
               "opencode",
               "logs",
             );
           } else {
-            logDir = path.join(homeDir, ".config", "opencode", "logs");
+            logDir = join(homeDir, ".config", "opencode", "logs");
           }
 
-          const exists = fs.existsSync(logDir);
+          const exists = existsSync(logDir);
           let fileCount = 0;
           let latestFile = "none";
 
           if (exists) {
-            const files = fs.readdirSync(logDir).filter((f) => f.endsWith(".log"));
+            const files = readdirSync(logDir).filter((f) => f.endsWith(".log"));
             fileCount = files.length;
             if (files.length > 0) {
               // Sort by mtime descending
               const sorted = files
-                .map((f) => ({ name: f, mtime: fs.statSync(path.join(logDir, f)).mtime }))
+                .map((f) => ({ name: f, mtime: statSync(join(logDir, f)).mtime }))
                 .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
               latestFile = sorted[0]?.name || "none";
             }

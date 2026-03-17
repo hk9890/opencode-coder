@@ -2,18 +2,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { execSync } from "child_process";
 import { stringify } from "yaml";
-import type { Logger } from "../core/logger";
-import type { VersionInfo } from "../core/version";
-
-const COMMAND_CHECK_TIMEOUT_MS = 5_000;
-const AIMGR_COMMAND_TIMEOUT_MS = 10_000;
-
-function isExecTimeoutError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-
-  const timeoutError = error as { code?: string; killed?: boolean; signal?: string };
-  return timeoutError.code === "ETIMEDOUT" || timeoutError.killed === true || timeoutError.signal === "SIGTERM";
-}
+import {
+  AIMGR_COMMAND_TIMEOUT_MS,
+  hasResourceIssues,
+  isCommandAvailable,
+  isExecTimeoutError,
+  type Logger,
+  type VersionInfo,
+} from "../core";
 
 /**
  * Options for ProjectDetectorService
@@ -192,26 +188,11 @@ export class ProjectDetectorService {
    * Check whether the bd CLI is available on PATH.
    */
   detectBdCliInstalled(): boolean {
-    const command = "command -v bd";
-    try {
-      execSync(command, {
-        stdio: "ignore",
-        timeout: COMMAND_CHECK_TIMEOUT_MS,
-      });
-      this.logger.debug("bd CLI is available");
-      return true;
-    } catch (error) {
-      if (isExecTimeoutError(error)) {
-        this.logger.warn("bd CLI availability check timed out", {
-          command,
-          timeoutMs: COMMAND_CHECK_TIMEOUT_MS,
-        });
-        return false;
-      }
-
-      this.logger.debug("bd CLI not found on PATH");
-      return false;
-    }
+    return isCommandAvailable("bd", this.logger, {
+      successMessage: "bd CLI is available",
+      missingMessage: "bd CLI not found on PATH",
+      timeoutMessage: "bd CLI availability check timed out",
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -222,26 +203,11 @@ export class ProjectDetectorService {
    * Check whether the aimgr CLI is available on PATH.
    */
   detectAimgrInstalled(): boolean {
-    const command = "command -v aimgr";
-    try {
-      execSync(command, {
-        stdio: "ignore",
-        timeout: COMMAND_CHECK_TIMEOUT_MS,
-      });
-      this.logger.debug("aimgr CLI is available");
-      return true;
-    } catch (error) {
-      if (isExecTimeoutError(error)) {
-        this.logger.warn("aimgr CLI availability check timed out", {
-          command,
-          timeoutMs: COMMAND_CHECK_TIMEOUT_MS,
-        });
-        return false;
-      }
-
-      this.logger.debug("aimgr CLI not found on PATH");
-      return false;
-    }
+    return isCommandAvailable("aimgr", this.logger, {
+      successMessage: "aimgr CLI is available",
+      missingMessage: "aimgr CLI not found on PATH",
+      timeoutMessage: "aimgr CLI availability check timed out",
+    });
   }
 
   /**
@@ -310,11 +276,7 @@ export class ProjectDetectorService {
         timeout: AIMGR_COMMAND_TIMEOUT_MS,
       });
       const result = JSON.parse(stdout);
-      const hasIssues =
-        (Array.isArray(result.issues) && result.issues.length > 0) ||
-        (Array.isArray(result.errors) && result.errors.length > 0) ||
-        (result.error && result.error !== "") ||
-        (result.status && result.status !== "ok" && result.status !== "healthy");
+      const hasIssues = hasResourceIssues(result);
       this.logger.debug("aimgr verify completed", { healthy: !hasIssues });
       return !hasIssues;
     } catch (error) {

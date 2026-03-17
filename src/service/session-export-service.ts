@@ -1,9 +1,6 @@
-import type { PluginInput } from "@opencode-ai/plugin";
-import type { Logger } from "../core";
+import type { Logger, OpencodeClient } from "../core";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
-type OpencodeClient = PluginInput["client"];
 
 /**
  * Options for SessionExportService
@@ -93,6 +90,10 @@ export class SessionExportService {
     this.log.debug("Computing token summary", { sessionID });
     const messages = await this.getSessionMessages(sessionID);
 
+    return this.summarizeTokenUsage(messages, sessionID);
+  }
+
+  private summarizeTokenUsage(messages: unknown[], sessionID: string): TokenSummary {
     const summary: TokenSummary = {
       totalInput: 0,
       totalOutput: 0,
@@ -141,10 +142,9 @@ export class SessionExportService {
     this.log.info("Exporting session", { sessionID, outputDir });
 
     // Fetch all data in parallel, handling diffs failure gracefully
-    const [session, messages, tokenSummary, diffs] = await Promise.all([
+    const [session, messages, diffs] = await Promise.all([
       this.getSessionInfo(sessionID),
       this.getSessionMessages(sessionID),
-      this.getTokenSummary(sessionID),
       this.getSessionDiffs(sessionID).catch((error) => {
         this.log.warn("Failed to fetch session diffs, exporting without diffs", {
           sessionID,
@@ -153,6 +153,7 @@ export class SessionExportService {
         return { error: "Failed to fetch diffs" };
       }),
     ]);
+    const tokenSummary = this.summarizeTokenUsage(messages, sessionID);
 
     const exportData = {
       exportedAt: new Date().toISOString(),

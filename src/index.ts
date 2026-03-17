@@ -1,11 +1,10 @@
 import { type Plugin } from "@opencode-ai/plugin";
 import { access } from "fs/promises";
 import { join } from "path";
-import { createLogger, getVersionInfo } from "./core";
-import { BeadsService, AimgrService, SessionExportService, ProjectDetectorService } from "./service";
-import type { ProjectContext } from "./service/project-detector-service";
+import { createLogger, getVersionInfo, showToast } from "./core";
+import { BeadsService, AimgrService, SessionExportService, ProjectDetectorService, type ProjectContext } from "./service";
 import { createCoderTool } from "./tool";
-import { isPluginDisabled } from "./config/env";
+import { isPluginDisabled } from "./config";
 import { getInstallGuideTemplate } from "./templates";
 
 const PROJECT_CONTEXT_TIMEOUT_MS = 30_000;
@@ -28,6 +27,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const beadsService = new BeadsService({
     logger: log,
     client,
+    workdir: worktree,
   });
   log.debug("BeadsService created", { durationMs: Date.now() - beadsStart });
 
@@ -177,14 +177,12 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
         log.info("ecosystemReady=false, not setting default_agent to orchestrator", {
           ecosystemReady: projectContext.ecosystemReady,
         });
-        void (client as any).tui.showToast({
+        void showToast(client, log, {
           title: "Orchestrator not enabled",
           message: "Orchestrator was not made the default agent because the project is not fully ready yet. Check aimgr/beads setup or run /opencode-coder/doctor.",
           variant: "warning",
           duration: 8000,
-        }).catch((err: unknown) => {
-          log.error("Failed to show orchestrator readiness toast", { error: String(err) });
-        });
+        }, "Failed to show orchestrator readiness toast");
       } else {
         cfg["default_agent"] = "orchestrator";
         log.info("Set default_agent to orchestrator (ecosystem ready)");

@@ -88,6 +88,17 @@ describe("createLogger", () => {
     expect(line).toContain('extra={"mode":"startup"}');
   });
 
+  it("does not emit debug logs when OPENCODE_CODER_DEBUG is explicitly false", () => {
+    process.env["OPENCODE_CODER_DEBUG"] = "false";
+    const client = createMockClient();
+    const logger = createLogger(client as any, tempDir);
+    logger.enableFileLogging();
+
+    logger.debug("hidden debug");
+
+    expect(client.app.logs).toHaveLength(0);
+  });
+
   it("prunes files older than 7 days using filename date", () => {
     const logsDir = join(tempDir, ".coder", "logs");
     mkdirSync(logsDir, { recursive: true });

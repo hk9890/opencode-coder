@@ -57,6 +57,21 @@ describe("BeadsService", () => {
 
       expect(service.isBeadsEnabled()).toBe(false);
     });
+
+    it("should detect beads from the provided workdir", () => {
+      const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
+
+      const service = new BeadsService({
+        logger: mockLogger,
+        client: mockClient,
+        workdir: "/custom/project",
+      });
+
+      expect(service.isBeadsEnabled()).toBe(true);
+      expect(accessSyncSpy).toHaveBeenCalledWith("/custom/project/.beads", fs.constants.F_OK);
+
+      accessSyncSpy.mockRestore();
+    });
   });
 
   describe("checkBeadsAvailability", () => {

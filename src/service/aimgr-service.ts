@@ -1,20 +1,13 @@
-import type { PluginInput } from "@opencode-ai/plugin";
-import type { Logger } from "../core/logger";
+import type { Logger, OpencodeClient } from "../core";
+import {
+  AIMGR_COMMAND_TIMEOUT_MS,
+  hasResourceIssues,
+  isCommandAvailable,
+  showToast,
+} from "../core";
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-
-type OpencodeClient = PluginInput["client"];
-
-const COMMAND_CHECK_TIMEOUT_MS = 5_000;
-const AIMGR_COMMAND_TIMEOUT_MS = 10_000;
-
-function isExecTimeoutError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-
-  const timeoutError = error as { code?: string; killed?: boolean; signal?: string };
-  return timeoutError.code === "ETIMEDOUT" || timeoutError.killed === true || timeoutError.signal === "SIGTERM";
-}
 
 export interface AimgrStartupHealthResult {
   verifyResult: any | null;
@@ -59,26 +52,11 @@ export class AimgrService {
    * Check if aimgr command is available on PATH
    */
   isAimgrAvailable(): boolean {
-    const command = "command -v aimgr";
-    try {
-      execSync(command, {
-        stdio: "ignore",
-        timeout: COMMAND_CHECK_TIMEOUT_MS,
-      });
-      this.logger.debug("aimgr CLI is available");
-      return true;
-    } catch (error) {
-      if (isExecTimeoutError(error)) {
-        this.logger.warn("aimgr availability check timed out", {
-          command,
-          timeoutMs: COMMAND_CHECK_TIMEOUT_MS,
-        });
-        return false;
-      }
-
-      this.logger.debug("aimgr CLI not found on PATH");
-      return false;
-    }
+    return isCommandAvailable("aimgr", this.logger, {
+      successMessage: "aimgr CLI is available",
+      missingMessage: "aimgr CLI not found on PATH",
+      timeoutMessage: "aimgr availability check timed out",
+    });
   }
 
   /**
@@ -214,20 +192,6 @@ export class AimgrService {
   }
 
   /**
-   * Return true when a verify-style JSON result reports resource issues.
-   */
-  private hasResourceIssues(result: any): boolean {
-    if (!result || typeof result !== "object") return true;
-
-    return (
-      (Array.isArray(result.issues) && result.issues.length > 0) ||
-      (Array.isArray(result.errors) && result.errors.length > 0) ||
-      (result.error && result.error !== "") ||
-      (result.status && result.status !== "ok" && result.status !== "healthy")
-    );
-  }
-
-  /**
    * Verify resources and automatically attempt repair when fixable issues exist.
    *
    * The post-repair verify result is authoritative when repair is attempted.
@@ -244,7 +208,7 @@ export class AimgrService {
       };
     }
 
-    if (!this.hasResourceIssues(initialVerify)) {
+    if (!hasResourceIssues(initialVerify)) {
       return {
         verifyResult: initialVerify,
         resourcesHealthy: true,
@@ -257,10 +221,10 @@ export class AimgrService {
     this.repairResources();
 
     const postRepairVerify = this.verifyResources();
-    const postRepairHealthy = postRepairVerify !== null && !this.hasResourceIssues(postRepairVerify);
+    const postRepairHealthy = postRepairVerify !== null && !hasResourceIssues(postRepairVerify);
 
     if (postRepairHealthy) {
-      await this.showToast({
+      await showToast(this.client, this.logger, {
         title: "aimgr",
         message: "aimgr auto-repair fixed resource issues.",
         variant: "success",
@@ -268,7 +232,7 @@ export class AimgrService {
       });
       this.logger.info("aimgr auto-repair succeeded");
     } else {
-      await this.showToast({
+      await showToast(this.client, this.logger, {
         title: "aimgr",
         message: "aimgr auto-repair was attempted, but issues remain. Run /opencode-coder/doctor for details.",
         variant: "warning",
@@ -283,27 +247,6 @@ export class AimgrService {
       repairAttempted: true,
       repairSucceeded: postRepairHealthy,
     };
-  }
-
-  /**
-   * Show a toast notification via the OpenCode TUI
-   */
-  private async showToast(options: {
-    title: string;
-    message: string;
-    variant: "info" | "success" | "warning" | "error";
-    duration?: number;
-  }): Promise<void> {
-    try {
-      await (this.client as any).tui.showToast({
-        title: options.title,
-        message: options.message,
-        variant: options.variant,
-        duration: options.duration,
-      });
-    } catch (error) {
-      this.logger.error("Failed to show toast", { error: String(error) });
-    }
   }
 
   /**
@@ -342,7 +285,7 @@ export class AimgrService {
       const packageAvailable = this.isPackageAvailable("opencode-coder");
       if (!packageAvailable) {
         this.logger.debug("opencode-coder package not available in repo");
-        await this.showToast({
+        await showToast(this.client, this.logger, {
           title: "aimgr Initialized",
           message: "Created ai.package.yaml. Run 'aimgr repo search opencode' to discover resources.",
           variant: "info",
@@ -355,7 +298,7 @@ export class AimgrService {
       this.installPackage("opencode-coder");
 
       // Step 6: Show success notification
-      await this.showToast({
+      await showToast(this.client, this.logger, {
         title: "aimgr Initialized",
         message: "Detected aimgr and installed opencode-coder package",
         variant: "success",

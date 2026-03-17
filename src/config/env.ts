@@ -50,3 +50,21 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 export function isPluginDisabled(): boolean {
   return parseBoolean(process.env["OPENCODE_CODER_DISABLED"], false);
 }
+
+/**
+ * Check if plugin debug logging is enabled.
+ *
+ * Environment Variable: `OPENCODE_CODER_DEBUG`
+ *
+ * Historical behavior treats most non-empty values as enabled. Keep that
+ * behavior explicit while honoring common disable values.
+ */
+export function isDebugLoggingEnabled(): boolean {
+  const value = process.env["OPENCODE_CODER_DEBUG"];
+  if (value === undefined || value === "") {
+    return false;
+  }
+
+  const normalized = value.toLowerCase().trim();
+  return normalized !== "false" && normalized !== "0";
+}

@@ -1,16 +1,19 @@
 import { describe, expect, it, beforeEach, afterEach } from "bun:test";
-import { isPluginDisabled } from "../../src/config/env";
+import { isDebugLoggingEnabled, isPluginDisabled } from "../../src/config/env";
 
 describe("Environment Variable Helpers", () => {
   // Store original env values to restore after tests
   let originalDisabled: string | undefined;
+  let originalDebug: string | undefined;
 
   beforeEach(() => {
     // Save original values
     originalDisabled = process.env["OPENCODE_CODER_DISABLED"];
+    originalDebug = process.env["OPENCODE_CODER_DEBUG"];
 
     // Clear env vars before each test
     delete process.env["OPENCODE_CODER_DISABLED"];
+    delete process.env["OPENCODE_CODER_DEBUG"];
   });
 
   afterEach(() => {
@@ -19,6 +22,12 @@ describe("Environment Variable Helpers", () => {
       delete process.env["OPENCODE_CODER_DISABLED"];
     } else {
       process.env["OPENCODE_CODER_DISABLED"] = originalDisabled;
+    }
+
+    if (originalDebug === undefined) {
+      delete process.env["OPENCODE_CODER_DEBUG"];
+    } else {
+      process.env["OPENCODE_CODER_DEBUG"] = originalDebug;
     }
   });
 
@@ -70,6 +79,37 @@ describe("Environment Variable Helpers", () => {
     it("should trim whitespace from OPENCODE_CODER_DISABLED value", () => {
       process.env["OPENCODE_CODER_DISABLED"] = "  true  ";
       expect(isPluginDisabled()).toBe(true);
+    });
+  });
+
+  describe("isDebugLoggingEnabled", () => {
+    it("should return false by default when env var is not set", () => {
+      expect(isDebugLoggingEnabled()).toBe(false);
+    });
+
+    it("should return true when OPENCODE_CODER_DEBUG is '1'", () => {
+      process.env["OPENCODE_CODER_DEBUG"] = "1";
+      expect(isDebugLoggingEnabled()).toBe(true);
+    });
+
+    it("should return true when OPENCODE_CODER_DEBUG is 'TRUE'", () => {
+      process.env["OPENCODE_CODER_DEBUG"] = "TRUE";
+      expect(isDebugLoggingEnabled()).toBe(true);
+    });
+
+    it("should return false when OPENCODE_CODER_DEBUG is 'false'", () => {
+      process.env["OPENCODE_CODER_DEBUG"] = "false";
+      expect(isDebugLoggingEnabled()).toBe(false);
+    });
+
+    it("should return false when OPENCODE_CODER_DEBUG is '0'", () => {
+      process.env["OPENCODE_CODER_DEBUG"] = "0";
+      expect(isDebugLoggingEnabled()).toBe(false);
+    });
+
+    it("should return true for other non-empty values to preserve compatibility", () => {
+      process.env["OPENCODE_CODER_DEBUG"] = "debug";
+      expect(isDebugLoggingEnabled()).toBe(true);
     });
   });
 });

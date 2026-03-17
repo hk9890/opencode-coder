@@ -1,9 +1,11 @@
-import type { PluginInput } from "@opencode-ai/plugin";
+import { isDebugLoggingEnabled } from "../config";
+import type { OpencodeClient } from "./opencode";
 import { appendFileSync, mkdirSync, readdirSync, unlinkSync } from "fs";
 import { join } from "path";
 
 export const SERVICE_NAME = "opencode-coder";
 const LOG_RETENTION_DAYS = 7;
+const MAX_BUFFERED_FILE_LOGS = 200;
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface BufferedFileLogEntry {
@@ -19,16 +21,15 @@ export interface Logger {
   enableFileLogging(): void;
 }
 
-export function createLogger(client: PluginInput["client"], workdir: string): Logger {
+export function createLogger(client: OpencodeClient, workdir: string): Logger {
   // Check if debug logging is enabled via environment variable
-  const isDebugEnabled = !!process.env['OPENCODE_CODER_DEBUG'];
+  const isDebugEnabled = isDebugLoggingEnabled();
 
   const logsDir = join(workdir, ".coder", "logs");
   let isFileLoggingEnabled = false;
   const bufferedFileLogs: BufferedFileLogEntry[] = [];
 
   const writeFileLog = (entry: BufferedFileLogEntry) => {
-    mkdirSync(logsDir, { recursive: true });
     appendFileSync(entry.path, entry.line);
   };
 
@@ -54,7 +55,7 @@ export function createLogger(client: PluginInput["client"], workdir: string): Lo
   };
 
   const log = (level: LogLevel, message: string, extra?: Record<string, unknown>) => {
-    // For debug messages, only log if OPENCODE_CODER_DEBUG is truthy
+    // For debug messages, only log when debug logging is enabled
     if (level === "debug" && !isDebugEnabled) {
       return;
     }
@@ -79,6 +80,9 @@ export function createLogger(client: PluginInput["client"], workdir: string): Lo
 
     if (!isFileLoggingEnabled) {
       bufferedFileLogs.push(fileLogEntry);
+      if (bufferedFileLogs.length > MAX_BUFFERED_FILE_LOGS) {
+        bufferedFileLogs.splice(0, bufferedFileLogs.length - MAX_BUFFERED_FILE_LOGS);
+      }
       return;
     }
 

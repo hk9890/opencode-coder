@@ -1,20 +1,7 @@
-import type { PluginInput } from "@opencode-ai/plugin";
-import type { Logger } from "../core/logger";
-import { BeadsDetector } from "../beads";
-import { execSync } from "child_process";
-
-type OpencodeClient = PluginInput["client"];
-
-const COMMAND_CHECK_TIMEOUT_MS = 5_000;
-
-type BdCliAvailabilityStatus = "installed" | "missing" | "timeout";
-
-function isExecTimeoutError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-
-  const timeoutError = error as { code?: string; killed?: boolean; signal?: string };
-  return timeoutError.code === "ETIMEDOUT" || timeoutError.killed === true || timeoutError.signal === "SIGTERM";
-}
+import type { Logger, OpencodeClient } from "../core";
+import { getCommandAvailabilityStatus, showToast } from "../core";
+import { accessSync, constants } from "fs";
+import { join } from "path";
 
 /**
  * Options for BeadsService
@@ -24,6 +11,8 @@ export interface BeadsServiceOptions {
   logger: Logger;
   /** OpenCode client for session operations */
   client: OpencodeClient;
+  /** Working directory (defaults to process.cwd()) */
+  workdir?: string;
   /** Override beads enabled state (for testing) */
   beadsEnabled?: boolean;
 }
@@ -42,17 +31,19 @@ export class BeadsService {
   private readonly logger: Logger;
   private readonly beadsEnabled: boolean;
   private readonly client: OpencodeClient;
+  private readonly workdir: string;
 
   constructor(options: BeadsServiceOptions) {
     this.logger = options.logger;
     this.client = options.client;
+    this.workdir = options.workdir ?? process.cwd();
 
     // Detect beads enabled state (can be overridden for testing)
     if (options.beadsEnabled !== undefined) {
       this.beadsEnabled = options.beadsEnabled;
     } else {
-      const detector = new BeadsDetector({ logger: options.logger });
-      this.beadsEnabled = detector.isBeadsEnabled();
+      this.beadsEnabled = this.detectBeadsDirectory();
+      this.logger.debug("Beads enabled from auto-detection", { enabled: this.beadsEnabled });
     }
   }
 
@@ -80,12 +71,11 @@ export class BeadsService {
       const bdCliAvailability = this.getBdCliAvailability();
 
       // Check if .beads directory exists
-      const detector = new BeadsDetector({ logger: this.logger });
-      const beadsDirExists = detector.detectBeadsDirectory();
+      const beadsDirExists = this.detectBeadsDirectory();
 
       // Only show toast if something is missing
       if (bdCliAvailability === "missing") {
-        await this.showToast({
+        await showToast(this.client, this.logger, {
           title: "Beads Not Available",
           message: "Beads CLI not found. Install with: npm install -g beads",
           variant: "warning",
@@ -100,7 +90,7 @@ export class BeadsService {
       }
 
       if (!beadsDirExists) {
-        await this.showToast({
+        await showToast(this.client, this.logger, {
           title: "Beads Not Initialized",
           message: "Beads not initialized for this project. Run: bd init",
           variant: "warning",
@@ -120,45 +110,24 @@ export class BeadsService {
   /**
    * Check if the bd CLI is installed by running 'command -v bd'
    */
-  private getBdCliAvailability(): BdCliAvailabilityStatus {
-    const command = "command -v bd";
-    try {
-      execSync(command, {
-        stdio: "ignore",
-        timeout: COMMAND_CHECK_TIMEOUT_MS,
-      });
-      return "installed";
-    } catch (error) {
-      if (isExecTimeoutError(error)) {
-        this.logger.warn("bd CLI availability check timed out", {
-          command,
-          timeoutMs: COMMAND_CHECK_TIMEOUT_MS,
-        });
-        return "timeout";
-      }
-
-      return "missing";
-    }
+  private getBdCliAvailability() {
+    return getCommandAvailabilityStatus("bd", this.logger, {
+      timeoutMessage: "bd CLI availability check timed out",
+    });
   }
 
   /**
-   * Show a toast notification via the OpenCode TUI
+   * Check whether .beads/ directory exists.
    */
-  private async showToast(options: {
-    title: string;
-    message: string;
-    variant: "info" | "success" | "warning" | "error";
-    duration?: number;
-  }): Promise<void> {
+  private detectBeadsDirectory(): boolean {
+    const beadsDir = join(this.workdir, ".beads");
     try {
-      await (this.client as any).tui.showToast({
-        title: options.title,
-        message: options.message,
-        variant: options.variant,
-        duration: options.duration,
-      });
-    } catch (error) {
-      this.logger.error("Failed to show toast", { error: String(error) });
+      accessSync(beadsDir, constants.F_OK);
+      this.logger.debug("Beads directory detected", { path: beadsDir });
+      return true;
+    } catch {
+      this.logger.debug("Beads directory not found", { path: beadsDir });
+      return false;
     }
   }
 }
