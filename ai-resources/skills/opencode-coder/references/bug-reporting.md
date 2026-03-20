@@ -71,7 +71,7 @@ Issues should be reported to: https://github.com/dynatrace-oss/opencode-coder
 
 ### Bug Report Template
 
-A structured template is available at [`assets/bug-report-template.md`](../assets/bug-report-template.md) to help you include all necessary information.
+A structured template is bundled at [`../assets/bug-report-template.md`](../assets/bug-report-template.md) to help you include all necessary information.
 
 > **Tip**: For complex issues that are hard to reproduce, consider including a session export (see Session Export section below) to provide full context of what happened.
 
@@ -79,22 +79,23 @@ A structured template is available at [`assets/bug-report-template.md`](../asset
 
 **Automated Collection:**
 
-Run the helper script to automatically collect system information:
+Run the helper script to automatically collect system information.
+Replace `<skill-dir>` with the directory that contains this skill bundle:
 
 ```bash
-./scripts/collect-system-info.sh
+bash <skill-dir>/scripts/collect-system-info.sh
 ```
 
 This script collects:
 - Operating system and version
 - Node.js and npm versions
 - bd CLI version
-- Plugin version
+- Working directory
 - Shell type
-- Git repository status (if applicable)
-- Beads health check output (if applicable)
+- Saved plugin mode (if `.coder/opencode-coder.yaml` exists)
+- `bd doctor` output (if `.beads/` exists)
 
-Copy the output and paste it into the Environment section of your bug report.
+Copy the output and paste it into the Environment section of your bug report. If you also need plugin version/build details, use the AI-assisted or manual collection paths below.
 
 **AI-Assisted Collection:**
 
@@ -228,10 +229,10 @@ For complex issues requiring logs, reproduction steps, or additional context:
 
 ```bash
 # Copy the template
-cp ../assets/bug-report-template.md /tmp/bug-report.md
+cp <skill-dir>/assets/bug-report-template.md /tmp/bug-report.md
 
 # Collect system info
-./scripts/collect-system-info.sh > /tmp/system-info.txt
+bash <skill-dir>/scripts/collect-system-info.sh > /tmp/system-info.txt
 
 # Edit the template, fill in all sections, paste system info
 # Then create the issue

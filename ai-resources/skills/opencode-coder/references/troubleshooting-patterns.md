@@ -210,14 +210,19 @@ See [project-structure.md](project-structure.md) for the canonical detection rul
 **Solution**:
 
 ```bash
-# Rebuild the local cache
-rm .beads/beads.db
-bd ready  # Will rebuild cache
+# Start with diagnostics
+bd doctor
+
+# Let bd repair common local problems
+bd doctor --fix
+
+# If you're on a fresh clone or recovery path, bootstrap safely
+bd bootstrap
 ```
 
-**Root Cause**: Local SQLite cache became corrupted or out of sync.
+**Root Cause**: In modern bd setups the issue store is Dolt-backed. Database errors usually come from broken local setup, stale runtime state, or incomplete recovery/migration — not from a single `beads.db` cache file.
 
-**Note**: This only affects the local cache; your issues.jsonl data is safe.
+**Note**: Prefer `bd doctor` / `bd bootstrap` over manually deleting files unless the diagnostics explicitly tell you to do so. If `bd doctor` reports uncommitted Dolt changes, inspect them with `bd vc status`.
 
 ---
 
@@ -351,14 +356,15 @@ ls -la ai-resources/agents/
 # Check that AGENTS.md is not interfering
 # The plugin injects context via hooks, AGENTS.md should be minimal
 
-# Verify hooks are installed
+# Verify hooks/context plumbing
 bd hooks install
 
-# Check recent interactions
-cat .beads/interactions.jsonl | tail -20
+# Inspect the issue history and comments that the agent actually touched
+bd history <issue-id>
+bd comments <issue-id>
 ```
 
-**Root Cause**: Conflicting instructions in AGENTS.md or hooks not injecting context.
+**Root Cause**: Conflicting instructions in AGENTS.md, missing/outdated hooks, or plugin/runtime problems that prevent the intended context from reaching the agent.
 
 **Best Practice**: Keep AGENTS.md minimal and use [project-structure.md](project-structure.md) as the rule set.
 
@@ -414,19 +420,19 @@ See [project-structure.md](project-structure.md) for the canonical visibility ru
 **Solution**:
 
 ```bash
+# Ensure the repo-level ignore rules do not exclude the whole .beads directory
+grep -n ".beads" .gitignore
+
 # Ensure files are tracked
 git add .beads/
 
-# Check .gitignore doesn't exclude them
-cat .gitignore
-
-# Only beads.db should be ignored
-grep -v "beads.db" .gitignore | grep -q "beads" && echo "Remove .beads/ from .gitignore"
+# If git still ignores files, inspect the winning ignore rule
+git check-ignore -v .beads/issues.jsonl .beads/config.yaml
 ```
 
-**Root Cause**: Files excluded by .gitignore or not tracked in team mode.
+**Root Cause**: Files are excluded by repo-level `.gitignore` rules or other ignore patterns, or they were never added to git in team mode.
 
-**Best Practice**: In team mode, commit `.beads/` but always exclude `beads.db`. See [project-structure.md](project-structure.md).
+**Best Practice**: In team mode, commit the shared `.beads/` state but keep local-only runtime and legacy files excluded via `.beads/.gitignore`. See [project-structure.md](project-structure.md).
 
 ---
 
@@ -439,19 +445,19 @@ grep -v "beads.db" .gitignore | grep -q "beads" && echo "Remove .beads/ from .gi
 **Solution**:
 
 ```bash
-# Rebuild cache
-rm .beads/beads.db
-bd ready
+# Run performance diagnostics first
+bd doctor --perf
 
 # Check for large issues.jsonl
 wc -l .beads/issues.jsonl
 
-# If >10,000 lines, consider archiving closed issues
+# Preview maintenance before applying it
+bd gc --dry-run
 ```
 
-**Root Cause**: Large issues.jsonl file or corrupted cache.
+**Root Cause**: Large issue history, pending maintenance, or slow local Dolt state.
 
-**Prevention**: Periodically archive completed issues in long-running projects.
+**Prevention**: Periodically run maintenance (`bd gc`) on long-running projects and fix setup/integrity issues with `bd doctor` before doing broader cleanup.
 
 ---
 

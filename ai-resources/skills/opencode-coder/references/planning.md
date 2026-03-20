@@ -263,7 +263,7 @@ These tasks represent **blocking conditions**, not approval states. Add comments
 3. Create acceptance review task
 4. Set dependencies with `bd dep add`
 5. Apply `need:review` to complex/risky items
-6. Show the plan: `bd stats`, `bd ready`, `bd blocked`
+6. Show the plan: `bd status`, `bd ready`, `bd blocked`
 
 ### Review (if needed)
 Spawn reviewer for items labeled `need:review`. Reviewer creates new beads if issues found â€” does NOT modify existing ones.
@@ -286,7 +286,8 @@ When all implementation tasks closed AND the acceptance review task is closed â†
 
 **Updating issues:**
 ```bash
-bd update <id> --status=in_progress     # Claim work
+bd update <id> --claim                  # Claim work atomically
+bd update <id> --status=in_progress     # Set status directly when needed
 bd update <id> --assignee=username      # Assign to someone
 bd update <id> --title="New title"      # Update title
 bd update <id> --description="..."      # Update description

@@ -23,10 +23,17 @@ echo "bd CLI: $(bd --version 2>&1 || echo 'NOT FOUND')"
 # Current directory
 echo "Working Directory: $(pwd)"
 
+# Shell
+echo "Shell: ${SHELL:-UNKNOWN}"
+
 # Beads status
 if [ -d ".beads" ]; then
     echo "Beads: initialized"
-    echo "  Mode: $(cat .beads/config.yaml 2>/dev/null | grep mode || echo 'unknown')"
+    if [ -f ".coder/opencode-coder.yaml" ]; then
+        echo "  Plugin Mode: $(grep '^mode:' .coder/opencode-coder.yaml | sed 's/^mode:[[:space:]]*//' || echo 'unknown')"
+    else
+        echo "  Plugin Mode: unknown"
+    fi
     echo "  Doctor output:"
     bd doctor 2>&1 | head -5 | sed 's/^/    /' || true
 else

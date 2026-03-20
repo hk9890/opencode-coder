@@ -103,22 +103,16 @@ Run the smallest relevant validation for the files you changed:
 
 If no meaningful validation is available, state that explicitly.
 
-## Claude Parity Notes
+## Implementation Notes
 
-This workflow is intentionally **Claude-like**, not a byte-for-byte clone of Claude Code's bundled `/simplify` behavior.
+This workflow is prompt-driven through the `opencode-coder` skill and `/simplify` command rather than a special built-in product feature.
 
-Current known constraints for the initial OpenCode release:
+Keep these invariants intact even if the surrounding runtime changes:
 
-- The workflow is prompt-driven through the `opencode-coder` skill and `/simplify` command, not a special built-in product feature.
-- Parallel review passes are instructed explicitly, but the exact orchestration/runtime behavior depends on the active agent environment.
-- The workflow applies safe fixes in the current working tree; it does not provide Claude-specific built-in UI or hidden product-side aggregation behavior.
-
-These constraints are acceptable for the initial release because the core user experience is preserved:
-
-- default scope comes from recent changes
-- reuse, quality, and efficiency are reviewed in parallel
-- safe fixes are applied directly
-- broader refactors require user confirmation
+- default scope comes from recent changes, not a whole-repo cleanup sweep
+- reuse, quality, and efficiency should be reviewed separately, in parallel when the environment supports it
+- safe local simplifications can be applied directly
+- broader refactors still require user confirmation
 
 ## Output Format
 

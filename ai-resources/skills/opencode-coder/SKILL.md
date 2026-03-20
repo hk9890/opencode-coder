@@ -1,6 +1,6 @@
 ---
 name: opencode-coder
-description: "Complete guide to planning, simplifying recent changes, installing, configuring, and troubleshooting the opencode-coder plugin. Use when the AI assistant needs to: (1) Create epics, tasks, and acceptance review tasks, (2) Simplify recently changed code after a feature or bug fix, (3) Install or upgrade the bd CLI or plugin dependencies, (4) Initialize beads in a project (bd init, hooks setup), (5) Debug plugin loading or configuration issues, (6) Analyze OpenCode logs for errors or patterns, (7) Check system/plugin status and health, (8) Guide users through reporting bugs or issues, (9) Troubleshoot common problems with beads, git hooks, or sync"
+description: "Reference hub for opencode-coder planning, setup, simplify, debugging, and support workflows. Use this skill when the AI assistant needs to plan beads work, run the /simplify workflow, install or initialize bd or opencode-coder, switch stealth/team modes, check health, analyze logs, troubleshoot plugin behavior, generate AGENTS.md guidance, or help report opencode-coder bugs."
 ---
 
 # opencode-coder Skill

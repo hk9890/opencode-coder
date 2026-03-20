@@ -53,7 +53,7 @@ If no saved mode or legacy active markers are found:
 
 ### Team mode
 
-- Commit: `.beads/` (except `beads.db`), `.opencode/`, `ai.package.yaml`, `AGENTS.md`, and generated docs in `docs/`
+- Commit: `.beads/` except files ignored by `.beads/.gitignore` (runtime files, local credentials, and legacy `*.db` artifacts), `.opencode/`, `ai.package.yaml`, `AGENTS.md`, and generated docs in `docs/`
 - Ignore: `.coder/`
 - Ensure `.gitignore` contains:
 
