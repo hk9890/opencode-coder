@@ -1,6 +1,8 @@
 # Project Setup
 
-This guide describes a simple, tool-agnostic documentation structure for projects that want clear routing and controlled context for humans and coding agents.
+This guide describes a simple, tool-agnostic documentation structure for projects that want clear routing and controlled context for humans and coding agents after opencode-coder has been explicitly enabled for the repository.
+
+If the plugin has not been enabled yet, use `/opencode-coder/init` first. Fresh projects now remain inactive until that explicit setup step.
 
 ## Core idea
 

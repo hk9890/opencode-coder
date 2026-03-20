@@ -1,31 +1,53 @@
 # Project Structure & File Rules
 
-Canonical layout for opencode-coder setup, AGENTS generation, and `/init` refreshes.
+Canonical layout for opencode-coder explicit enablement, AGENTS generation, and `/opencode-coder/init` refreshes.
 
-## 1. Detect Mode First
+## 1. Detect Saved Mode First
 
-Use the stealth marker as the source of truth:
+Use `.coder/opencode-coder.yaml` as the primary source of truth when it exists.
 
-```bash
-grep -q "# opencode-coder stealth mode" .git/info/exclude 2>/dev/null && echo "STEALTH_ACTIVE"
-```
+Saved modes:
 
-- Marker found → **stealth mode**
-- Marker missing and `.beads/`, `AGENTS.md`, and `ai.package.yaml` exist → **team mode**
-- Neither condition matches → **fresh setup**
+- `disabled`
+- `stealth`
+- `team`
 
-**Rule**: If the marker exists, do not re-ask stealth vs team on re-runs.
+If the saved mode file is missing, use legacy detection only to preserve older initialized projects.
+
+### Legacy detection order
+
+1. stealth marker in `.git/info/exclude`
+2. legacy `.coder/project.yaml` with `mode: stealth` or `mode: team`
+3. shared team markers: `.beads/`, `AGENTS.md`, and `ai.package.yaml`
+
+When legacy active state is inferred, persist `.coder/opencode-coder.yaml` immediately.
+
+### Fresh project rule
+
+If no saved mode or legacy active markers are found:
+
+- the project is **not yet enabled**
+- startup must not create `.coder/`
+- startup must expose only `/opencode-coder/init`
+
+### Hard-disable rule
+
+`OPENCODE_CODER_DISABLED=true` is outside the saved mode model.
+
+- hard override active → plugin returns nothing
+- saved `disabled` → plugin remains project-inactive but `/opencode-coder/init` is still available
 
 ## 2. Canonical Locations
 
-| Concern | Team mode | Stealth mode | Rule |
+| Concern | Team mode | Stealth mode | Disabled / not yet enabled |
 |---|---|---|---|
-| AGENTS file | `AGENTS.md` | `.coder/AGENTS.md` | Write only to the active path |
-| Standard docs | `docs/` | `.coder/docs/` | Use mode-correct paths everywhere |
-| Beads data | `.beads/` | `.beads/` | Tracked in team mode, local-only in stealth |
-| Plugin runtime | `.coder/` | `.coder/` | Never commit `.coder/` |
-| Plugin resources | `.opencode/` | `.opencode/` | Shared in team mode, excluded in stealth |
-| AI manifest | `ai.package.yaml` | `ai.package.yaml` | Shared in team mode, excluded in stealth |
+| Saved plugin mode | `.coder/opencode-coder.yaml` | `.coder/opencode-coder.yaml` | `.coder/opencode-coder.yaml` only for saved `disabled` |
+| AGENTS file | `AGENTS.md` | `.coder/AGENTS.md` | none required |
+| Standard docs | `docs/` | `.coder/docs/` | none required |
+| Beads data | `.beads/` | `.beads/` | none required |
+| Plugin runtime | `.coder/` | `.coder/` | absent for fresh projects; may exist for saved disabled |
+| Plugin resources | `.opencode/` | `.opencode/` | none required |
+| AI manifest | `ai.package.yaml` | `ai.package.yaml` | none required |
 
 ## 3. Git Visibility Rules
 
@@ -48,13 +70,18 @@ grep -qF '.coder/' .gitignore 2>/dev/null || echo '.coder/' >> .gitignore
   - `.coder/`
   - `ai.package.yaml`
 
+### Disabled / not-yet-enabled
+
+- Fresh projects should not have generated artifacts yet
+- Saved disabled projects may retain `.coder/opencode-coder.yaml`, but startup must not regenerate active runtime files or docs
+
 ## 4. Standard Docs Contract
 
 Use these file names under the active docs directory:
 
 | Topic | Standard file | Rule |
 |---|---|---|
-| Coding | `CODING.md` | Always required |
+| Coding | `CODING.md` | Always required for active setups |
 | Testing | `TESTING.md` | Create only if relevant |
 | Releases | `RELEASING.md` | Create only if relevant |
 | Monitoring | `MONITORING.md` | Create only if relevant |
@@ -71,6 +98,7 @@ Use these file names under the active docs directory:
   - Landing the Plane / session completion block
 - Always use mode-correct paths
 - In stealth mode, write only `.coder/AGENTS.md` — never overwrite the team root `AGENTS.md`
+- In disabled or not-yet-enabled states, do not generate or refresh AGENTS files as part of startup
 
 ### If a team `AGENTS.md` already exists
 
@@ -84,7 +112,7 @@ In stealth mode:
 
 ### When writing docs or AGENTS
 
-- Detect mode first
+- Detect saved/active mode first
 - In stealth mode:
   - write docs only under `.coder/docs/`
   - write AGENTS only to `.coder/AGENTS.md`
@@ -93,12 +121,16 @@ In stealth mode:
   - write docs under `docs/`
   - write AGENTS to `AGENTS.md`
   - do not place generated docs under `.coder/docs/`
+- In saved `disabled` or fresh not-yet-enabled states:
+  - do not run active startup generation
+  - only update `.coder/opencode-coder.yaml` when the user explicitly changes saved mode
 
-### When refreshing `/init`
+### When refreshing `/opencode-coder/init`
 
-- If stealth marker exists, skip the mode question
-- Refresh generated docs in the active docs directory
-- Refresh the active AGENTS file
+- Use the saved mode file first
+- If a legacy active project is detected, materialize the saved mode before continuing
+- Refresh generated docs in the active docs directory only for active modes
+- Refresh the active AGENTS file only for active modes
 - Preserve any committed team `AGENTS.md`
 - Report what changed
 
@@ -106,4 +138,6 @@ In stealth mode:
 
 - **Team mode** = shared project assets live at standard repo paths
 - **Stealth mode** = same concepts, but generated artifacts live under `.coder/` and stay local
-- **The mode decides the paths**; the document set stays the same
+- **Disabled mode** = project-local startup is suppressed until re-enabled via `/opencode-coder/init`
+- **Not yet enabled** = fresh project with no saved mode yet
+- **The mode decides the paths and behavior**; `.coder/` existence alone does not

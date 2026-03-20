@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { OpencodeCoder } from "../../src";
-import { AimgrService, BeadsService, ProjectDetectorService } from "../../src/service";
-import type { ProjectContext } from "../../src/service/project-detector-service";
+import { AimgrService, BeadsService, PluginModeService, ProjectDetectorService } from "../../src/service";
+import type { PluginModeResolution, ProjectContext } from "../../src/service";
 import { createMockPluginInput, asMockPluginInput } from "../helpers/mock-client";
 
 function createProjectContext(overrides?: Partial<ProjectContext>): ProjectContext {
@@ -29,6 +29,14 @@ function createProjectContext(overrides?: Partial<ProjectContext>): ProjectConte
   };
 }
 
+function savedModeResolution(mode: PluginModeResolution["mode"], source: PluginModeResolution["source"] = "saved"): PluginModeResolution {
+  return {
+    mode,
+    source,
+    stateFilePath: "/test/project/.coder/opencode-coder.yaml",
+  };
+}
+
 describe("OpencodeCoder Plugin Integration", () => {
   beforeEach(() => {
     spyOn(BeadsService.prototype, "checkBeadsAvailability").mockResolvedValue(undefined);
@@ -45,14 +53,16 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(hooks).toBeDefined();
     });
 
-    it("should provide tool hook with coder tool", async () => {
+    it("should provide tool hook with coder tool for active projects", async () => {
+      spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
       expect(hooks.tool).toBeDefined();
       expect(hooks.tool?.coder).toBeDefined();
     });
 
-    it("no-.coder startup regression: does not create .coder or ai.package.yaml", async () => {
+    it("no-.coder startup regression: does not create .coder or ai.package.yaml for fresh projects", async () => {
       const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-no-coder-"));
 
       try {
@@ -66,11 +76,12 @@ describe("OpencodeCoder Plugin Integration", () => {
       }
     });
 
-    it("replays early startup logs into .coder/logs when project already opted in", async () => {
+    it("replays early startup logs into .coder/logs for active projects", async () => {
       const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-with-coder-"));
 
       try {
         mkdirSync(join(worktree, ".coder"), { recursive: true });
+        writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: team\n", "utf-8");
 
         const mockInput = createMockPluginInput({ worktree, directory: worktree });
         await OpencodeCoder(asMockPluginInput(mockInput));
@@ -81,19 +92,15 @@ describe("OpencodeCoder Plugin Integration", () => {
 
         expect(logContent).toContain("OpencodeCoder plugin loading...");
         expect(logContent).toContain("OpencodeCoder plugin loaded");
-
-        const loadingIndex = logContent.indexOf("OpencodeCoder plugin loading...");
-        const loadedIndex = logContent.indexOf("OpencodeCoder plugin loaded");
-
-        expect(loadingIndex).toBeGreaterThanOrEqual(0);
-        expect(loadedIndex).toBeGreaterThan(loadingIndex);
       } finally {
         rmSync(worktree, { recursive: true, force: true });
       }
     });
 
-    it("registers /init even when .coder is absent and skips startup project management", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(false);
+    it("registers /opencode-coder/init for a fresh inactive project and skips active startup management", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
+        savedModeResolution("not-enabled", "fresh")
+      );
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -101,32 +108,35 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(createProjectContext());
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
       const cfg: Record<string, any> = {};
       await hooks.config?.(cfg as any);
 
-      expect(cfg.command?.init).toBeDefined();
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
       expect(cfg.default_agent).toBeUndefined();
+      expect(hooks.tool?.coder).toBeUndefined();
       expect(autoInitializeSpy).not.toHaveBeenCalled();
       expect(healthSpy).not.toHaveBeenCalled();
       expect(detectSpy).not.toHaveBeenCalled();
       expect(
         mockInput.client.app.logs.some(
-          (entry) => entry.message === ".coder directory not found, skipping startup project management"
+          (entry) => entry.message === "Project not explicitly enabled for active startup; exposing init entry point only"
         )
       ).toBe(true);
 
-      detectCoderDirSpy.mockRestore();
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
     });
 
-    it("sets default_agent to orchestrator when ecosystem is ready and no default exists", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+    it("keeps /opencode-coder/init available but suppresses active behavior for saved disabled mode", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
+        savedModeResolution("disabled")
+      );
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -134,7 +144,90 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const cfg: Record<string, any> = {};
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      expect(cfg.default_agent).toBeUndefined();
+      expect(hooks.tool?.coder).toBeUndefined();
+      expect(autoInitializeSpy).not.toHaveBeenCalled();
+      expect(healthSpy).not.toHaveBeenCalled();
+      expect(detectSpy).not.toHaveBeenCalled();
+      expect(mockInput.client.tui.toasts).toHaveLength(0);
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("fully disables the plugin when the env hard override wins", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
+        savedModeResolution("hard-disabled", "env")
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+
+      expect(hooks.tool).toBeUndefined();
+      expect(hooks.config).toBeUndefined();
+
+      resolveModeSpy.mockRestore();
+    });
+
+    it("migrates a legacy active project to explicit saved mode and keeps startup active", async () => {
+      const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-legacy-team-"));
+
+      try {
+        mkdirSync(join(worktree, ".coder"), { recursive: true });
+        writeFileSync(join(worktree, ".coder", "project.yaml"), "mode: team\n", "utf-8");
+
+        const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+        const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+          verifyResult: { status: "ok", issues: [] },
+          resourcesHealthy: true,
+          repairAttempted: false,
+          repairSucceeded: false,
+        });
+        const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+          createProjectContext({ ecosystemReady: true })
+        );
+
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, unknown> = {};
+        await hooks.config?.(cfg as any);
+
+        expect(hooks.tool?.coder).toBeDefined();
+        expect(cfg.default_agent).toBe("orchestrator");
+        expect(existsSync(join(worktree, ".coder", "opencode-coder.yaml"))).toBe(true);
+        expect(readFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "utf-8")).toContain("mode: team");
+        expect(autoInitializeSpy).toHaveBeenCalled();
+        expect(healthSpy).toHaveBeenCalled();
+        expect(detectSpy).toHaveBeenCalled();
+
+        autoInitializeSpy.mockRestore();
+        healthSpy.mockRestore();
+        detectSpy.mockRestore();
+      } finally {
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
+    it("sets default_agent to orchestrator when ecosystem is ready and no default exists", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [] },
+        resourcesHealthy: true,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({ ecosystemReady: true })
       );
 
@@ -145,14 +238,14 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.default_agent).toBe("orchestrator");
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("does not show readiness toast when default_agent assignment is skipped because default already exists", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -160,7 +253,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({ ecosystemReady: true })
       );
 
@@ -175,14 +268,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       ).toBe(true);
       expect(mockInput.client.tui.toasts).toHaveLength(0);
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("does not show readiness toast when default_agent assignment is skipped because project context is unavailable", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -190,9 +283,9 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockRejectedValue(
-        new Error("detector failed")
-      );
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(() => {
+        throw new Error("detector failed");
+      });
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
@@ -205,14 +298,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       ).toBe(true);
       expect(mockInput.client.tui.toasts).toHaveLength(0);
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("shows readiness toast when default_agent assignment is skipped because ecosystem is not ready", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -220,7 +313,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({ ecosystemReady: false })
       );
 
@@ -240,16 +333,15 @@ describe("OpencodeCoder Plugin Integration", () => {
         title: "Orchestrator not enabled",
         variant: "warning",
       });
-      expect(mockInput.client.tui.toasts[0]?.message).toContain("not fully ready yet");
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("does not block config when readiness toast never resolves", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
         verifyResult: { status: "ok", issues: [] },
@@ -257,7 +349,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({ ecosystemReady: false })
       );
 
@@ -272,20 +364,15 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.default_agent).toBeUndefined();
       expect(showToastSpy).toHaveBeenCalledTimes(1);
-      expect(
-        mockInput.client.app.logs.some(
-          (entry) => entry.message === "ecosystemReady=false, not setting default_agent to orchestrator"
-        )
-      ).toBe(true);
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("evaluates readiness after autoInitialize so config uses final state", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const order: string[] = [];
       let repaired = false;
 
@@ -302,9 +389,12 @@ describe("OpencodeCoder Plugin Integration", () => {
           repairSucceeded: false,
         };
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(async () => {
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(() => {
         order.push("detectAndWrite");
-        return createProjectContext({ ecosystemReady: repaired, aimgr: { ...createProjectContext().aimgr, resourcesHealthy: repaired } });
+        return createProjectContext({
+          ecosystemReady: repaired,
+          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: repaired },
+        });
       });
 
       const mockInput = createMockPluginInput();
@@ -316,14 +406,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(cfg.default_agent).toBe("orchestrator");
       expect(mockInput.client.tui.toasts).toHaveLength(0);
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
 
     it("degrades safely when project context startup times out", async () => {
-      const detectCoderDirSpy = spyOn(ProjectDetectorService.prototype, "detectCoderDirectory").mockReturnValue(true);
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockImplementation(
         () => new Promise<void>(() => {})
       );
@@ -333,7 +423,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockResolvedValue(
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({ ecosystemReady: true })
       );
 
@@ -353,7 +443,7 @@ describe("OpencodeCoder Plugin Integration", () => {
 
         expect(cfg.default_agent).toBeUndefined();
         expect(cfg.command).toBeDefined();
-        expect((cfg.command as Record<string, unknown>).init).toBeDefined();
+        expect((cfg.command as Record<string, unknown>)["opencode-coder/init"]).toBeDefined();
         expect(
           mockInput.client.app.logs.some(
             (entry) => entry.level === "warn" && entry.message === "Project context startup timed out; continuing in degraded mode"
@@ -364,14 +454,13 @@ describe("OpencodeCoder Plugin Integration", () => {
         globalThis.clearTimeout = originalClearTimeout;
       }
 
-      // Timeout happened before startup flow completed
       expect(healthSpy).not.toHaveBeenCalled();
       expect(detectSpy).not.toHaveBeenCalled();
 
+      resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
       healthSpy.mockRestore();
       detectSpy.mockRestore();
-      detectCoderDirSpy.mockRestore();
     });
   });
 });

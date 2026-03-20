@@ -29,25 +29,33 @@ If needed, configure npm to use GitHub Packages for this scope in `~/.npmrc`:
 
 Start OpenCode in the repository where you want to use the plugin.
 
-## 3. Run `/init`
+## 3. Run `/opencode-coder/init`
 
 For most users, this is the main setup step.
 
-`/init` will guide project setup and can:
+`/opencode-coder/init` will guide project setup and can:
 
 - discover and install relevant AI resources
 - initialize beads if you want issue tracking
 - install git hooks
 - create or refresh the project's `AGENTS.md`
+- explicitly save whether this project should be `disabled`, `stealth`, or `team`
 
-If beads is not initialized yet, `/init` will ask which mode you want:
+Fresh projects stay inactive until you explicitly enable them with `/opencode-coder/init`.
+Startup no longer creates `.coder/` files automatically just because the plugin is installed.
+
+If you enable the project, `/opencode-coder/init` will ask which mode you want:
 
 - **stealth** — keeps opencode-coder artifacts local
 - **team** — stores shared setup in the repository
 
+If you choose saved **disabled** mode, project-local startup behavior stays off, but `/opencode-coder/init` remains available so you can re-enable the project later.
+
+`OPENCODE_CODER_DISABLED=true` is different: it hard-disables the plugin entirely and hides `/opencode-coder/init` for that session.
+
 ## 4. Review the generated project guidance
 
-After `/init`, check the active guidance files:
+After `/opencode-coder/init`, check the active guidance files:
 
 - `AGENTS.md` in team mode
 - `.coder/AGENTS.md` in stealth mode
@@ -61,12 +69,12 @@ Common next steps:
 - ask the agent to help with planning or implementation
 - run `bd ready` to see unblocked work if you use beads
 - create work with `bd create "Task description" --type task`
-- re-run `/init` after installing new resources
+- re-run `/opencode-coder/init` after installing new resources
 - run `/opencode-coder/update-agent-md` when you only need to refresh the routing table
 
 ## Optional manual setup
 
-If you want beads without going through `/init`, install the CLI and initialize it yourself:
+If you only want beads itself and are **not** trying to activate the full opencode-coder project workflow, you can install the CLI and initialize beads manually:
 
 ```bash
 npm install -g beads
@@ -79,8 +87,11 @@ For local-only usage, use stealth mode instead:
 bd init --stealth
 ```
 
+Important: manual `bd init` / `bd init --stealth` is beads-only setup. It is not the documented plugin activation path. To explicitly enable opencode-coder for the project, use `/opencode-coder/init` so the saved plugin mode state is written correctly.
+
 ## Troubleshooting
 
 - Use `/opencode-coder/status` to check current plugin state
 - Use `/opencode-coder/doctor` to diagnose setup problems
 - If `bd` is missing, install it before using beads workflows
+- If an older initialized project upgrades to this version, the plugin should preserve active behavior by inferring and saving the prior mode automatically

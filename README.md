@@ -35,27 +35,39 @@ Since this package is published to GitHub Packages, you may need to configure np
 @dynatrace-oss:registry=https://npm.pkg.github.com
 ```
 
-### 2. Initialize your project (optional)
+### 2. Explicitly enable your project (optional)
 
-If you want to use beads for issue tracking, you can initialize it in your project directory using the beads CLI (`bd init`). This is optional - the plugin works without beads too.
+The plugin now starts in an inactive state for fresh projects. It will not create `.coder/` files or activate project-local behavior until you explicitly opt in with `/opencode-coder/init`.
+
+If you want to use the project-local workflow, run `/opencode-coder/init` inside the repository and choose one of these saved modes:
+
+- `stealth` — local-only active mode
+- `team` — shared active mode
+- `disabled` — keep project-local startup inactive until you re-enable it later
 
 ## Using with Beads
 
-Beads integration is optional. You can use the plugin without beads at all. If you want to use beads, initialize it with `bd init` in your project directory.
+Beads integration is optional. You can use the plugin without beads at all.
+
+If you want the full opencode-coder project workflow, use `/opencode-coder/init` to enable the project first and let the command drive the correct mode setup.
+
+If you are only setting up beads itself, you can still initialize beads manually with `bd init` or `bd init --stealth`, but that is beads-only setup — it is **not** the documented way to activate opencode-coder for a project.
 
 ### Stealth Mode (Recommended default)
 
 - Beads files stay local to your machine (gitignored)
 - Won't affect git history or other team members
 - Perfect for: personal use, OSS contributions, teams not using beads yet
-- Use `bd init --stealth` to enable this mode
+- `/opencode-coder/init` configures this mode for plugin-managed setup
+- `bd init --stealth` is only the manual beads command underneath that setup
 
 ### Team Mode
 
 - Beads files are committed and synced via git
 - Enables multi-device sync and team collaboration
 - Perfect for: teams adopting beads together
-- Use `bd init` (default) to enable this mode
+- `/opencode-coder/init` configures this mode for plugin-managed setup
+- `bd init` is only the manual beads command underneath that setup
 
 
 ## aimgr Integration (Optional)
@@ -64,15 +76,15 @@ The plugin includes automatic integration with [aimgr](https://github.com/hk9890
 
 ### How It Works
 
-When the plugin starts, it automatically:
+When the plugin starts in an active project mode, it can automatically:
 
-1. **Checks** if `ai.package.yaml` exists in your project
-2. **Detects** if `aimgr` is installed on your system
-3. **Initializes** aimgr if available (`aimgr init`)
-4. **Installs** the `opencode-coder` package if available in your aimgr repository
-5. **Notifies** you via toast when initialization completes
+1. **Check** if `ai.package.yaml` exists in your project
+2. **Detect** if `aimgr` is installed on your system
+3. **Initialize** aimgr if available (`aimgr init`)
+4. **Install** the `opencode-coder` package if available in your aimgr repository
+5. **Notify** you via toast when initialization completes
 
-All operations run in the background and won't block the plugin from loading.
+Fresh or saved-disabled projects skip these startup side effects until explicitly enabled.
 
 ### Installing aimgr
 
@@ -83,14 +95,12 @@ To use this feature, install aimgr:
 https://github.com/hk9890/ai-config-manager
 ```
 
-### Disabling Auto-Initialization
+### Disabling or suppressing startup behavior
 
-If you have aimgr installed but don't want automatic initialization:
+- **Saved project disabled mode**: use `/opencode-coder/init` and choose the disabled option for this project
+- **Hard-disable plugin completely**: set `OPENCODE_CODER_DISABLED=true`
 
-- Create an `ai.package.yaml` file in your project (even an empty one)
-- Or uninstall/remove aimgr from your PATH
-
-The plugin will skip auto-initialization in these cases.
+The env var hard override disables the plugin entirely and hides its commands. Saved disabled mode keeps the plugin installed but inactive for the current project until you re-enable it.
 
 ### Benefits
 
@@ -127,7 +137,7 @@ These commands are provided by this plugin and available in OpenCode:
 
 | Command | Description |
 |---------|-------------|
-| `/init` | Initialize project for opencode-coder (skill discovery, beads init, AGENTS.md creation) |
+| `/opencode-coder/init` | Explicitly enable, refresh, disable, or reconfigure opencode-coder for a project |
 | `/simplify` | Review and simplify recently changed files using the opencode-coder workflow |
 | `/opencode-coder/doctor` | Diagnose plugin health and configuration |
 | `/opencode-coder/status` | Show plugin status |

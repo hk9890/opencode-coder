@@ -4,7 +4,7 @@
 
 ### Minimal Entry Point Pattern
 
-- `src/index.ts` is intentionally minimal (~167 lines)
+- `src/index.ts` is intentionally minimal and startup-focused
 - Delegates ALL functionality to domain packages
 - Only orchestrates initialization order and wires dependencies
 
@@ -63,11 +63,36 @@ bun test --test-name-pattern "pattern"  # Pattern match
 For integration tests, e2e tests, fixtures, and test helpers, see [TESTING.md](TESTING.md).
 
 
+## PluginModeService
+
+### Purpose
+
+The `PluginModeService` resolves whether the plugin should behave as:
+
+- `hard-disabled` via `OPENCODE_CODER_DISABLED`
+- saved `disabled`
+- active `stealth`
+- active `team`
+- `not-enabled` for fresh projects with no explicit opt-in yet
+
+### Key Features
+
+- Reads explicit saved mode from `.coder/opencode-coder.yaml`
+- Gives the env-var hard override highest precedence
+- Infers legacy active installs from old markers and persists migrated state
+- Treats corrupted saved mode files as init-only with warning logs
+
+### Architectural Boundary
+
+- `src/index.ts` owns startup-mode resolution and branching
+- services should consume the already-resolved active/inactive decision
+- fresh and saved-disabled startup paths must not trigger project-local side effects
+
 ## AimgrService
 
 ### Purpose
 
-The `AimgrService` provides automatic integration with aimgr (AI Resource Manager) for discovering and installing AI resources when the plugin starts.
+The `AimgrService` provides automatic integration with aimgr (AI Resource Manager) for discovering and installing AI resources when the plugin starts in an active mode.
 
 ### Key Features
 
@@ -104,7 +129,7 @@ class AimgrService {
 
 ### Integration Pattern
 
-The service is instantiated in `src/index.ts` and participates in startup sequencing:
+The service is instantiated in `src/index.ts` and participates in startup sequencing only after the plugin mode is resolved as active:
 
 ```typescript
 // Create service
@@ -122,6 +147,7 @@ This sequencing ensures that:
 - project detection uses the final startup health result
 - automatic `aimgr repair` can affect `ecosystemReady`
 - the config hook sees the current readiness state instead of a stale snapshot
+- inactive startup paths avoid aimgr side effects entirely
 
 ### Testing
 
@@ -145,15 +171,15 @@ This sequencing ensures that:
 
 ### Purpose
 
-The `ProjectDetectorService` detects facts about the current project environment and writes them to `.coder/project.yaml` on every plugin startup.
+The `ProjectDetectorService` detects facts about the current project environment and writes them to `.coder/project.yaml` only during active startup.
 
 ### Key Features
 
 - **Git detection**: Checks for `.git/` directory
 - **Beads detection**: Checks for `.beads/` directory, stealth mode, and bd CLI availability
 - **aimgr detection**: Checks for aimgr CLI, `ai.package.yaml`, and resource health
-- **Mode derivation**: Derives `stealth | team | uninitialized` from beads state
-- **Context writing**: Writes full `ProjectContext` to `.coder/project.yaml` as YAML
+- **Mode derivation**: Derives `stealth | team | uninitialized` from detector facts, or accepts an active startup-mode override from `src/index.ts`
+- **Context writing**: Writes full `ProjectContext` to `.coder/project.yaml` as YAML only after startup is already active
 
 ### Architecture
 
@@ -213,12 +239,13 @@ interface ProjectContext {
 
 ### Integration Pattern
 
-The service is called from `src/index.ts` during plugin startup:
+The service is called from `src/index.ts` during active plugin startup:
 
 ```typescript
 const detectorService = new ProjectDetectorService({ logger: log });
 const health = await aimgrService.verifyAndAutoRepairResources();
 const projectContext = detectorService.detectAndWrite(versionInfo, {
+  startupMode: "stealth" | "team",
   resourcesHealthyOverride: health.verifyResult === null ? undefined : health.resourcesHealthy,
 });
 ```
@@ -228,6 +255,9 @@ its own `aimgr verify` call. This keeps startup health evaluation authoritative 
 double-checking resources after repair. When `detectAndWrite` already knows whether aimgr is
 installed, it passes that result through to `detectResourcesHealthy` so startup does not shell
 out to `command -v aimgr` a second time.
+
+Inactive startup paths should skip `detectAndWrite` entirely so fresh or saved-disabled projects
+do not create `.coder/project.yaml`.
 
 ### Testing
 

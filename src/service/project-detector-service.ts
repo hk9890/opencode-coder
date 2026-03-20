@@ -10,6 +10,7 @@ import {
   type Logger,
   type VersionInfo,
 } from "../core";
+import type { SavedPluginMode } from "./plugin-mode-service";
 
 /**
  * Options for ProjectDetectorService
@@ -27,13 +28,19 @@ export interface ProjectDetectionOptions {
    * When provided, detectAndWrite uses this value instead of running aimgr verify.
    */
   resourcesHealthyOverride?: boolean;
+
+  /**
+   * Resolved active startup mode chosen by the plugin entry point.
+   * When provided, this mode overrides detector-derived mode inference.
+   */
+  startupMode?: Exclude<SavedPluginMode, "disabled">;
 }
 
 /**
- * Detected project context written to .coder/project.yaml on every startup.
+ * Detected project context written to .coder/project.yaml during active startup.
  */
 export interface ProjectContext {
-  /** Overall operational mode */
+  /** Overall operational mode for the active project state */
   mode: "stealth" | "team" | "uninitialized";
 
   /**
@@ -94,7 +101,7 @@ const STEALTH_MARKER = "# opencode-coder stealth mode";
 
 /**
  * Service that detects facts about the current project and writes them
- * to `.coder/project.yaml` on every plugin startup.
+ * to `.coder/project.yaml` during active startup.
  *
  * All detection methods are synchronous filesystem / CLI checks that are
  * cheap enough to run on every startup without perceptible overhead.
@@ -116,7 +123,7 @@ export class ProjectDetectorService {
    * Check whether a .coder directory exists in the working directory.
    *
    * The plugin only performs project-local management when `.coder/` already
-   * exists or when the user explicitly creates it via `/init`.
+   * exists or when the user explicitly creates it via `/opencode-coder/init`.
    */
   detectCoderDirectory(): boolean {
     const coderDir = path.join(this.workdir, ".coder");
@@ -407,7 +414,7 @@ export class ProjectDetectorService {
     const coderPackageInstalled = aimgrInstalled ? this.detectCoderPackageInstalled() : false;
 
     // Derived
-    const mode = this.deriveMode(beadsInitialized, stealthMode);
+    const mode = options?.startupMode ?? this.deriveMode(beadsInitialized, stealthMode);
     const installReady = this.deriveInstallReady(
       gitInitialized,
       bdCliInstalled,

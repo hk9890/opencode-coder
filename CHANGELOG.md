@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Explicit project enablement**: Startup now requires an explicit saved project mode (`disabled`, `stealth`, or `team`) before opencode-coder activates project-local behavior or creates `.coder/` files.
+- **Single setup entry point**: `/opencode-coder/init` is now the documented entry point for first-time enablement, refresh, disablement, and mode switching.
+
+### Fixed
+
+- **Legacy upgrade preservation**: Previously initialized projects are now inferred and migrated to explicit saved mode so upgrades keep active behavior instead of silently falling back to an inactive state.
+- **Disabled-state precedence**: `OPENCODE_CODER_DISABLED=true` now clearly wins over any saved project mode while remaining distinct from the new saved `disabled` project state.
+
+### Added
+
+- **Mode-resolution coverage**: Added tests for explicit saved mode resolution, legacy migration, init-template guidance, and inactive startup behavior.
+
+### Docs
+
+- **Enablement model docs**: Updated README, user guide, and opencode-coder skill references to explain explicit enablement, saved disabled mode, legacy migration, and the hard-disable override.
+
 ## [0.34.3] - 2026-03-15
 
 ### Fixed

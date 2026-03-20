@@ -2,9 +2,15 @@ import { type Plugin } from "@opencode-ai/plugin";
 import { access } from "fs/promises";
 import { join } from "path";
 import { createLogger, getVersionInfo, showToast } from "./core";
-import { BeadsService, AimgrService, SessionExportService, ProjectDetectorService, type ProjectContext } from "./service";
+import {
+  BeadsService,
+  AimgrService,
+  SessionExportService,
+  ProjectDetectorService,
+  PluginModeService,
+  type ProjectContext,
+} from "./service";
 import { createCoderTool } from "./tool";
-import { isPluginDisabled } from "./config";
 import { getInstallGuideTemplate } from "./templates";
 
 const PROJECT_CONTEXT_TIMEOUT_MS = 30_000;
@@ -16,10 +22,27 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
 
   log.info("OpencodeCoder plugin loading...");
 
-  // 1. Check if plugin is disabled
-  if (isPluginDisabled()) {
-    log.info("OpencodeCoder plugin disabled via OPENCODE_CODER_DISABLED env var");
+  const pluginModeService = new PluginModeService({ logger: log, workdir: worktree });
+  const startupMode = pluginModeService.resolveStartupMode();
+
+  if (startupMode.mode === "hard-disabled") {
     return {};
+  }
+
+  const projectDetector = new ProjectDetectorService({ logger: log, workdir: worktree });
+  const activeMode = startupMode.mode === "stealth" || startupMode.mode === "team" ? startupMode.mode : null;
+
+  if (activeMode) {
+    log.enableFileLogging();
+    log.info("Resolved active opencode-coder startup mode", {
+      mode: activeMode,
+      source: startupMode.source,
+    });
+  } else {
+    log.info("Resolved inactive opencode-coder startup mode", {
+      mode: startupMode.mode,
+      source: startupMode.source,
+    });
   }
 
   // 2. Create beads service
@@ -46,16 +69,9 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const coderTool = createCoderTool({ sessionExportService, versionInfo });
   log.debug("Coder tool created");
 
-  // 5. Only perform project-local startup management when .coder already exists.
-  // This avoids creating files or mutating the project unless the user has
-  // explicitly opted in via /init.
-  const projectDetector = new ProjectDetectorService({ logger: log, workdir: worktree });
-  const hasCoderDirectory = projectDetector.detectCoderDirectory();
-  if (hasCoderDirectory) {
-    log.enableFileLogging();
-  }
+  // 5. Only perform project-local startup management in active modes.
   const aimgrInitStart = Date.now();
-  const projectContextPromise: Promise<ProjectContext | null> = !hasCoderDirectory
+  const projectContextPromise: Promise<ProjectContext | null> = !activeMode
     ? Promise.resolve(null)
     : aimgrService.autoInitialize()
         .then(() => {
@@ -73,10 +89,13 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
             resourcesHealthy: health.resourcesHealthy,
           });
           if (health.verifyResult === null) {
-            return projectDetector.detectAndWrite(versionInfo);
+            return projectDetector.detectAndWrite(versionInfo, {
+              startupMode: activeMode,
+            });
           }
 
           return projectDetector.detectAndWrite(versionInfo, {
+            startupMode: activeMode,
             resourcesHealthyOverride: health.resourcesHealthy,
           });
         })
@@ -89,29 +108,38 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           return null;
         });
 
-  if (!hasCoderDirectory) {
-    log.info(".coder directory not found, skipping startup project management");
+  if (!activeMode) {
+    log.info("Project not explicitly enabled for active startup; exposing init entry point only", {
+      mode: startupMode.mode,
+      source: startupMode.source,
+    });
   }
 
   // 6. Check beads availability and show toast if needed
   // Runs in the background and doesn't block plugin loading
-  const beadsCheckStart = Date.now();
-  beadsService.checkBeadsAvailability()
-    .then(() => {
-      log.debug("checkBeadsAvailability completed", { durationMs: Date.now() - beadsCheckStart });
-    })
-    .catch((err) => {
-      log.error("Failed to check beads availability", { error: String(err) });
-    });
+  if (activeMode) {
+    const beadsCheckStart = Date.now();
+    beadsService.checkBeadsAvailability()
+      .then(() => {
+        log.debug("checkBeadsAvailability completed", { durationMs: Date.now() - beadsCheckStart });
+      })
+      .catch((err) => {
+        log.error("Failed to check beads availability", { error: String(err) });
+      });
+  }
 
   // 7. Log plugin load completion with timing
   const loadDurationMs = Date.now() - startTime;
   log.info("OpencodeCoder plugin loaded", { durationMs: loadDurationMs, beadsEnabled: beadsService.isBeadsEnabled() });
 
   return {
-    tool: {
-      coder: coderTool,
-    },
+    ...(activeMode
+      ? {
+          tool: {
+            coder: coderTool,
+          },
+        }
+      : {}),
     "command.execute.before": async (
       input: { command: string; sessionID: string; arguments: string },
       output: { parts: Array<any> }
@@ -123,20 +151,21 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
       });
     },
     config: async (input) => {
-      // Inject .coder/AGENTS.md into instructions (stealth mode support)
-      const agentsPath = join(worktree, ".coder", "AGENTS.md");
-      try {
-        await access(agentsPath);
-        input.instructions = input.instructions ?? [];
-        input.instructions.push(".coder/AGENTS.md");
-        log.info("Injected .coder/AGENTS.md into instructions");
-      } catch {
-        // File doesn't exist — no-op
+      if (activeMode === "stealth") {
+        const agentsPath = join(worktree, ".coder", "AGENTS.md");
+        try {
+          await access(agentsPath);
+          input.instructions = input.instructions ?? [];
+          input.instructions.push(".coder/AGENTS.md");
+          log.info("Injected .coder/AGENTS.md into instructions");
+        } catch {
+          // File doesn't exist — no-op
+        }
       }
 
-      // Always register /init so users can explicitly opt into setup.
+      // Always register /opencode-coder/init so users can explicitly opt into setup.
       input.command = input.command ?? {};
-      input.command["init"] = {
+      input.command["opencode-coder/init"] = {
         template: getInstallGuideTemplate(),
         description: "Set up prerequisites for the opencode-coder plugin",
       };
@@ -160,7 +189,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           timeoutMs: PROJECT_CONTEXT_TIMEOUT_MS,
         });
       }
-      log.info("Registered /init with installation guidance");
+      log.info("Registered /opencode-coder/init with installation guidance");
 
       // Set orchestrator as default agent when ecosystem is fully ready
       // and user hasn't explicitly configured a different default agent.
@@ -170,6 +199,10 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
       if (cfg["default_agent"]) {
         log.info("default_agent already configured, not overriding", {
           existingDefaultAgent: String(cfg["default_agent"]),
+        });
+      } else if (!activeMode) {
+        log.info("Plugin startup mode is inactive, not setting default_agent", {
+          mode: startupMode.mode,
         });
       } else if (!projectContext) {
         log.info("Project context unavailable, not setting default_agent");

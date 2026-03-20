@@ -9,3 +9,12 @@ export type { SessionExportServiceOptions, TokenSummary, ExportResult } from "./
 
 export { ProjectDetectorService } from "./project-detector-service";
 export type { ProjectDetectorServiceOptions, ProjectDetectionOptions, ProjectContext } from "./project-detector-service";
+
+export { PluginModeService } from "./plugin-mode-service";
+export type {
+  PluginModeServiceOptions,
+  SavedPluginMode,
+  ResolvedPluginMode,
+  PluginModeSource,
+  PluginModeResolution,
+} from "./plugin-mode-service";

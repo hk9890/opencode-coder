@@ -972,6 +972,34 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
+    it("should honor startupMode override when active startup already resolved team mode", () => {
+      const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
+        if (String(p).endsWith(".git")) return undefined;
+        throw new Error("ENOENT");
+      });
+      const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue("# default excludes\n" as any);
+      const existsSyncSpy = spyOn(fs, "existsSync").mockReturnValue(false);
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
+        if (cmd === "command -v aimgr") throw new Error("not found");
+        return "" as any;
+      });
+
+      const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
+      const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      const result = service.detectAndWrite(versionInfo as any, { startupMode: "team" });
+
+      expect(result.mode).toBe("team");
+
+      accessSyncSpy.mockRestore();
+      readFileSyncSpy.mockRestore();
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+      mkdirSyncSpy.mockRestore();
+      writeFileSyncSpy.mockRestore();
+    });
+
     it("should avoid a second aimgr availability shell-out when detectAndWrite already knows aimgr is installed", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
       const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue("# default excludes\n" as any);

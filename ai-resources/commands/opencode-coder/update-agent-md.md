@@ -6,7 +6,7 @@ description: Update the AGENTS.md routing table for the current project
 
 Regenerate or update the project's AGENTS.md file based on current documentation and installed skills.
 
-This is a lightweight alternative to `/init` — it only touches AGENTS.md, skipping skill discovery and beads initialization.
+This is a lightweight alternative to `/opencode-coder/init` — it only touches AGENTS.md, skipping skill discovery and beads initialization.
 
 ## Instructions
 

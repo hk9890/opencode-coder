@@ -162,7 +162,7 @@ After switching, verify:
 - AGENTS.md is in the correct location for the active mode
 - docs are in the correct directory for the active mode
 - `.coder/` is excluded or gitignored as appropriate
-- re-running `/init` detects the new mode correctly
+- re-running `/opencode-coder/init` detects the new mode correctly
 
 ---
 
@@ -173,7 +173,7 @@ After switching, verify:
 **Solution**:
 
 ```bash
-# Re-run /init to restore stealth setup
+# Re-run /opencode-coder/init to restore stealth setup
 # Issue data in .beads/issues.jsonl is lost if .beads/ was deleted
 ```
 
@@ -185,7 +185,7 @@ After switching, verify:
 
 ### Stealth mode not detected on re-run
 
-**Symptoms**: `/init` asks stealth vs team even though stealth was previously configured.
+**Symptoms**: `/opencode-coder/init` asks stealth vs team even though stealth was previously configured.
 
 **Solution**: Check `.git/info/exclude` for the stealth marker:
 
@@ -193,7 +193,7 @@ After switching, verify:
 grep "# opencode-coder stealth mode" .git/info/exclude
 ```
 
-If marker is missing but `.coder/` exists, re-add the exclusion block manually or re-run `/init` and choose stealth.
+If marker is missing but `.coder/` exists, re-add the exclusion block manually or re-run `/opencode-coder/init` and choose stealth.
 
 **Root Cause**: Detection relies on the marker comment in `.git/info/exclude`. If someone manually edited the exclude file and removed the marker, detection fails.
 
