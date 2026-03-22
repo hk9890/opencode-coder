@@ -41,7 +41,8 @@ describe("manual launcher preflight", () => {
       const isolatedPaths = await createIsolatedOpenCodePaths(tempRoot);
       const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
 
-      expect(opencodeConfig).toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
+      expect(opencodeConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
       expect(opencodeConfig).toContain('"theme": "catppuccin"');
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
@@ -124,7 +125,8 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
 
       expect(await pluginLink.exists()).toBe(true);
       expect(await isolatedAuth.exists()).toBe(true);
-      expect(isolatedConfig).toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
+      expect(isolatedConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(isolatedConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });

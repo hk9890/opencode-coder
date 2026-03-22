@@ -27,12 +27,50 @@ if (!opencodeCheck.available && opencodeCheck.diagnostics) {
   console.warn("\n" + opencodeCheck.diagnostics + "\n");
 }
 
-  describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
+function formatElapsed(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+async function withScenarioLogging<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  console.error(`[e2e] START ${name} @ ${new Date(startedAt).toISOString()}`);
+
+  try {
+    const result = await fn();
+    console.error(`[e2e] PASS  ${name} after ${formatElapsed(Date.now() - startedAt)}`);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[e2e] FAIL  ${name} after ${formatElapsed(Date.now() - startedAt)}: ${message}`);
+    throw error;
+  }
+}
+
+async function runLoggedOpencodeCli(
+  scenarioName: string,
+  args: string[],
+  options: Parameters<typeof runOpencodeCli>[1]
+) {
+  const command = `opencode ${args.join(" ")}`;
+  const startedAt = Date.now();
+  console.error(
+    `[e2e] ${scenarioName}: running ${command} (timeout ${(options.timeoutMs ?? 30000).toString()}ms)`
+  );
+
+  const result = await runOpencodeCli(args, options);
+  const status = result.timedOut ? "timed out" : `exit ${result.exitCode.toString()}`;
+  console.error(`[e2e] ${scenarioName}: ${status} after ${formatElapsed(Date.now() - startedAt)}`);
+  return result;
+}
+
+describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
   const COPILOT_MODEL_ENV = "E2E_COPILOT_MODEL";
   const DEFAULT_COPILOT_MODEL = "github-copilot/gpt-5.3-codex";
 
   const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
+    const startedAt = Date.now();
+    console.error(`[e2e] real-server probe: start for ${workspaceDir}`);
     const port = await findAvailablePort();
     const server = await withEnvironment(isolatedEnv, () =>
       createOpencodeServer({
@@ -68,167 +106,45 @@ if (!opencodeCheck.available && opencodeCheck.diagnostics) {
         commandNames: commands.map((command) => command.name),
       };
     } finally {
+      console.error(`[e2e] real-server probe: done after ${formatElapsed(Date.now() - startedAt)}`);
       server.close();
     }
   };
 
   describe("real startup scenario coverage", () => {
     it("scenario 1: should load once in existing real-server startup path", async () => {
-      const workspace = await createFixtureWorkspace("existing-active-project");
-      try {
-        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
-        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+      await withScenarioLogging("scenario 1", async () => {
+        const workspace = await createFixtureWorkspace("existing-active-project");
+        try {
+          await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+          const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
-        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
 
-        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-        expect(pluginSignals.commandNames).toContain("opencode-coder/init");
+          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+          expect(pluginSignals.commandNames).toContain("opencode-coder/init");
 
-        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
-        expect(projectYamlAfter).toContain("pluginVersion:");
-        expect(projectYamlAfter).not.toContain("pluginVersion: fixture");
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+          expect(projectYamlAfter).toContain("pluginVersion:");
+          expect(projectYamlAfter).not.toContain("pluginVersion: fixture");
 
-        const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
-        expect(await isolatedDb.exists()).toBe(true);
-      } catch (error) {
-        const artifactPath = await writeFailureArtifacts({
-          artifactDir: ARTIFACT_DIR,
-          testName: "scenario-1-existing-real-server-startup",
-          notes: `Failed while querying real-server startup path.\n${String(error)}`,
-        });
-        throw new Error(`Scenario 1 failed. Artifacts: ${artifactPath}`);
-      } finally {
-        await cleanupFixtureWorkspace(workspace);
-      }
+          const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
+          expect(await isolatedDb.exists()).toBe(true);
+        } catch (error) {
+          const artifactPath = await writeFailureArtifacts({
+            artifactDir: ARTIFACT_DIR,
+            testName: "scenario-1-existing-real-server-startup",
+            notes: `Failed while querying real-server startup path.\n${String(error)}`,
+          });
+          throw new Error(`Scenario 1 failed. Artifacts: ${artifactPath}`);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      });
     }, 120000);
 
     it("scenario 2: should run CLI smoke startup path via opencode run equivalent", async () => {
-      const workspace = await createFixtureWorkspace("cli-smoke-project");
-      try {
-        await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
-        await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
-
-        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
-        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
-          cwd: workspace.workdir,
-          env: isolatedPaths.env,
-          timeoutMs: 120000,
-        });
-
-        if (result.exitCode !== 0 || result.timedOut) {
-          const artifactPath = await writeFailureArtifacts({
-            artifactDir: ARTIFACT_DIR,
-            testName: "scenario-2-cli-smoke-run-pwd",
-            command: result.command,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            notes: result.timedOut ? "CLI smoke command timed out" : "CLI smoke command failed",
-            isolationPaths: isolatedPaths,
-          });
-
-          throw new Error(`CLI smoke command failed. Artifacts: ${artifactPath}`);
-        }
-
-        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
-        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
-
-        expect(result.exitCode).toBe(0);
-        expect(result.timedOut).toBe(false);
-        expect(projectYamlAfter).toContain("pluginVersion:");
-        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-
-        const gitHead = await readFile(join(workspace.workdir, ".git", "HEAD"), "utf8");
-        expect(gitHead.length).toBeGreaterThan(0);
-
-        const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
-        expect(await isolatedDb.exists()).toBe(true);
-      } finally {
-        await cleanupFixtureWorkspace(workspace);
-      }
-    }, 120000);
-
-    it("scenario 3: should keep local-startup parity on real CLI entrypoint", async () => {
-      const workspace = await createFixtureWorkspace("local-startup-parity-project");
-      try {
-        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
-        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
-          cwd: workspace.workdir,
-          env: isolatedPaths.env,
-          timeoutMs: 120000,
-        });
-
-        if (result.exitCode !== 0 || result.timedOut) {
-          const artifactPath = await writeFailureArtifacts({
-            artifactDir: ARTIFACT_DIR,
-            testName: "scenario-3-local-startup-parity",
-            command: result.command,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            notes: result.timedOut ? "Local parity command timed out" : "Local parity command failed",
-            isolationPaths: isolatedPaths,
-          });
-
-          throw new Error(`Local startup parity command failed. Artifacts: ${artifactPath}`);
-        }
-
-        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
-        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
-
-        expect(result.exitCode).toBe(0);
-        expect(projectYamlAfter).toContain("mode: stealth");
-        expect(projectYamlAfter).toContain("pluginVersion:");
-        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-      } finally {
-        await cleanupFixtureWorkspace(workspace);
-      }
-    }, 120000);
-
-    it("scenario 4: should keep fresh project inactive and expose init behavior only", async () => {
-      const workspace = await createFixtureWorkspace("fresh-inactive-project");
-      try {
-        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
-        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
-          cwd: workspace.workdir,
-          env: isolatedPaths.env,
-          timeoutMs: 120000,
-        });
-
-        if (result.exitCode !== 0 || result.timedOut) {
-          const artifactPath = await writeFailureArtifacts({
-            artifactDir: ARTIFACT_DIR,
-            testName: "scenario-4-fresh-inactive-startup",
-            command: result.command,
-            stdout: result.stdout,
-            stderr: result.stderr,
-            notes: result.timedOut ? "Fresh inactive command timed out" : "Fresh inactive command failed",
-            isolationPaths: isolatedPaths,
-          });
-
-          throw new Error(`Fresh inactive startup command failed. Artifacts: ${artifactPath}`);
-        }
-
-        const projectYamlAfter = await readIfExists(join(workspace.workdir, ".coder", "project.yaml"));
-        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
-
-        expect(projectYamlAfter).toBeUndefined();
-        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(0);
-        expect(pluginSignals.commandNames).toContain("opencode-coder/init");
-      } finally {
-        await cleanupFixtureWorkspace(workspace);
-      }
-    }, 120000);
-
-    const copilotAuthSeed = resolveCopilotAuthSeedFromEnv();
-
-    it.skipIf(!copilotAuthSeed)(
-      "scenario 5 (optional): should support isolated GitHub Copilot auth-seeded LLM-backed CLI run",
-      async () => {
+      await withScenarioLogging("scenario 2", async () => {
         const workspace = await createFixtureWorkspace("cli-smoke-project");
         try {
           await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
@@ -237,39 +153,170 @@ if (!opencodeCheck.available && opencodeCheck.diagnostics) {
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
-          if (!copilotAuthSeed) {
-            throw new Error("Missing copilot auth seed after skip guard");
-          }
-
-          const model = process.env[COPILOT_MODEL_ENV] ?? DEFAULT_COPILOT_MODEL;
-
-          const seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, copilotAuthSeed.seed);
-
-          const llmConfig = {
-            model,
-            autoupdate: false,
-            snapshot: false,
-            enabled_providers: ["github-copilot"],
-          };
-
-          const result = await runOpencodeCli([
-            "run",
-            "Respond with exactly E2E_LLM_OK and nothing else.",
-            "--format",
-            "default",
-          ], {
+          const result = await runLoggedOpencodeCli("scenario 2", ["run", "--command", "pwd", "--format", "json"], {
             cwd: workspace.workdir,
-            env: {
-              ...isolatedPaths.env,
-              OPENCODE_CONFIG_CONTENT: JSON.stringify(llmConfig),
-            },
-            timeoutMs: 180000,
+            env: isolatedPaths.env,
+            timeoutMs: 120000,
           });
 
           if (result.exitCode !== 0 || result.timedOut) {
             const artifactPath = await writeFailureArtifacts({
               artifactDir: ARTIFACT_DIR,
-              testName: "scenario-5-llm-backed-isolated-run",
+              testName: "scenario-2-cli-smoke-run-pwd",
+              command: result.command,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              notes: result.timedOut ? "CLI smoke command timed out" : "CLI smoke command failed",
+              isolationPaths: isolatedPaths,
+            });
+
+            throw new Error(`CLI smoke command failed. Artifacts: ${artifactPath}`);
+          }
+
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+          expect(result.exitCode).toBe(0);
+          expect(result.timedOut).toBe(false);
+          expect(projectYamlAfter).toContain("pluginVersion:");
+          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+
+          const gitHead = await readFile(join(workspace.workdir, ".git", "HEAD"), "utf8");
+          expect(gitHead.length).toBeGreaterThan(0);
+
+          const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
+          expect(await isolatedDb.exists()).toBe(true);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      });
+    }, 120000);
+
+    it("scenario 3: should keep local-startup parity on real CLI entrypoint", async () => {
+      await withScenarioLogging("scenario 3", async () => {
+        const workspace = await createFixtureWorkspace("local-startup-parity-project");
+        try {
+          await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+          const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+          const result = await runLoggedOpencodeCli("scenario 3", ["run", "--command", "pwd", "--format", "json"], {
+            cwd: workspace.workdir,
+            env: isolatedPaths.env,
+            timeoutMs: 120000,
+          });
+
+          if (result.exitCode !== 0 || result.timedOut) {
+            const artifactPath = await writeFailureArtifacts({
+              artifactDir: ARTIFACT_DIR,
+              testName: "scenario-3-local-startup-parity",
+              command: result.command,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              notes: result.timedOut ? "Local parity command timed out" : "Local parity command failed",
+              isolationPaths: isolatedPaths,
+            });
+
+            throw new Error(`Local startup parity command failed. Artifacts: ${artifactPath}`);
+          }
+
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+          expect(result.exitCode).toBe(0);
+          expect(projectYamlAfter).toContain("mode: stealth");
+          expect(projectYamlAfter).toContain("pluginVersion:");
+          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      });
+    }, 120000);
+
+    it("scenario 4: should keep fresh project inactive and expose init behavior only", async () => {
+      await withScenarioLogging("scenario 4", async () => {
+        const workspace = await createFixtureWorkspace("fresh-inactive-project");
+        try {
+          await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+          const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+          const result = await runLoggedOpencodeCli("scenario 4", ["run", "--command", "pwd", "--format", "json"], {
+            cwd: workspace.workdir,
+            env: isolatedPaths.env,
+            timeoutMs: 120000,
+          });
+
+          if (result.exitCode !== 0 || result.timedOut) {
+            const artifactPath = await writeFailureArtifacts({
+              artifactDir: ARTIFACT_DIR,
+              testName: "scenario-4-fresh-inactive-startup",
+              command: result.command,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              notes: result.timedOut ? "Fresh inactive command timed out" : "Fresh inactive command failed",
+              isolationPaths: isolatedPaths,
+            });
+
+            throw new Error(`Fresh inactive startup command failed. Artifacts: ${artifactPath}`);
+          }
+
+          const projectYamlAfter = await readIfExists(join(workspace.workdir, ".coder", "project.yaml"));
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+          expect(projectYamlAfter).toBeUndefined();
+          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(0);
+          expect(pluginSignals.commandNames).toContain("opencode-coder/init");
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      });
+    }, 120000);
+
+    const copilotAuthSeed = resolveCopilotAuthSeedFromEnv();
+
+    it.skipIf(!copilotAuthSeed)(
+      "scenario 5 (optional): should support isolated GitHub Copilot auth-seeded LLM-backed CLI run",
+      async () => {
+        await withScenarioLogging("scenario 5 (optional)", async () => {
+          const workspace = await createFixtureWorkspace("cli-smoke-project");
+          try {
+            await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
+            await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
+
+            await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+            const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+            if (!copilotAuthSeed) {
+              throw new Error("Missing copilot auth seed after skip guard");
+            }
+
+            const model = process.env[COPILOT_MODEL_ENV] ?? DEFAULT_COPILOT_MODEL;
+
+            const seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, copilotAuthSeed.seed);
+
+            const llmConfig = {
+              model,
+              autoupdate: false,
+              snapshot: false,
+              enabled_providers: ["github-copilot"],
+            };
+
+            const result = await runLoggedOpencodeCli(
+              "scenario 5 (optional)",
+              ["run", "Respond with exactly E2E_LLM_OK and nothing else.", "--format", "default"],
+              {
+                cwd: workspace.workdir,
+                env: {
+                  ...isolatedPaths.env,
+                  OPENCODE_CONFIG_CONTENT: JSON.stringify(llmConfig),
+                },
+                timeoutMs: 180000,
+              }
+            );
+
+            if (result.exitCode !== 0 || result.timedOut) {
+              const artifactPath = await writeFailureArtifacts({
+                artifactDir: ARTIFACT_DIR,
+                testName: "scenario-5-llm-backed-isolated-run",
                 command: result.command,
                 stdout: result.stdout,
                 stderr: result.stderr,
@@ -282,16 +329,17 @@ if (!opencodeCheck.available && opencodeCheck.diagnostics) {
               throw new Error(`LLM-backed isolated run failed. Artifacts: ${artifactPath}`);
             }
 
-          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+            const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
 
-          expect(result.exitCode).toBe(0);
-          expect(result.stdout).toContain("E2E_LLM_OK");
-          expect(result.stderr).not.toContain("No providers configured");
-          expect(result.stderr).not.toContain("opencode providers");
-          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-        } finally {
-          await cleanupFixtureWorkspace(workspace);
-        }
+            expect(result.exitCode).toBe(0);
+            expect(result.stdout).toContain("E2E_LLM_OK");
+            expect(result.stderr).not.toContain("No providers configured");
+            expect(result.stderr).not.toContain("opencode providers");
+            expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+          } finally {
+            await cleanupFixtureWorkspace(workspace);
+          }
+        });
       },
       180000
     );

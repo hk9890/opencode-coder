@@ -86,6 +86,8 @@ E2E tests run the full plugin lifecycle against the real OpenCode CLI startup pa
 This isolation model prevents accidental double-loading from globally installed or legacy plugin copies.
 It also prevents tests from drifting when your personal `~/.config/opencode/opencode.json` changes.
 
+The committed shared config fixture intentionally keeps `@hk9890/opencode-dynatrace@0.6.0` enabled so provider/model setup matches real local usage during tests. The `opencode-coder` plugin itself is **not** loaded from `opencode.json` in this harness; the plugin under test is the locally built artifact wired into `.opencode/plugins/opencode-coder.js`.
+
 ### Fixture Layout
 
 Fixture roots live in `tests/e2e/fixtures/`:
@@ -231,6 +233,25 @@ bun test tests/e2e --timeout 180000
 bun test tests/e2e                     # Run with default timeout
 bun test tests/e2e --timeout 60000     # Extended timeout (for CI)
 bun run test:e2e                       # Package script equivalent
+```
+
+### Timeouts and hang detection
+
+- `bun test --timeout <ms>` is a **per-test timeout**, not one timeout for the whole suite.
+- In this repository, several e2e tests also set explicit test-level timeouts such as `120000` or `180000`, so the CLI flag mainly changes the default for tests that do not already specify their own timeout.
+- The e2e harness also applies command-level timeouts inside `runOpencodeCli(...)`, so many stuck CLI runs fail before the outer Bun test timeout is reached.
+- The e2e tests now print explicit progress lines such as `START scenario 2`, per-command `running opencode ...`, and `PASS` / `FAIL` summaries with elapsed time, so you can see which scenario is active before a timeout fires.
+
+For faster local feedback, prefer:
+
+```bash
+bun test tests/e2e --bail=1 --timeout 60000
+```
+
+To narrow failure quickly to one scenario:
+
+```bash
+bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario 2" --bail=1 --timeout 60000
 ```
 
 ### Troubleshooting
