@@ -5,6 +5,9 @@
 /** Log levels supported by OpenCode */
 export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
 
+/** Supported log sources */
+export type LogSource = "opencode" | "project-local";
+
 /** Parsed log line */
 export interface LogLine {
   /** Log level */
@@ -29,6 +32,8 @@ export interface LogLine {
   raw: string;
   /** Source log file */
   sourceFile: string;
+  /** Source log type */
+  source: LogSource;
 }
 
 /** Information about a process found in logs */
@@ -81,6 +86,8 @@ export interface FilterOptions {
   startTime?: Date;
   /** End time filter */
   endTime?: Date;
+  /** Filter by source log type(s) */
+  source?: LogSource | LogSource[];
 }
 
 /** Output format options */
@@ -109,6 +116,10 @@ export interface CliArgs {
   interactive?: boolean;
   /** Show help */
   help?: boolean;
+  /** Which log source to analyze */
+  source: "opencode" | "project-local" | "both";
+  /** Optional explicit project-local log directory */
+  projectLogDir?: string;
 }
 
 /** ANSI color codes */

@@ -112,6 +112,8 @@ describe("OpencodeCoder Plugin Integration", () => {
 
         expect(logContent).toContain("OpencodeCoder plugin loading...");
         expect(logContent).toContain("OpencodeCoder plugin loaded");
+        expect(logContent).toContain("Runtime diagnostic signal");
+        expect(logContent).toContain("runtime.log_sink.project_local_enabled");
       } finally {
         rmSync(worktree, { recursive: true, force: true });
       }
@@ -300,6 +302,14 @@ describe("OpencodeCoder Plugin Integration", () => {
           (entry) => entry.message === "Docs lifecycle commands not registered because runtime resources are unavailable"
         )
       ).toBe(true);
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) =>
+            entry.message === "Runtime diagnostic signal" &&
+            entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
+            entry.extra?.["action"] === "suppressed"
+        )
+      ).toBe(true);
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -337,6 +347,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(
         mockInput.client.app.logs.some(
           (entry) => entry.message === "Docs lifecycle commands not registered because runtime resources are unavailable"
+        )
+      ).toBe(true);
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) =>
+            entry.message === "Runtime diagnostic signal" &&
+            entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
+            entry.extra?.["action"] === "suppressed"
         )
       ).toBe(true);
 
@@ -628,6 +646,14 @@ describe("OpencodeCoder Plugin Integration", () => {
         expect(
           mockInput.client.app.logs.some(
             (entry) => entry.level === "warn" && entry.message === "Project context startup timed out; continuing in degraded mode"
+          )
+        ).toBe(true);
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.project_context.timeout" &&
+              entry.extra?.["degradedMode"] === true
           )
         ).toBe(true);
       } finally {

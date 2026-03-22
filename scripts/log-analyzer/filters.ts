@@ -6,7 +6,7 @@
 
 import { spawn } from "child_process";
 import { readFile } from "fs/promises";
-import type { FilterOptions, LogLine } from "./types";
+import type { FilterOptions, LogLine, LogSource } from "./types";
 import { parseLine, parseLines } from "./parser";
 import { listLogFiles } from "./discovery";
 
@@ -131,7 +131,11 @@ async function runRipgrep(logDir: string, pattern: string): Promise<Map<string, 
  * @param options - Filter options
  * @returns Array of matching LogLine objects, sorted by timestamp
  */
-export async function filterLogs(logDir: string, options: FilterOptions): Promise<LogLine[]> {
+export async function filterLogs(
+  logDir: string,
+  options: FilterOptions,
+  source: LogSource = "opencode"
+): Promise<LogLine[]> {
   const useRipgrep = await hasRipgrep();
   const pattern = buildRipgrepPattern(options);
 
@@ -143,7 +147,7 @@ export async function filterLogs(logDir: string, options: FilterOptions): Promis
     
     for (const [filename, lines] of matches) {
       for (const line of lines) {
-        const parsed = parseLine(line, filename);
+        const parsed = parseLine(line, filename, source);
         if (parsed && matchesFilter(parsed, options)) {
           allLines.push(parsed);
         }
@@ -155,7 +159,7 @@ export async function filterLogs(logDir: string, options: FilterOptions): Promis
     
     for (const logFile of logFiles) {
       const content = await readFile(logFile, "utf-8");
-      const lines = parseLines(content, logFile);
+      const lines = parseLines(content, logFile, source);
       
       for (const line of lines) {
         if (matchesFilter(line, options)) {
@@ -207,6 +211,13 @@ export function matchesFilter(line: LogLine, options: FilterOptions): boolean {
 
   if (options.endTime && line.timestamp > options.endTime) {
     return false;
+  }
+
+  if (options.source) {
+    const sources = Array.isArray(options.source) ? options.source : [options.source];
+    if (!sources.includes(line.source)) {
+      return false;
+    }
   }
 
   return true;

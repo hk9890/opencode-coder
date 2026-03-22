@@ -72,6 +72,7 @@ export function formatLine(line: LogLine, options: FormatOptions = {}): string {
       level: line.level,
       timestamp: line.timestamp.toISOString(),
       pid: line.pid,
+      source: line.source,
       service: line.service,
       sessionID: line.sessionID,
       message: line.message,
@@ -88,6 +89,7 @@ export function formatLine(line: LogLine, options: FormatOptions = {}): string {
   const level = colorize(line.level.padEnd(5), getLevelColor(line.level), options);
 
   const service = colorize(`[${line.service}]`, "cyan", options);
+  const source = colorize(`{${line.source}}`, "dim", options);
 
   // Format additional fields
   const fieldParts: string[] = [];
@@ -102,7 +104,7 @@ export function formatLine(line: LogLine, options: FormatOptions = {}): string {
 
   const message = line.message;
 
-  return `${timestamp} ${level} ${service}${fields} ${message}`;
+  return `${timestamp} ${level} ${service} ${source}${fields} ${message}`;
 }
 
 /**

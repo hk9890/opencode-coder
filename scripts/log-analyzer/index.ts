@@ -16,8 +16,8 @@
  */
 
 import { spawn } from "child_process";
-import type { CliArgs, FilterOptions, FormatOptions, LogLevel } from "./types";
-import { findLogDirectory, discoverProcesses, discoverSessions, listLogFiles } from "./discovery";
+import type { CliArgs, FilterOptions, FormatOptions, LogLevel, LogLine, LogSource } from "./types";
+import { findLogDirectory, findProjectLogDirectory, discoverProcesses, discoverSessions } from "./discovery";
 import { filterLogs } from "./filters";
 import {
   formatLines,
@@ -43,6 +43,9 @@ FILTER OPTIONS:
   --pid=<pid>         Filter by process ID
   --session=<id>      Filter by session ID
   --service=<name>    Filter by service name (can be comma-separated)
+  --source=<kind>     Source: opencode | project-local | both (default: opencode)
+  --project-log-dir=<path>
+                      Project-local log directory override (default: <cwd>/.coder/logs)
   --level=<levels>    Filter by log level (INFO,WARN,ERROR,DEBUG)
   --tail=<n>          Only show last N lines
 
@@ -122,6 +125,7 @@ function parseArgs(args: string[]): CliArgs {
   const result: CliArgs = {
     filter: {},
     format: {},
+    source: "opencode",
   };
 
   let i = 0;
@@ -143,6 +147,13 @@ function parseArgs(args: string[]): CliArgs {
     } else if (arg.startsWith("--service=")) {
       const services = arg.slice(10).split(",");
       result.filter.service = services.length === 1 ? services[0] : services;
+    } else if (arg.startsWith("--source=")) {
+      const source = arg.slice(9);
+      if (source === "opencode" || source === "project-local" || source === "both") {
+        result.source = source;
+      }
+    } else if (arg.startsWith("--project-log-dir=")) {
+      result.projectLogDir = arg.slice(18);
     } else if (arg.startsWith("--level=")) {
       result.filter.level = arg.slice(8).split(",") as LogLevel[];
     } else if (arg.startsWith("--tail=")) {
@@ -183,8 +194,8 @@ async function interactiveMode(logDir: string, format: FormatOptions): Promise<v
     process.exit(1);
   }
 
-  const processes = await discoverProcesses(logDir);
-  const sessions = await discoverSessions(logDir);
+  const processes = await discoverProcesses(logDir, "opencode");
+  const sessions = await discoverSessions(logDir, "opencode");
 
   // Build choices for fzf
   const choices: string[] = [];
@@ -214,15 +225,47 @@ async function interactiveMode(logDir: string, format: FormatOptions): Promise<v
     const pidMatch = selected.match(/pid=(\d+)/);
     if (pidMatch) {
       const pid = parseInt(pidMatch[1], 10);
-      const logs = await filterLogs(logDir, { pid });
+      const logs = await filterLogs(logDir, { pid }, "opencode");
       console.log(formatLines(logs, format));
     }
   } else if (selected.startsWith("S:ses_")) {
     // Session selected
     const sessionID = selected.slice(2).split(" |")[0];
-    const logs = await filterLogs(logDir, { sessionID });
-    console.log(formatLines(logs, format));
+      const logs = await filterLogs(logDir, { sessionID }, "opencode");
+      console.log(formatLines(logs, format));
   }
+}
+
+async function resolveSourceDirs(args: CliArgs): Promise<Array<{ source: LogSource; dir: string }>> {
+  if (args.source === "opencode") {
+    return [{ source: "opencode", dir: await findLogDirectory() }];
+  }
+
+  const projectLogDir = args.projectLogDir
+    ? args.projectLogDir
+    : await findProjectLogDirectory(process.cwd());
+
+  if (args.source === "project-local") {
+    return [{ source: "project-local", dir: projectLogDir }];
+  }
+
+  return [
+    { source: "opencode", dir: await findLogDirectory() },
+    { source: "project-local", dir: projectLogDir },
+  ];
+}
+
+async function collectLogs(
+  dirs: Array<{ source: LogSource; dir: string }>,
+  filter: FilterOptions
+): Promise<LogLine[]> {
+  const perSource = await Promise.all(dirs.map(({ source, dir }) => filterLogs(dir, filter, source)));
+  const merged = perSource.flat();
+  merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  if (filter.tail && filter.tail > 0 && merged.length > filter.tail) {
+    return merged.slice(-filter.tail);
+  }
+  return merged;
 }
 
 /**
@@ -237,14 +280,21 @@ async function main(): Promise<void> {
   }
 
   try {
-    const logDir = await findLogDirectory();
+    const sourceDirs = await resolveSourceDirs(args);
+    const primaryLogDir = sourceDirs[0]?.dir;
+
+    if (!primaryLogDir) {
+      throw new Error("No log directory resolved");
+    }
 
     if (args.command === "list") {
       if (args.listType === "processes") {
-        const processes = await discoverProcesses(logDir);
+        const source = sourceDirs[0]?.source ?? "opencode";
+        const processes = await discoverProcesses(primaryLogDir, source);
         console.log(formatProcessList(processes, args.format));
       } else if (args.listType === "sessions") {
-        const sessions = await discoverSessions(logDir);
+        const source = sourceDirs[0]?.source ?? "opencode";
+        const sessions = await discoverSessions(primaryLogDir, source);
         console.log(formatSessionList(sessions, args.format));
       } else {
         console.error("Usage: list <processes|sessions>");
@@ -254,7 +304,8 @@ async function main(): Promise<void> {
     }
 
     if (args.interactive) {
-      await interactiveMode(logDir, args.format);
+      // Interactive mode currently supports OpenCode logs only.
+      await interactiveMode(primaryLogDir, args.format);
       return;
     }
 
@@ -265,7 +316,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    const logs = await filterLogs(logDir, args.filter);
+    const logs = await collectLogs(sourceDirs, args.filter);
 
     if (logs.length === 0) {
       console.log("No matching log entries found.");

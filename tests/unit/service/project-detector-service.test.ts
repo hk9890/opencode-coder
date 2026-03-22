@@ -972,6 +972,41 @@ describe("ProjectDetectorService", () => {
       writeFileSyncSpy.mockRestore();
     });
 
+    it("should log runtime context snapshot signal after writing project context", () => {
+      const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
+        if (String(p).endsWith(".git") || String(p).endsWith(".beads")) return undefined;
+        throw new Error("ENOENT");
+      });
+      const readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue("# default excludes\n" as any);
+      const existsSyncSpy = spyOn(fs, "existsSync").mockReturnValue(false);
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
+        if (cmd === "command -v aimgr") throw new Error("not found");
+        return "" as any;
+      });
+
+      const mkdirSyncSpy = spyOn(fs, "mkdirSync").mockImplementation(() => undefined as any);
+      const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
+
+      service.detectAndWrite(versionInfo as any, { startupMode: "team" });
+
+      const snapshotLog = mockLogger.calls.find((entry) => entry.message === "Project runtime context snapshot updated");
+      expect(snapshotLog).toBeDefined();
+      expect(snapshotLog?.level).toBe("info");
+      expect(snapshotLog?.extra?.["projectContextFile"]).toBe(".coder/project.yaml");
+      expect(snapshotLog?.extra?.["mode"]).toBe("team");
+      expect(snapshotLog?.extra?.["installReady"]).toBe(false);
+      expect(snapshotLog?.extra?.["ecosystemReady"]).toBe(false);
+
+      accessSyncSpy.mockRestore();
+      readFileSyncSpy.mockRestore();
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+      mkdirSyncSpy.mockRestore();
+      writeFileSyncSpy.mockRestore();
+    });
+
     it("should honor startupMode override when active startup already resolved team mode", () => {
       const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation((p: any) => {
         if (String(p).endsWith(".git")) return undefined;

@@ -7,7 +7,7 @@
 import { homedir } from "os";
 import { join, basename } from "path";
 import { readdir, access, readFile, stat } from "fs/promises";
-import type { ProcessInfo, SessionInfo } from "./types";
+import type { LogSource, ProcessInfo, SessionInfo } from "./types";
 import { parseLine } from "./parser";
 
 /**
@@ -73,13 +73,26 @@ export async function listLogFiles(logDir: string): Promise<string[]> {
 }
 
 /**
+ * Resolve project-local plugin log directory.
+ */
+export async function findProjectLogDirectory(projectRoot: string = process.cwd()): Promise<string> {
+  const logDir = join(projectRoot, ".coder", "logs");
+  try {
+    await access(logDir);
+    return logDir;
+  } catch {
+    throw new Error(`Project-local plugin log directory not found: ${logDir}`);
+  }
+}
+
+/**
  * Discover all processes from log files.
  * Uses ripgrep for fast scanning if available, falls back to reading files.
  * 
  * @param logDir - Path to log directory
  * @returns Array of ProcessInfo objects sorted by start time (newest first)
  */
-export async function discoverProcesses(logDir: string): Promise<ProcessInfo[]> {
+export async function discoverProcesses(logDir: string, source: LogSource = "opencode"): Promise<ProcessInfo[]> {
   const logFiles = await listLogFiles(logDir);
   const processMap = new Map<number, ProcessInfo>();
 
@@ -90,7 +103,7 @@ export async function discoverProcesses(logDir: string): Promise<ProcessInfo[]> 
     for (const line of lines) {
       if (!line.trim()) continue;
       
-      const parsed = parseLine(line, logFile);
+      const parsed = parseLine(line, logFile, source);
       if (!parsed) continue;
 
       const existing = processMap.get(parsed.pid);
@@ -125,7 +138,7 @@ export async function discoverProcesses(logDir: string): Promise<ProcessInfo[]> 
   }
 
   // Count sessions per process
-  const sessions = await discoverSessions(logDir);
+  const sessions = await discoverSessions(logDir, source);
   for (const session of sessions) {
     const proc = processMap.get(session.pid);
     if (proc) {
@@ -146,7 +159,7 @@ export async function discoverProcesses(logDir: string): Promise<ProcessInfo[]> 
  * @param logDir - Path to log directory
  * @returns Array of SessionInfo objects sorted by start time (newest first)
  */
-export async function discoverSessions(logDir: string): Promise<SessionInfo[]> {
+export async function discoverSessions(logDir: string, source: LogSource = "opencode"): Promise<SessionInfo[]> {
   const logFiles = await listLogFiles(logDir);
   const sessionMap = new Map<string, SessionInfo>();
 
@@ -157,7 +170,7 @@ export async function discoverSessions(logDir: string): Promise<SessionInfo[]> {
     for (const line of lines) {
       if (!line.trim()) continue;
       
-      const parsed = parseLine(line, logFile);
+      const parsed = parseLine(line, logFile, source);
       if (!parsed || !parsed.sessionID) continue;
 
       const existing = sessionMap.get(parsed.sessionID);

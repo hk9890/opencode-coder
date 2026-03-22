@@ -452,6 +452,15 @@ export class ProjectDetectorService {
 
     this.writeProjectContext(context);
 
+    this.logger.info("Project runtime context snapshot updated", {
+      mode: context.mode,
+      installReady: context.installReady,
+      ecosystemReady: context.ecosystemReady,
+      resourcesHealthy: context.aimgr.resourcesHealthy,
+      coderPackageInstalled: context.aimgr.coderPackageInstalled,
+      projectContextFile: ".coder/project.yaml",
+    });
+
     this.logger.debug("Project detection completed", {
       durationMs: Date.now() - start,
       mode,

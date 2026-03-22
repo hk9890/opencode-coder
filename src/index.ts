@@ -62,6 +62,12 @@ Load the opencode-coder skill, then use:
 export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const log = createLogger(client, worktree);
   const startTime = Date.now();
+  const emitRuntimeSignal = (signal: string, extra: Record<string, unknown>) => {
+    log.info("Runtime diagnostic signal", {
+      signal,
+      ...extra,
+    });
+  };
 
   log.info("OpencodeCoder plugin loading...");
 
@@ -77,14 +83,32 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
 
   if (activeMode) {
     log.enableFileLogging();
+    emitRuntimeSignal("runtime.log_sink.project_local_enabled", {
+      startupMode: activeMode,
+      projectLogDir: ".coder/logs",
+      openCodeLogSink: true,
+      projectLocalLogSink: true,
+    });
     log.info("Resolved active opencode-coder startup mode", {
       mode: activeMode,
+      source: startupMode.source,
+    });
+    emitRuntimeSignal("runtime.startup_mode.resolved", {
+      active: true,
+      startupMode: activeMode,
       source: startupMode.source,
     });
   } else {
     log.info("Resolved inactive opencode-coder startup mode", {
       mode: startupMode.mode,
       source: startupMode.source,
+    });
+    emitRuntimeSignal("runtime.startup_mode.resolved", {
+      active: false,
+      startupMode: startupMode.mode,
+      source: startupMode.source,
+      openCodeLogSink: true,
+      projectLocalLogSink: false,
     });
   }
 
@@ -143,6 +167,14 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           });
         })
         .then((ctx) => {
+          emitRuntimeSignal("runtime.project_context.available", {
+            startupMode: activeMode,
+            mode: ctx.mode,
+            installReady: ctx.installReady,
+            ecosystemReady: ctx.ecosystemReady,
+            resourcesHealthy: ctx.aimgr.resourcesHealthy,
+            coderPackageInstalled: ctx.aimgr.coderPackageInstalled,
+          });
           log.debug("Project context written to .coder/project.yaml", { ecosystemReady: ctx.ecosystemReady });
           return ctx;
         })
@@ -231,6 +263,11 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
         log.warn("Project context startup timed out; continuing in degraded mode", {
           timeoutMs: PROJECT_CONTEXT_TIMEOUT_MS,
         });
+        emitRuntimeSignal("runtime.project_context.timeout", {
+          timeoutMs: PROJECT_CONTEXT_TIMEOUT_MS,
+          degradedMode: true,
+          projectContextAvailable: false,
+        });
       }
 
       const docsLifecycleResourcesAvailable =
@@ -238,12 +275,25 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
       if (docsLifecycleResourcesAvailable) {
         input.command["opencode-coder/docs"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/docs"];
         input.command["opencode-coder/improve-doc"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/improve-doc"];
+        emitRuntimeSignal("runtime.command_registration.docs_lifecycle", {
+          startupMode: activeMode,
+          action: "registered",
+          projectContextAvailable: projectContext !== null,
+          resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
+        });
       } else {
         for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
           if (input.command[commandName]) {
             delete input.command[commandName];
           }
         }
+
+        emitRuntimeSignal("runtime.command_registration.docs_lifecycle", {
+          startupMode: activeMode,
+          action: "suppressed",
+          projectContextAvailable: projectContext !== null,
+          resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
+        });
       }
 
       if (activeMode && !docsLifecycleResourcesAvailable) {

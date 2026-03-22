@@ -29,6 +29,11 @@ This location is intentionally project-local so plugin debugging is possible
 directly from the repository, without needing to inspect ephemeral OpenCode
 file descriptors under `/proc/<pid>/fd/...`.
 
+Runtime diagnostics now emit a stable `Runtime diagnostic signal` event with
+structured `signal` and readiness fields. The same signal model is emitted to
+both sinks, and `.coder/project.yaml` remains the snapshot of current detected
+runtime state.
+
 #### Retention
 
 Project-local `coder-YYYY-MM-DD.log` files are retained for 7 days.
@@ -41,6 +46,21 @@ so manually touching old files does not prevent pruning.
 
 ```bash
 bun run scripts/log-analyzer list sessions
+```
+
+By default, `log-analyzer` reads OpenCode logs. To analyze project-local logs,
+add `--source=project-local`. To merge both streams in one query, use
+`--source=both`.
+
+```bash
+# OpenCode logs (default)
+bun run scripts/log-analyzer --session=<session-id> --service=opencode-coder
+
+# Project-local plugin logs from <cwd>/.coder/logs
+bun run scripts/log-analyzer --source=project-local --service=opencode-coder
+
+# Merge OpenCode + project-local in one timeline
+bun run scripts/log-analyzer --source=both --service=opencode-coder --tail=200
 ```
 
 This shows all recent OpenCode sessions with timestamps and session IDs.
