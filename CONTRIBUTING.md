@@ -2,13 +2,10 @@
 
 Thanks for contributing to the OpenCode plugin for story-driven development.
 
-This document owns **contributor onboarding and workflow**.
-
 - For repository context and doc routing, start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md)
 - For architecture and code conventions, see [`docs/CODING.md`](docs/CODING.md)
 - For unit/integration/e2e strategy and commands, see [`docs/TESTING.md`](docs/TESTING.md)
 - For branching and PR expectations, see [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
-- For issue lifecycle and `bd` usage conventions, see [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md)
 
 ## Local Development Setup
 

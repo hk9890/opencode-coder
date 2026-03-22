@@ -1,11 +1,5 @@
 # Pull Requests & Branching
 
-Related docs:
-
-- [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for local setup and contribution workflow
-- [`CODING.md`](CODING.md) and [`TESTING.md`](TESTING.md) for quality gates before PR
-- [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md) for `bd` issue lifecycle
-
 ## Branching Strategy
 
 ### Branch Naming

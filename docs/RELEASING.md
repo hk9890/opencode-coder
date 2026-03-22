@@ -1,10 +1,7 @@
 # Release Process
 
-Related docs:
-
-- [`OVERVIEW.md`](OVERVIEW.md) for project context and doc map
-- [`PULL-REQUESTS.md`](PULL-REQUESTS.md) for branch/merge expectations
-- [`TESTING.md`](TESTING.md) for test-level commands and prerequisites
+Use the **github-releases** skill for the generic release workflow.
+This file records the repository-specific commands, checks, and publishing details for this project.
 
 ## Prerequisites
 

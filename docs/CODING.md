@@ -1,14 +1,7 @@
 # Coding Guidelines
 
-This document owns **implementation guidance**:
-
-- source architecture and package boundaries
-- coding conventions and patterns
-- build/development commands used while coding
-
 For local onboarding and contribution flow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
 For test strategy and all test-level commands, see [`TESTING.md`](TESTING.md).
-For issue tracking workflow and `bd` conventions, see [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md).
 
 ## Build & Development Commands
 

@@ -1,8 +1,6 @@
 # Project Setup
 
-This guide describes a simple, tool-agnostic documentation structure for projects that want clear routing and controlled context for humans and coding agents after opencode-coder has been explicitly enabled for the repository.
-
-If the plugin has not been enabled yet, use `/opencode-coder/init` first. Fresh projects now remain inactive until that explicit setup step.
+This guide describes a simple, tool-agnostic documentation structure for projects that want clear routing and controlled context for humans and coding agents.
 
 ## Core idea
 
@@ -14,6 +12,7 @@ Use a small `AGENTS.md` at the repository root and put detailed guidance in focu
 - each document owns one topic
 - agents should load only the documents needed for the current task
 - standard file names make the structure predictable
+- create topic docs only when they contain real project-specific guidance
 
 ## Recommended structure
 
@@ -28,6 +27,14 @@ docs/
   MONITORING.md
   PULL-REQUESTS.md
 ```
+
+These are the standard file names to use **when the project actually needs those topics documented**.
+They are not mandatory.
+
+If a topic is already fully covered by a reusable skill or workflow and the project has no extra local rules for it, do not create a duplicate project doc for that topic.
+In that case, `AGENTS.md` can simply route the reader to the relevant skill or workflow.
+
+Projects can also add extra focused docs when they have real, repository-specific guidance that does not fit the standard set.
 
 Only create the files that have real content. A minimal but strong setup is often:
 
@@ -71,7 +78,7 @@ Typical content:
 
 ### `docs/CODING.md`
 
-The main engineering guide.
+The main engineering guide, if the project has local coding guidance to record.
 
 Typical content:
 
@@ -83,7 +90,7 @@ Typical content:
 
 ### `docs/TESTING.md`
 
-The testing guide.
+The testing guide, if the project has local testing guidance to record.
 
 Typical content:
 
@@ -94,7 +101,7 @@ Typical content:
 
 ### `docs/RELEASING.md`
 
-The release guide.
+The release guide, if the project has local release guidance to record.
 
 Typical content:
 
@@ -105,7 +112,7 @@ Typical content:
 
 ### `docs/MONITORING.md`
 
-The observability and operations guide.
+The observability and operations guide, if the project has local monitoring or triage guidance to record.
 
 Typical content:
 
@@ -116,7 +123,7 @@ Typical content:
 
 ### `docs/PULL-REQUESTS.md`
 
-The collaboration guide.
+The collaboration guide, if the project has local collaboration rules to record.
 
 Typical content:
 
@@ -135,6 +142,19 @@ Typical content:
 - how to propose changes
 - contribution workflow
 - links to `docs/CODING.md` and `docs/TESTING.md`
+
+### Optional focused docs beyond the standard names
+
+You can add extra docs under `docs/` when they contain real project-specific guidance that does not fit the standard set.
+
+Example use cases:
+
+- repository-specific deployment or operations notes that do not fit the standard files
+- project-specific workflows that need a durable home outside `AGENTS.md`
+- domain-specific concepts or support procedures that deserve their own focused document
+
+But the rule stays the same: only create the file if it contains project-specific guidance.
+If a reusable skill or workflow already covers the topic and the project has no extra local rules, let `AGENTS.md` route to that skill instead of creating a duplicate doc.
 
 ## How the routing works
 
@@ -166,6 +186,21 @@ Agents often read `AGENTS.md` first. That means anything placed there tends to b
 So `AGENTS.md` should stay small and act as a router, not a handbook.
 
 The deeper documents exist so each agent can load only the context it actually needs and avoid carrying unrelated instructions into the task.
+
+## Project docs as project memory
+
+The files under `docs/` are the project's memory files.
+
+They should capture the repository-specific rules, commands, assumptions, and conventions that an agent or maintainer needs to remember later.
+
+That means they should usually:
+
+- record local commands and paths that actually exist in the repo
+- capture project-specific decisions and conventions
+- be updated when the project changes
+- avoid restating generic workflow instructions that already live in reusable skills
+
+If someone discovers a recurring issue in coding, testing, releasing, monitoring, or collaboration, update the matching project doc so the local rule is preserved in the right place.
 
 ### Example workflow
 
@@ -218,7 +253,7 @@ That agent may not need `docs/CODING.md` if its job is to run, inspect, and veri
 
 ## How this works with skills
 
-This document structure works well together with generic skills.
+This document structure works well together with reusable skills.
 
 You should still use reusable skills for broad workflows such as:
 
@@ -230,20 +265,26 @@ You should still use reusable skills for broad workflows such as:
 
 The project documents should then contain the **project-specific** instructions for those areas.
 
+Think of the relationship like this:
+
+- the skill provides the reusable baseline workflow
+- the project docs provide the repository-specific memory and local rules
+- the project docs should fine-tune or extend the skill, not restate it
+
 For example:
 
 - a release skill provides the general release workflow
-- `docs/RELEASING.md` provides the repository-specific release details
+- `docs/RELEASING.md` provides the repository-specific release details when the project has any
 
 Likewise:
 
 - a pull-request skill can provide general PR workflow guidance
-- `docs/PULL-REQUESTS.md` should describe the project's own branch rules, review expectations, and merge requirements
+- `docs/PULL-REQUESTS.md` should describe the project's own branch rules, review expectations, and merge requirements when the project has any
 
 And the same pattern applies elsewhere:
 
 - generic coding guidance can live in a skill
-- project-specific coding conventions belong in `docs/CODING.md`
+- project-specific coding conventions belong in `docs/CODING.md` when the project has any
 
 ## Skills and project docs must agree
 
@@ -273,6 +314,8 @@ The same idea applies to other topics:
 - generic coding guidance in a skill, project-specific conventions in `docs/CODING.md`
 - generic testing workflow in a skill, project-specific test commands and environments in `docs/TESTING.md`
 
+The same principle applies to all docs, not just optional ones. If a topic is already fully covered by a reusable skill and the project has no extra local rules for it, you do not need a project doc for that topic at all. Let `AGENTS.md` route to the skill instead.
+
 ## Priority of instructions
 
 Good skills should explicitly state that project-specific instructions take precedence over the generic guidance in the skill.
@@ -284,6 +327,8 @@ In practice, the model should be:
 - the skill provides the reusable baseline
 - the project document provides the local rules
 - the local project rules win when there is tension
+
+Because of that, project docs and skills should be maintained together. If a corresponding skill changes in a way that affects local usage, the matching project doc should be reviewed and updated so they stay aligned.
 
 ## Suggested bootstrap order
 
@@ -319,6 +364,8 @@ Use short sections, bullets, and small examples. Avoid long uninterrupted paragr
 
 This also helps agents pull the relevant instruction from a document without dragging in unnecessary surrounding detail.
 
+As a practical rule, keep topic docs such as `CODING.md`, `TESTING.md`, `RELEASING.md`, and similar files under **500 lines**. If a doc grows beyond that, split it into more focused documents.
+
 ### 5. Avoid duplication
 
 If guidance belongs in `docs/TESTING.md`, link to it from `AGENTS.md` instead of repeating it.
@@ -340,6 +387,8 @@ Use commands, paths, and workflows that actually exist in the repository.
 ### 9. Update docs with code changes
 
 Documentation should change when workflows, commands, directory structure, or release process changes.
+
+This also includes skill changes: if a skill evolves and the project keeps local instructions for the same area, update the project doc so the local guidance still complements the skill instead of drifting or duplicating it.
 
 ### 10. Keep `AGENTS.md` especially disciplined
 

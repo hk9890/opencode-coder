@@ -37,7 +37,8 @@ OpenCode plugin for story-driven development with agents and commands.
 ### Issue Tracking (beads)
 
 - Use `bd` for all project issue tracking.
-- Read [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md) for commands, workflow, and dependency linking.
+- Load the **opencode-coder** skill for issue-tracking, planning, setup, and beads workflow guidance.
+- Follow the opencode-coder workflow when creating or updating issues so project tracking stays consistent.
 
 ## OpenCode Reference Docs
 

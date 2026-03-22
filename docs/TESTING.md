@@ -1,14 +1,7 @@
 # Testing Guide
 
-This document owns **all test guidance**:
-
-- unit, integration, and e2e test levels
-- local test prerequisites and environment setup
-- fixtures/helpers and debugging workflows
-
 For contributor onboarding and contribution workflow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
 For implementation architecture and build/development guidance, see [`CODING.md`](CODING.md).
-For issue workflow used when triaging failures, see [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md).
 
 ## Test Levels
 

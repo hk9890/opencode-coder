@@ -1,12 +1,7 @@
 # Monitoring Configuration
 
-This document describes how to analyze monitoring data for the
-opencode-coder plugin.
-
-Related docs:
-
-- [`OVERVIEW.md`](OVERVIEW.md) for documentation routing
-- [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md) for filing triaged bugs with `bd`
+Use the **observability-triage** skill for the generic monitoring analysis and triage workflow.
+This file records the repository-specific log sources, scripts, and signals for opencode-coder.
 
 ## How to Get Monitoring Data
 
@@ -156,28 +151,3 @@ disambiguate behavior by process ID (`pid`) in each line:
 
 This is typically easier than chasing active process file handles via
 `/proc/<pid>/fd/...`, especially after processes exit.
-
-## Analysis Tips
-
-### Grouping Issues
-
-Multiple log entries about the same underlying problem should be grouped:
-
-- Same error message repeated = one issue with occurrence count
-- Related errors in sequence = likely one root cause
-
-### Severity Assessment
-
-- Errors during plugin load or beads sync = high priority
-- Warnings that repeat across sessions = medium priority
-- One-off errors that don't recur = low priority (may be transient)
-
-### Context to Capture
-
-When creating bugs from log analysis, include:
-
-- Session ID and timestamp
-- Full error message
-- Service/component affected
-- Frequency (how many occurrences)
-- Any preceding warnings that might indicate root cause

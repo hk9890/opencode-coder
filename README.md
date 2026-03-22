@@ -6,7 +6,6 @@ OpenCode plugin for story-driven development with agents and commands.
 
 Use these docs as the primary navigation path:
 
-- [`AGENTS.md`](AGENTS.md) — routing entrypoint for agents and task-focused guidance
 - [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context and repository map
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor setup and workflow
 
@@ -17,7 +16,6 @@ Focused guides under `docs/`:
 - [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
 - [`docs/RELEASING.md`](docs/RELEASING.md)
 - [`docs/MONITORING.md`](docs/MONITORING.md)
-- [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md)
 
 ## Features
 
