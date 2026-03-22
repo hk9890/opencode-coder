@@ -3,7 +3,7 @@ import { existsSync } from "fs";
 import { access, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
-import { dirname, join } from "path";
+import { dirname, join, relative, sep } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -23,15 +23,50 @@ export const FIXTURE_NAMES = [
 
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
 
+export type WorkspaceSource =
+  | {
+      kind: "fixture";
+      fixtureName: FixtureName;
+      sourceDir: string;
+    }
+  | {
+      kind: "project-path";
+      projectPath: string;
+      sourceDir: string;
+    };
+
 export function isFixtureName(value: string): value is FixtureName {
   return (FIXTURE_NAMES as readonly string[]).includes(value);
 }
 
 export interface FixtureWorkspace {
-  fixtureName: FixtureName;
-  fixtureSourceDir: string;
+  fixtureName?: FixtureName;
+  fixtureSourceDir?: string;
+  workspaceSource: WorkspaceSource;
+  projectSourceDir: string;
   tempRoot: string;
   workdir: string;
+}
+
+export const OPENCODE_CODER_PACKAGE_NAME = "@dynatrace-oss/opencode-coder";
+
+export type PluginSource = "local-build" | "installed-configured";
+
+export interface ResolvedInstalledConfiguredPlugin {
+  packageSpec: string;
+  hostConfigPath: string;
+}
+
+export interface PreparedPluginSource {
+  pluginSource: PluginSource;
+  localPluginSymlink?: string;
+  resolvedInstalledPackageSpec?: string;
+  resolvedHostConfigPath?: string;
+  expectedLoadedPluginVersion?: string;
+}
+
+export interface IsolatedOpenCodePathOptions {
+  pluginSource?: PluginSource;
 }
 
 export interface IsolatedOpenCodePaths {
@@ -60,6 +95,215 @@ export interface ResolvedAuthSeedPath {
 }
 
 export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "share", "opencode", "auth.json");
+
+const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
+
+function parsePackageNameFromPluginSpec(spec: string): string {
+  const trimmed = spec.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  if (!trimmed.startsWith("@")) {
+    const atIndex = trimmed.lastIndexOf("@");
+    return atIndex > 0 ? trimmed.slice(0, atIndex) : trimmed;
+  }
+
+  const versionSeparator = trimmed.lastIndexOf("@");
+  if (versionSeparator <= 0) {
+    return trimmed;
+  }
+
+  const slashIndex = trimmed.indexOf("/");
+  if (slashIndex <= 0) {
+    return trimmed;
+  }
+
+  return versionSeparator > slashIndex ? trimmed.slice(0, versionSeparator) : trimmed;
+}
+
+function readPluginSpecsFromConfig(config: unknown): string[] {
+  if (!config || typeof config !== "object") {
+    return [];
+  }
+
+  const rawPlugins = (config as { plugin?: unknown }).plugin;
+  if (!Array.isArray(rawPlugins)) {
+    return [];
+  }
+
+  return rawPlugins.filter((entry): entry is string => typeof entry === "string");
+}
+
+export function resolveHostOpenCodeConfigPath(
+  hostEnv: NodeJS.ProcessEnv = process.env,
+  hostHomeDir: string = homedir()
+): string {
+  const explicitConfigDir = hostEnv.OPENCODE_CONFIG_DIR?.trim();
+  if (explicitConfigDir) {
+    return join(explicitConfigDir, "opencode.json");
+  }
+
+  const xdgConfigHome = hostEnv.XDG_CONFIG_HOME?.trim();
+  if (xdgConfigHome) {
+    return join(xdgConfigHome, "opencode", "opencode.json");
+  }
+
+  return join(hostHomeDir, ".config", "opencode", "opencode.json");
+}
+
+export async function resolveInstalledConfiguredPluginFromHostConfig(
+  hostEnv: NodeJS.ProcessEnv = process.env,
+  hostHomeDir: string = homedir()
+): Promise<ResolvedInstalledConfiguredPlugin> {
+  const hostConfigPath = resolveHostOpenCodeConfigPath(hostEnv, hostHomeDir);
+
+  let hostConfigRaw: string;
+  try {
+    hostConfigRaw = await readFile(hostConfigPath, "utf8");
+  } catch {
+    throw new Error(`Host OpenCode config not found: ${hostConfigPath}`);
+  }
+
+  let hostConfig: unknown;
+  try {
+    hostConfig = JSON.parse(hostConfigRaw);
+  } catch {
+    throw new Error(`Host OpenCode config is invalid JSON: ${hostConfigPath}`);
+  }
+
+  const pluginSpecs = readPluginSpecsFromConfig(hostConfig);
+  const matches = pluginSpecs.filter((spec) => parsePackageNameFromPluginSpec(spec) === OPENCODE_CODER_PACKAGE_NAME);
+
+  if (matches.length === 0) {
+    throw new Error(
+      `Host config must contain exactly one ${OPENCODE_CODER_PACKAGE_NAME} plugin entry (found 0 at ${hostConfigPath})`
+    );
+  }
+
+  if (matches.length > 1) {
+    throw new Error(
+      `Host config must contain exactly one ${OPENCODE_CODER_PACKAGE_NAME} plugin entry (found ${matches.length.toString()} at ${hostConfigPath})`
+    );
+  }
+
+  return {
+    packageSpec: matches[0],
+    hostConfigPath,
+  };
+}
+
+async function readSharedProviderPluginSpecs(): Promise<string[]> {
+  const fixtureRaw = await readFile(OPENCODE_CONFIG_FIXTURE_PATH, "utf8");
+  const fixtureConfig = JSON.parse(fixtureRaw) as unknown;
+  const fixturePluginSpecs = readPluginSpecsFromConfig(fixtureConfig);
+  return fixturePluginSpecs.filter((spec) => parsePackageNameFromPluginSpec(spec) !== OPENCODE_CODER_PACKAGE_NAME);
+}
+
+function parseExactVersionFromPluginSpec(spec: string): string | null {
+  const trimmed = spec.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!trimmed.startsWith("@")) {
+    const atIndex = trimmed.lastIndexOf("@");
+    return atIndex > 0 ? trimmed.slice(atIndex + 1).trim() : null;
+  }
+
+  const slashIndex = trimmed.indexOf("/");
+  const atIndex = trimmed.lastIndexOf("@");
+  if (slashIndex <= 0 || atIndex <= slashIndex) {
+    return null;
+  }
+
+  const candidate = trimmed.slice(atIndex + 1).trim();
+  if (!candidate) {
+    return null;
+  }
+
+  return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate) ? candidate : null;
+}
+
+async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpec: string): Promise<{
+  pluginSymlink: string;
+  installedVersion: string;
+}> {
+  const normalizedSpec = packageSpec.trim();
+  if (!normalizedSpec) {
+    throw new Error("Cannot prepare installed-configured plugin source: package spec is empty");
+  }
+
+  const opencodeDir = join(workdir, ".opencode");
+  const pluginDir = join(opencodeDir, "plugins");
+  const pluginSymlink = join(pluginDir, "opencode-coder.js");
+  const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
+  const pluginEntrypoint = join(packageDir, "dist", "opencode-coder.js");
+  const packageJsonPath = join(packageDir, "package.json");
+
+  await mkdir(pluginDir, { recursive: true });
+  await writeFile(
+    join(opencodeDir, "package.json"),
+    JSON.stringify(
+      {
+        private: true,
+        dependencies: {
+          "@opencode-ai/plugin": "^1.2.16",
+        },
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const installBaseResult = await $`bun install`.cwd(opencodeDir).quiet();
+  if (installBaseResult.exitCode !== 0) {
+    throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
+  }
+
+  const addInstalledResult = await $`bun add --exact ${normalizedSpec}`.cwd(opencodeDir).quiet();
+  if (addInstalledResult.exitCode !== 0) {
+    throw new Error(
+      `Failed to prepare installed-configured plugin package (${normalizedSpec}):\n${addInstalledResult.stderr.toString()}`
+    );
+  }
+
+  let installedPackageJsonRaw: string;
+  try {
+    installedPackageJsonRaw = await readFile(packageJsonPath, "utf8");
+  } catch {
+    throw new Error(`Installed package metadata missing after prepare: ${packageJsonPath}`);
+  }
+
+  let installedPackageJson: unknown;
+  try {
+    installedPackageJson = JSON.parse(installedPackageJsonRaw);
+  } catch {
+    throw new Error(`Installed package metadata is invalid JSON: ${packageJsonPath}`);
+  }
+
+  const installedVersion =
+    typeof (installedPackageJson as { version?: unknown }).version === "string"
+      ? (installedPackageJson as { version: string }).version.trim()
+      : "";
+  if (!installedVersion) {
+    throw new Error(`Installed package metadata missing version field: ${packageJsonPath}`);
+  }
+
+  try {
+    await access(pluginEntrypoint);
+  } catch {
+    throw new Error(`Installed plugin entrypoint missing after prepare: ${pluginEntrypoint}`);
+  }
+
+  await rm(pluginSymlink, { force: true });
+  await symlink(pluginEntrypoint, pluginSymlink);
+
+  return {
+    pluginSymlink,
+    installedVersion,
+  };
+}
 
 /**
  * Resolves auth.json path precedence for file-based seeds:
@@ -97,6 +341,10 @@ export interface FailureArtifactInput {
   stderr?: string;
   notes?: string;
   isolationPaths?: Partial<IsolatedOpenCodePaths>;
+  projectSourceDir?: string;
+  tempWorkdir?: string;
+  pluginSource?: PluginSource;
+  resolvedPackageSpec?: string;
 }
 
 export interface OpencodeCliRunOptions {
@@ -199,15 +447,61 @@ export async function ensurePluginBuilt(projectRoot: string): Promise<string> {
  */
 export async function createFixtureWorkspace(fixtureName: FixtureName): Promise<FixtureWorkspace> {
   const fixtureSourceDir = join(FIXTURES_DIR, fixtureName);
-  const tempRoot = await mkdtemp(join(tmpdir(), `opencode-coder-${fixtureName}-`));
+
+  return createWorkspaceFromSource({
+    kind: "fixture",
+    fixtureName,
+    sourceDir: fixtureSourceDir,
+  });
+}
+
+/**
+ * Copies an external project directory into an isolated temp workdir.
+ */
+export async function createProjectPathWorkspace(projectPath: string): Promise<FixtureWorkspace> {
+  const normalizedPath = projectPath.trim();
+  if (!normalizedPath) {
+    throw new Error("Missing external project path");
+  }
+
+  return createWorkspaceFromSource({
+    kind: "project-path",
+    projectPath: normalizedPath,
+    sourceDir: normalizedPath,
+  });
+}
+
+function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
+  const rel = relative(sourceRoot, sourcePath);
+  if (!rel) {
+    return true;
+  }
+
+  const segments = rel.split(sep).filter(Boolean);
+  return !segments.includes(".git");
+}
+
+async function createWorkspaceFromSource(workspaceSource: WorkspaceSource): Promise<FixtureWorkspace> {
+  const sourceLabel = workspaceSource.kind === "fixture" ? workspaceSource.fixtureName : "project-path";
+  const tempRoot = await mkdtemp(join(tmpdir(), `opencode-coder-${sourceLabel}-`));
   const workdir = join(tempRoot, "project");
 
-  await cp(fixtureSourceDir, workdir, { recursive: true });
+  if (workspaceSource.kind === "project-path") {
+    await cp(workspaceSource.sourceDir, workdir, {
+      recursive: true,
+      filter: async (sourcePath) => shouldCopyPath(workspaceSource.sourceDir, sourcePath),
+    });
+  } else {
+    await cp(workspaceSource.sourceDir, workdir, { recursive: true });
+  }
+
   await $`git init --quiet`.cwd(workdir).quiet();
 
   return {
-    fixtureName,
-    fixtureSourceDir,
+    fixtureName: workspaceSource.kind === "fixture" ? workspaceSource.fixtureName : undefined,
+    fixtureSourceDir: workspaceSource.kind === "fixture" ? workspaceSource.sourceDir : undefined,
+    workspaceSource,
+    projectSourceDir: workspaceSource.sourceDir,
     tempRoot,
     workdir,
   };
@@ -248,6 +542,45 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   return pluginSymlink;
 }
 
+export async function prepareWorkspacePluginSource(options: {
+  projectRoot: string;
+  workdir: string;
+  pluginSource?: PluginSource;
+  hostEnv?: NodeJS.ProcessEnv;
+  hostHomeDir?: string;
+}): Promise<PreparedPluginSource> {
+  const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
+
+  if (pluginSource === "local-build") {
+    const localPluginSymlink = await wireBuiltPluginArtifact(options.projectRoot, options.workdir);
+    return {
+      pluginSource,
+      localPluginSymlink,
+    };
+  }
+
+  const localPluginSymlink = join(options.workdir, ".opencode", "plugins", "opencode-coder.js");
+  await rm(localPluginSymlink, { force: true });
+
+  const resolved = await resolveInstalledConfiguredPluginFromHostConfig(options.hostEnv, options.hostHomeDir);
+  const wiredInstalledArtifact = await wireInstalledConfiguredPluginArtifact(options.workdir, resolved.packageSpec);
+  const pinnedVersionFromSpec = parseExactVersionFromPluginSpec(resolved.packageSpec);
+
+  if (pinnedVersionFromSpec && pinnedVersionFromSpec !== wiredInstalledArtifact.installedVersion) {
+    throw new Error(
+      `Installed package version mismatch after prepare: spec requested ${pinnedVersionFromSpec} but resolved ${wiredInstalledArtifact.installedVersion}`
+    );
+  }
+
+  return {
+    pluginSource,
+    localPluginSymlink: wiredInstalledArtifact.pluginSymlink,
+    resolvedInstalledPackageSpec: resolved.packageSpec,
+    resolvedHostConfigPath: resolved.hostConfigPath,
+    expectedLoadedPluginVersion: wiredInstalledArtifact.installedVersion,
+  };
+}
+
 /**
  * Creates isolated HOME/XDG/OpenCode path roots to prevent global plugin discovery.
  */
@@ -282,6 +615,27 @@ export async function createIsolatedOpenCodePaths(baseDir: string): Promise<Isol
       OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
     },
   };
+}
+
+export async function createIsolatedOpenCodePathsWithPluginSource(
+  baseDir: string,
+  options: IsolatedOpenCodePathOptions
+): Promise<IsolatedOpenCodePaths> {
+  const paths = await createIsolatedOpenCodePaths(baseDir);
+  const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
+
+  if (pluginSource === "local-build") {
+    return paths;
+  }
+
+  const configPath = join(paths.opencodeConfigDir, "opencode.json");
+  const configRaw = await readFile(configPath, "utf8");
+  const parsed = JSON.parse(configRaw) as { plugin?: unknown };
+  const sharedProviderSpecs = await readSharedProviderPluginSpecs();
+  parsed.plugin = sharedProviderSpecs;
+  await writeFile(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
+
+  return paths;
 }
 
 /**
@@ -439,6 +793,10 @@ export async function writeFailureArtifacts(input: FailureArtifactInput): Promis
     command: input.command,
     capturedAt: new Date().toISOString(),
     isolationPaths: input.isolationPaths,
+    projectSourceDir: input.projectSourceDir,
+    tempWorkdir: input.tempWorkdir,
+    pluginSource: input.pluginSource,
+    resolvedPackageSpec: input.resolvedPackageSpec,
   };
 
   await writeFile(join(outputDir, "summary.json"), JSON.stringify(summary, null, 2) + "\n");

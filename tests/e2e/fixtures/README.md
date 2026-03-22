@@ -4,6 +4,8 @@ These fixtures are **committed, read-only baselines** used by the e2e harness.
 
 Test helpers copy a fixture into a temp workspace before execution so tests can mutate files without touching committed inputs.
 
+The manual launcher also supports `--project-path <dir>` for reproducing behavior from a real local project. That mode uses the same copy-then-run model into a temp workspace (it does not run in place on the source directory).
+
 ## Fixture directories
 
 - `existing-active-project/` — existing project already enabled for active startup
@@ -17,4 +19,9 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 - `_shared/opencode-config/opencode.json` — committed snapshot of the OpenCode config seeded into each isolated `OPENCODE_CONFIG_DIR` during manual and e2e runs. Update this file intentionally when the test baseline should change; tests do not read your live `~/.config/opencode/opencode.json`.
   - Keeps `@hk9890/opencode-dynatrace@0.6.0` enabled for provider/model setup parity during tests.
-  - Does **not** pin `@dynatrace-oss/opencode-coder`; the coder plugin under test comes from the locally wired build artifact in `.opencode/plugins/`.
+  - Does **not** pin `@dynatrace-oss/opencode-coder`; the coder plugin under test comes from the locally wired build artifact at `.opencode/plugins/opencode-coder.js`.
+
+For manual installed-vs-local comparison flows:
+
+- `--plugin-source=local-build` wires this repository's built artifact into `.opencode/plugins/opencode-coder.js` and disables configured default plugin loading.
+- `--plugin-source=installed-configured` resolves one configured `@dynatrace-oss/opencode-coder@...` package from host `opencode.json`, then writes that package spec into isolated temp config.

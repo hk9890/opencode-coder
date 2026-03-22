@@ -1,17 +1,19 @@
 #!/usr/bin/env bun
 
-import { existsSync } from "fs";
-import { rm } from "fs/promises";
+import { readFile, rm, stat } from "fs/promises";
 import { join } from "path";
 import {
   FIXTURE_NAMES,
+  type FixtureName,
   checkOpencodeAvailability,
   createFixtureWorkspace,
-  createIsolatedOpenCodePaths,
+  createIsolatedOpenCodePathsWithPluginSource,
+  createProjectPathWorkspace,
   isFixtureName,
+  type PluginSource,
+  prepareWorkspacePluginSource,
   resolveAuthSeedPath,
   seedIsolatedOpenCodeAuth,
-  wireBuiltPluginArtifact,
 } from "../../tests/e2e/helpers/harness";
 
 type LauncherMode = "tui" | "shell" | "command";
@@ -81,7 +83,9 @@ function buildChildEnv(
 
 interface ParsedArgs {
   mode: LauncherMode;
-  fixture: string;
+  pluginSource: PluginSource;
+  fixture?: string;
+  projectPath?: string;
   keep: boolean;
   authPath?: string;
   requireAuth: boolean;
@@ -109,6 +113,8 @@ Modes:
 
 Options:
   --fixture=<name>  Fixture to copy (default: ${DEFAULT_FIXTURE})
+  --project-path    External project directory to copy into temp workspace
+  --plugin-source=<mode> Plugin source: local-build (default) | installed-configured
   --auth=<path>     Explicit auth.json path seed (copied to isolated XDG data)
   --require-auth    Fail if no auth seed source is available
   --keep            Keep temp workspace after exit
@@ -122,7 +128,7 @@ Available fixtures:
 function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = {
     mode: "tui",
-    fixture: DEFAULT_FIXTURE,
+    pluginSource: "local-build",
     keep: false,
     requireAuth: false,
     command: [],
@@ -211,6 +217,47 @@ function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
 
+    if (arg.startsWith("--project-path=")) {
+      const projectPath = arg.slice("--project-path=".length);
+      if (!projectPath.trim()) {
+        throw new Error("Missing value for --project-path");
+      }
+      parsed.projectPath = projectPath;
+      i++;
+      continue;
+    }
+
+    if (arg === "--project-path") {
+      const projectPath = argv[i + 1];
+      if (!projectPath || projectPath === "--") {
+        throw new Error("Missing value for --project-path");
+      }
+      parsed.projectPath = projectPath;
+      i += 2;
+      continue;
+    }
+
+    if (arg.startsWith("--plugin-source=")) {
+      const pluginSource = arg.slice("--plugin-source=".length);
+      if (pluginSource === "local-build" || pluginSource === "installed-configured") {
+        parsed.pluginSource = pluginSource;
+      } else {
+        throw new Error(`Unknown plugin source: ${pluginSource}`);
+      }
+      i++;
+      continue;
+    }
+
+    if (arg === "--plugin-source") {
+      const pluginSource = argv[i + 1];
+      if (!pluginSource || !["local-build", "installed-configured"].includes(pluginSource)) {
+        throw new Error("Expected one of: local-build, installed-configured");
+      }
+      parsed.pluginSource = pluginSource as PluginSource;
+      i += 2;
+      continue;
+    }
+
     if (arg.startsWith("--auth=")) {
       parsed.authPath = arg.slice("--auth=".length);
       i++;
@@ -234,7 +281,33 @@ function parseArgs(argv: string[]): ParsedArgs {
     throw new Error("Command mode requires command arguments after '--'");
   }
 
+  if (parsed.fixture !== undefined && parsed.projectPath !== undefined) {
+    throw new Error("--fixture and --project-path are mutually exclusive");
+  }
+
+  if (parsed.fixture === undefined && parsed.projectPath === undefined) {
+    parsed.fixture = DEFAULT_FIXTURE;
+  }
+
   return parsed;
+}
+
+async function validateProjectPath(projectPath: string): Promise<string> {
+  const normalizedPath = projectPath.trim();
+  if (!normalizedPath) {
+    throw new Error("Missing value for --project-path");
+  }
+
+  const metadata = await stat(normalizedPath).catch(() => null);
+  if (!metadata) {
+    throw new Error(`Project path does not exist: ${normalizedPath}`);
+  }
+
+  if (!metadata.isDirectory()) {
+    throw new Error(`Project path is not a directory: ${normalizedPath}`);
+  }
+
+  return normalizedPath;
 }
 
 function printSection(title: string, value: string): void {
@@ -246,6 +319,26 @@ function exitReason(exitCode: number, signalCode: NodeJS.Signals | null): string
     return `signal ${signalCode}`;
   }
   return `exit code ${exitCode}`;
+}
+
+function isInstalledConfiguredLoadProofValid(loadedPluginVersion: string | null, expectedVersion: string): boolean {
+  const loaded = loadedPluginVersion?.trim();
+  if (!loaded || loaded === "fixture") {
+    return false;
+  }
+
+  return loaded === expectedVersion.trim();
+}
+
+async function readLoadedPluginVersion(workdir: string): Promise<string | null> {
+  const projectYamlPath = join(workdir, ".coder", "project.yaml");
+  const content = await readFile(projectYamlPath, "utf8").catch(() => null);
+  if (!content) {
+    return null;
+  }
+
+  const match = content.match(/^pluginVersion:\s*(.+)$/m);
+  return match?.[1]?.trim() ?? null;
 }
 
 async function runInteractive(
@@ -343,10 +436,20 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 0;
   }
 
-  if (!isFixtureName(args.fixture)) {
+  if (args.fixture && !isFixtureName(args.fixture)) {
     console.error(`Unknown fixture: ${args.fixture}`);
     console.error(`Available fixtures: ${FIXTURE_NAMES.join(", ")}`);
     return 2;
+  }
+
+  let validatedProjectPath: string | undefined;
+  if (args.projectPath !== undefined) {
+    try {
+      validatedProjectPath = await validateProjectPath(args.projectPath);
+    } catch (error) {
+      console.error(`Project path error: ${(error as Error).message}`);
+      return 2;
+    }
   }
 
   const opencodeCheck = await checkOpencodeAvailability();
@@ -369,16 +472,37 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 1;
   }
 
-  const workspace = await createFixtureWorkspace(args.fixture);
-  let pluginSymlink = "";
+  const workspace = validatedProjectPath
+    ? await createProjectPathWorkspace(validatedProjectPath)
+    : await createFixtureWorkspace(args.fixture as FixtureName);
+  let pluginPathUsed = "<none>";
+  let resolvedInstalledPackage = "<none>";
+  let resolvedHostConfig = "<none>";
+  let expectedInstalledLoadedVersion = "<none>";
   let exitCode = 1;
   let shouldKeep = args.keep;
   let seededAuthPath: string | null = null;
   let authSourceCategory: string = "none";
 
   try {
-    pluginSymlink = await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
-    const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+    const preparedPluginSource = await prepareWorkspacePluginSource({
+      projectRoot: PROJECT_ROOT,
+      workdir: workspace.workdir,
+      pluginSource: args.pluginSource,
+    });
+
+    const isolatedPaths = await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
+      pluginSource: preparedPluginSource.pluginSource,
+    });
+
+    pluginPathUsed = preparedPluginSource.localPluginSymlink ?? "<none>";
+    resolvedInstalledPackage = preparedPluginSource.resolvedInstalledPackageSpec ?? "<none>";
+    resolvedHostConfig = preparedPluginSource.resolvedHostConfigPath ?? "<none>";
+    expectedInstalledLoadedVersion = preparedPluginSource.expectedLoadedPluginVersion ?? "<none>";
+
+    if (args.pluginSource === "installed-configured" && expectedInstalledLoadedVersion === "<none>") {
+      throw new Error("installed-configured setup did not resolve expected loaded plugin version");
+    }
 
     if (authSeedPath) {
       seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, {
@@ -389,15 +513,30 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
     console.log("\nManual isolated plugin test environment ready\n");
     printSection("Mode", args.mode);
-    printSection("Fixture", args.fixture);
+    printSection("Plugin source", args.pluginSource);
+    if (workspace.workspaceSource.kind === "fixture") {
+      printSection("Fixture", workspace.workspaceSource.fixtureName);
+    } else {
+      printSection("Project path", workspace.workspaceSource.projectPath);
+    }
+    printSection("Project source", workspace.projectSourceDir);
     printSection("Temp root", workspace.tempRoot);
-    printSection("Temp project", workspace.workdir);
-    printSection("Plugin path used", pluginSymlink);
+    printSection("Temp workdir", workspace.workdir);
+    printSection("Plugin path used", pluginPathUsed);
+    printSection("Resolved installed package", resolvedInstalledPackage);
+    printSection("Resolved host config", resolvedHostConfig);
+    printSection("Expected installed plugin version", expectedInstalledLoadedVersion);
     printSection("Isolated HOME", isolatedPaths.homeDir);
     printSection("Isolated XDG_CONFIG_HOME", isolatedPaths.xdgConfigHome);
     printSection("Isolated XDG_DATA_HOME", isolatedPaths.xdgDataHome);
     printSection("Isolated XDG_CACHE_HOME", isolatedPaths.xdgCacheHome);
     printSection("Isolated OPENCODE_CONFIG_DIR", isolatedPaths.opencodeConfigDir);
+    printSection(
+      "Configured plugin loading",
+      Object.prototype.hasOwnProperty.call(isolatedPaths.env, "OPENCODE_DISABLE_DEFAULT_PLUGINS")
+        ? "disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)"
+        : "enabled"
+    );
     printSection("Auth seeded", seededAuthPath ? `yes (${authSourceCategory})` : "no");
     printSection("Cleanup plan", args.keep ? "keep (--keep enabled)" : "cleanup on success");
     if (args.mode === "command") {
@@ -413,6 +552,20 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       if (result.exitCode !== 0 || result.signalCode !== null) {
         shouldKeep = true;
       }
+      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
+      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
+      if (args.pluginSource === "installed-configured") {
+        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
+        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
+        if (!validProof) {
+          console.error(
+            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
+              loadedPluginVersion ?? "<not-detected>"
+            })`
+          );
+          exitCode = 1;
+        }
+      }
       console.log(`\nOpenCode TUI finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else if (args.mode === "shell") {
       const shell = process.env.SHELL?.trim() || "/bin/sh";
@@ -420,6 +573,20 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       exitCode = result.exitCode;
       if (result.exitCode !== 0 || result.signalCode !== null) {
         shouldKeep = true;
+      }
+      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
+      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
+      if (args.pluginSource === "installed-configured") {
+        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
+        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
+        if (!validProof) {
+          console.error(
+            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
+              loadedPluginVersion ?? "<not-detected>"
+            })`
+          );
+          exitCode = 1;
+        }
       }
       console.log(`\nIsolated shell finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else {
@@ -443,6 +610,21 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       exitCode = result.exitCode;
       if (result.exitCode !== 0 || result.signalCode !== null) {
         shouldKeep = true;
+      }
+
+      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
+      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
+      if (args.pluginSource === "installed-configured") {
+        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
+        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
+        if (!validProof) {
+          console.error(
+            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
+              loadedPluginVersion ?? "<not-detected>"
+            })`
+          );
+          exitCode = 1;
+        }
       }
 
       console.log(`--- result ---\nExit: ${exitReason(result.exitCode, result.signalCode)}`);

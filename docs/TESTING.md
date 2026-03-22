@@ -13,6 +13,21 @@ This project uses three test levels:
 | Integration | `tests/integration/` | Before committing | `bun test tests/integration` |
 | E2E | `tests/e2e/` | Before releases | `bun test tests/e2e` |
 
+## Which workflow should I use? (decision matrix)
+
+Use this quick matrix when triaging bugs or validating behavior:
+
+| Situation | Best fit | Why |
+|---|---|---|
+| Verify pure logic (parser/config/service behavior) | Unit tests | Fast, isolated, no CLI/runtime dependencies |
+| Verify plugin component interactions in-process | Integration tests | Exercises plugin pipeline without real `opencode` process |
+| Verify real CLI startup/plugin wiring on known baseline project | E2E tests (`tests/e2e`) or manual launcher with `--fixture` | Uses committed fixture copied into temp workspace for repeatability |
+| Reproduce issue from a real local project safely | Manual launcher with `--project-path` | Copies external project to temp workspace; avoids mutating source project |
+| Compare installed published plugin vs current local implementation | Manual launcher with `--plugin-source=installed-configured` then rerun with default `local-build` | Same harness/project source, only plugin source changes |
+| Investigate startup hang / host-specific behavior in real CLI path | Manual launcher (`--mode=tui`/`shell`/`command`) | Runs real `opencode` CLI with isolated HOME/XDG/OpenCode env |
+
+If you are unsure, start with fixture-based manual launcher (`--fixture=cli-smoke-project`) and only move to external project reproduction when fixture runs cannot capture the issue.
+
 ## Integration Tests
 
 **Location**: `tests/integration/`
@@ -23,6 +38,16 @@ Integration tests verify real component interactions without mocks:
 - Uses actual knowledge-base files
 - Verifies config merging, command loading
 - Uses mock plugin input (not a real OpenCode server)
+
+### What integration tests do **not** cover
+
+Integration tests are **not** the right tool for validating real CLI startup/runtime behavior, for example:
+
+- startup hangs from actual `opencode` CLI initialization
+- behavior differences caused by real project layouts on disk
+- installed-vs-local plugin loading differences
+
+Use e2e tests or the manual isolated launcher for those scenarios.
 
 ```bash
 bun test tests/integration    # Run integration tests
@@ -117,6 +142,36 @@ Entry point:
 bun run test:manual -- --help
 ```
 
+### Source modes: project under test
+
+The launcher supports two project-source modes:
+
+1. **Committed fixture (default)**
+   - `--fixture=<name>` (defaults to `cli-smoke-project`)
+   - copies `tests/e2e/fixtures/<name>` into a temp workspace
+2. **External project path**
+   - `--project-path <absolute-or-relative-path>`
+   - copies that directory into a temp workspace (excluding existing `.git` contents), then initializes a fresh git repo in the temp copy
+
+`--fixture` and `--project-path` are mutually exclusive.
+
+### Source modes: plugin under test
+
+The launcher supports two plugin-source modes:
+
+1. **`local-build` (default)**
+   - builds/uses this repository's `dist/opencode-coder.js`
+   - wires symlink into `<temp-workdir>/.opencode/plugins/opencode-coder.js`
+   - sets `OPENCODE_DISABLE_DEFAULT_PLUGINS=true` in isolated env to avoid double-loading
+2. **`installed-configured`**
+   - resolves exactly one `@dynatrace-oss/opencode-coder@...` entry from host `opencode.json`
+   - deterministically prepares that package in the temp workspace (`.opencode`) before launch
+   - wires `.opencode/plugins/opencode-coder.js` to the prepared installed artifact
+   - keeps `OPENCODE_DISABLE_DEFAULT_PLUGINS=true` so startup does **not** depend on runtime plugin installation
+   - records expected installed version and requires post-run load proof
+
+`installed-configured` uses host config only to resolve package spec/version. If preparation fails (missing package, install error, entrypoint missing, version mismatch), launcher setup fails loudly before comparison runs.
+
 Examples:
 
 ```bash
@@ -134,6 +189,15 @@ bun run test:manual -- --mode=command --auth "$HOME/.local/share/opencode/auth.j
 
 # 5) Preserve workspace for inspection
 bun run test:manual -- --mode=command --keep -- opencode run --command "pwd" --format json
+
+# 6) Reproduce from an external project safely (copied into temp workspace)
+bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --keep -- opencode run --command "pwd" --format json
+
+# 7) Compare same project with installed configured plugin first
+bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --plugin-source=installed-configured --keep -- opencode run --command "pwd" --format json
+
+# 8) Re-run same project with current local build
+bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --plugin-source=local-build --keep -- opencode run --command "pwd" --format json
 ```
 
 Recommended shared workflow:
@@ -144,6 +208,30 @@ Recommended shared workflow:
 - Let auth fall back to `~/.local/share/opencode/auth.json` in normal local use; pass `--auth <path>` only when you want to test with a different auth file
 - Use `--keep` when debugging; otherwise successful runs clean up automatically
 - Do **not** run manual tests directly in the real fixture or repo workspace if you want parity with e2e behavior — use the launcher so the fixture is copied into a temp project first
+
+### Installed-vs-local comparison workflow ("is this already fixed?")
+
+1. Run the failing scenario in `installed-configured` mode on the target project (`--fixture` or `--project-path`) and capture the behavior.
+2. Re-run the **same command** with the **same project source** but `--plugin-source=local-build`.
+3. Compare outcomes:
+   - if installed fails but local succeeds, the issue is likely already fixed in current implementation
+   - if both fail the same way, local implementation likely does **not** fix it yet
+   - if both succeed, the original report may be environment/version-specific; use preserved workspaces/logs to refine
+4. Validate proof lines in launcher output for installed-configured runs:
+   - `Expected installed plugin version: <x.y.z>`
+   - `Loaded plugin version: <x.y.z>`
+   - `Installed plugin load proof: valid`
+   If proof is missing/invalid (for example `Loaded plugin version: fixture`), launcher exits non-zero and prints `INVALID_COMPARISON`.
+5. Keep both runs with `--keep` while debugging, then inspect the printed `Environment preserved at:` directories.
+
+Tip: compare launcher summary lines (`Plugin source`, `Resolved installed package`, `Expected installed plugin version`, `Loaded plugin version`, `Installed plugin load proof`) to confirm you actually switched plugin source and achieved real installed-plugin load.
+
+### Safety model and current limits
+
+- External project reproduction is copy-based: launcher never runs in place on your source project.
+- For `--project-path`, existing `.git` contents are not copied; harness creates a fresh git repo in temp workspace for root detection.
+- Host OpenCode config is **not** reused directly during isolated runs. It is read only to resolve installed package spec in `installed-configured` mode, then isolated config is written under temp `OPENCODE_CONFIG_DIR`.
+- Exact in-place reproduction against a live project directory is intentionally out of scope for this iteration.
 
 Auth precedence for the launcher:
 

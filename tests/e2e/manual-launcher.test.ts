@@ -1,8 +1,14 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
-import { checkOpencodeAvailability, createIsolatedOpenCodePaths } from "./helpers/harness";
+import {
+  checkOpencodeAvailability,
+  createIsolatedOpenCodePaths,
+  createIsolatedOpenCodePathsWithPluginSource,
+  resolveHostOpenCodeConfigPath,
+  resolveInstalledConfiguredPluginFromHostConfig,
+} from "./helpers/harness";
 
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 
@@ -69,6 +75,144 @@ describe("manual launcher preflight", () => {
     expect(result.stderr).toContain("Auth seed error:");
     expect(result.stderr).not.toContain(" at ");
   });
+
+  it("fails clearly when --project-path is missing a value", async () => {
+    const result = await runLauncher(["--mode=command", "--project-path=", "--", "env"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Argument error: Missing value for --project-path");
+  });
+
+  it("fails clearly for invalid --project-path directory", async () => {
+    const result = await runLauncher(["--mode=command", "--project-path=/tmp/does-not-exist-project", "--", "env"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Project path error: Project path does not exist:");
+  });
+
+  it("fails clearly when --fixture and --project-path are both set", async () => {
+    const result = await runLauncher([
+      "--mode=command",
+      "--fixture=cli-smoke-project",
+      "--project-path=/tmp",
+      "--",
+      "env",
+    ]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Argument error: --fixture and --project-path are mutually exclusive");
+  });
+
+  it("resolves host config path precedence", () => {
+    const fallbackPath = resolveHostOpenCodeConfigPath({}, "/tmp/fallback-home");
+    expect(fallbackPath).toBe("/tmp/fallback-home/.config/opencode/opencode.json");
+
+    const xdgPath = resolveHostOpenCodeConfigPath({ XDG_CONFIG_HOME: "/tmp/xdg-config" }, "/tmp/fallback-home");
+    expect(xdgPath).toBe("/tmp/xdg-config/opencode/opencode.json");
+
+    const explicitPath = resolveHostOpenCodeConfigPath(
+      {
+        OPENCODE_CONFIG_DIR: "/tmp/explicit-config",
+        XDG_CONFIG_HOME: "/tmp/xdg-config",
+      },
+      "/tmp/fallback-home"
+    );
+    expect(explicitPath).toBe("/tmp/explicit-config/opencode.json");
+  });
+
+  it("resolves installed-configured package when exactly one matching plugin is configured", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-ok-"));
+
+    try {
+      await writeFile(
+        join(hostConfigRoot, "opencode.json"),
+        JSON.stringify(
+          {
+            plugin: ["@hk9890/opencode-dynatrace@0.6.0", "@dynatrace-oss/opencode-coder@0.34.2"],
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      const resolved = await resolveInstalledConfiguredPluginFromHostConfig({ OPENCODE_CONFIG_DIR: hostConfigRoot });
+
+      expect(resolved.packageSpec).toBe("@dynatrace-oss/opencode-coder@0.34.2");
+      expect(resolved.hostConfigPath).toBe(join(hostConfigRoot, "opencode.json"));
+    } finally {
+      await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when host config has no matching installed opencode-coder entry", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-none-"));
+
+    try {
+      await writeFile(
+        join(hostConfigRoot, "opencode.json"),
+        JSON.stringify(
+          {
+            plugin: ["@hk9890/opencode-dynatrace@0.6.0"],
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      await expect(
+        resolveInstalledConfiguredPluginFromHostConfig({ OPENCODE_CONFIG_DIR: hostConfigRoot })
+      ).rejects.toThrow("found 0");
+    } finally {
+      await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("fails when host config has multiple matching opencode-coder entries", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-many-"));
+
+    try {
+      await writeFile(
+        join(hostConfigRoot, "opencode.json"),
+        JSON.stringify(
+          {
+            plugin: [
+              "@dynatrace-oss/opencode-coder@0.34.1",
+              "@dynatrace-oss/opencode-coder@0.34.2",
+              "@hk9890/opencode-dynatrace@0.6.0",
+            ],
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      await expect(
+        resolveInstalledConfiguredPluginFromHostConfig({ OPENCODE_CONFIG_DIR: hostConfigRoot })
+      ).rejects.toThrow("found 2");
+    } finally {
+      await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("seeds installed-configured isolated config without configured opencode-coder entry", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "opencode-coder-installed-config-seed-"));
+
+    try {
+      const isolatedPaths = await createIsolatedOpenCodePathsWithPluginSource(tempRoot, {
+        pluginSource: "installed-configured",
+      });
+
+      const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
+      expect(opencodeConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
+      expect(Object.prototype.hasOwnProperty.call(isolatedPaths.env, "OPENCODE_DISABLE_DEFAULT_PLUGINS")).toBe(true);
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode", () => {
@@ -95,9 +239,16 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Mode: command");
+      expect(result.stdout).toContain("Plugin source: local-build");
       expect(result.stdout).toContain("Fixture: cli-smoke-project");
+      expect(result.stdout).toContain("Project source:");
+      expect(result.stdout).toContain("Temp workdir:");
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
       expect(result.stdout).toContain("Plugin path used:");
+      expect(result.stdout).toContain("Resolved installed package: <none>");
+      expect(result.stdout).toContain("Resolved host config: <none>");
+      expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
+      expect(result.stdout).toContain("Loaded plugin version:");
       expect(result.stdout).toContain("OPENCODE_DISABLE_DEFAULT_PLUGINS=true");
       expect(result.stdout).toContain("OPENCODE_CONFIG_DIR=");
       expect(result.stdout).not.toContain("OPENCODE_DEFAULT_OPTIONS=");
@@ -132,6 +283,180 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
         await rm(preservedRoot, { recursive: true, force: true });
       }
       await rm(tempAuthDir, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("runs one-shot command with external --project-path copied into isolated workspace", async () => {
+    const sourceRoot = await mkdtemp(join(tmpdir(), "opencode-coder-manual-project-source-"));
+    const sourceAuthDir = await mkdtemp(join(tmpdir(), "opencode-coder-manual-auth-"));
+    const authPath = join(sourceAuthDir, "auth.json");
+    await writeFile(authPath, "{}\n", "utf8");
+
+    await mkdir(join(sourceRoot, ".git"), { recursive: true });
+    await writeFile(join(sourceRoot, ".git", "SENTINEL"), "copied-git-metadata\n", "utf8");
+    await writeFile(join(sourceRoot, "README.md"), "external project fixture\n", "utf8");
+
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher([
+        "--mode=command",
+        "--project-path",
+        sourceRoot,
+        "--keep",
+        `--auth=${authPath}`,
+        "--",
+        "env",
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Mode: command");
+      expect(result.stdout).toContain("Plugin source: local-build");
+      expect(result.stdout).toContain(`Project path: ${sourceRoot}`);
+      expect(result.stdout).toContain(`Project source: ${sourceRoot}`);
+      expect(result.stdout).toContain("Temp workdir:");
+      expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      expect(preservedMatch).not.toBeNull();
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const copiedReadme = Bun.file(join(preservedRoot!, "project", "README.md"));
+      const copiedGitHead = Bun.file(join(preservedRoot!, "project", ".git", "HEAD"));
+      const copiedGitSentinel = Bun.file(join(preservedRoot!, "project", ".git", "SENTINEL"));
+
+      expect(await copiedReadme.exists()).toBe(true);
+      expect(await copiedGitHead.exists()).toBe(true);
+      expect(await copiedGitSentinel.exists()).toBe(false);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+      await rm(sourceRoot, { recursive: true, force: true });
+      await rm(sourceAuthDir, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("supports installed-configured plugin source with deterministic package prep and version proof", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-launcher-installed-source-"));
+
+    await writeFile(
+      join(hostConfigRoot, "opencode.json"),
+      JSON.stringify(
+        {
+          plugin: ["@dynatrace-oss/opencode-coder@0.34.2", "@hk9890/opencode-dynatrace@0.6.0"],
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(
+        [
+          "--mode=command",
+          "--fixture=existing-active-project",
+          "--plugin-source=installed-configured",
+          "--keep",
+          "--",
+          "opencode",
+          "run",
+          "--command",
+          "pwd",
+          "--format",
+          "json",
+        ],
+        {
+          OPENCODE_CONFIG_DIR: hostConfigRoot,
+        }
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Plugin source: installed-configured");
+      expect(result.stdout).toContain("Plugin path used:");
+      expect(result.stdout).not.toContain("Plugin path used: <none>");
+      expect(result.stdout).toContain("Resolved installed package: @dynatrace-oss/opencode-coder@0.34.2");
+      expect(result.stdout).toContain(`Resolved host config: ${join(hostConfigRoot, "opencode.json")}`);
+      expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
+      expect(result.stdout).toContain("Expected installed plugin version: 0.34.2");
+      expect(result.stdout).toContain("Loaded plugin version:");
+      expect(result.stdout).toContain("Installed plugin load proof: valid");
+      expect(result.stdout).not.toContain("INVALID_COMPARISON");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      expect(preservedMatch).not.toBeNull();
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
+      expect(await pluginLink.exists()).toBe(true);
+
+      const isolatedConfig = await readFile(
+        join(preservedRoot!, "isolated-opencode", "xdg-config", "opencode", "opencode.json"),
+        "utf8"
+      );
+      expect(isolatedConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(isolatedConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+      await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("fails installed-configured run when plugin load proof remains fixture baseline", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-launcher-installed-source-negative-"));
+
+    await writeFile(
+      join(hostConfigRoot, "opencode.json"),
+      JSON.stringify(
+        {
+          plugin: ["@dynatrace-oss/opencode-coder@0.34.2", "@hk9890/opencode-dynatrace@0.6.0"],
+        },
+        null,
+        2
+      ) + "\n",
+      "utf8"
+    );
+
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(
+        [
+          "--mode=command",
+          "--fixture=existing-active-project",
+          "--plugin-source=installed-configured",
+          "--keep",
+          "--",
+          "env",
+        ],
+        {
+          OPENCODE_CONFIG_DIR: hostConfigRoot,
+        }
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain("Plugin source: installed-configured");
+      expect(result.stdout).toContain("Expected installed plugin version: 0.34.2");
+      expect(result.stdout).toContain("Loaded plugin version: fixture");
+      expect(result.stdout).toContain("Installed plugin load proof: MISSING_OR_INVALID");
+      expect(result.stderr).toContain("INVALID_COMPARISON: installed-configured plugin load proof missing");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      expect(preservedMatch).not.toBeNull();
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+      await rm(hostConfigRoot, { recursive: true, force: true });
     }
   }, 120000);
 });
