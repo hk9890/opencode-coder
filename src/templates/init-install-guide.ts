@@ -273,7 +273,27 @@ Key AGENTS rules:
 - In team mode, write only root \`AGENTS.md\`
 - If a team \`AGENTS.md\` already exists and the repo is in stealth mode, read it for context but write only \`.coder/AGENTS.md\`
 
-### Step 5: Report Completion
+### Step 5: Optional Docs Lifecycle Follow-through
+
+After AGENTS setup, check whether docs lifecycle support is available in this runtime.
+
+Use this rule:
+- if "/opencode-coder/docs" is available in this session, docs lifecycle support is available
+- if "/opencode-coder/docs" is not available, treat docs lifecycle support as unavailable for this session
+
+When docs lifecycle support is available:
+- MUST use the \`question()\` tool and offer:
+  - \`Set up project docs now\`
+  - \`Skip for now\`
+- If the user chooses \`Set up project docs now\`, run docs setup/refresh in this same session using the same lifecycle model used by \`/opencode-coder/docs\` (inspect -> decide -> apply -> verify/report)
+- Do not invent a second docs workflow inside init
+
+When docs lifecycle support is unavailable:
+- Skip this docs step safely
+- Explain briefly that docs lifecycle commands are not available yet in this runtime (for example missing resources)
+- Continue and complete init without failing the no-skill/no-resource path
+
+### Step 6: Report Completion
 
 Summarize what happened:
 
@@ -284,6 +304,7 @@ Summarize what happened:
 > ✓ Beads initialized or refreshed in the selected mode when enabled
 > ✓ Git hooks installed
 > ✓ AGENTS.md created or refreshed for the active mode
+> ✓ Docs step handled intentionally (run now, skipped by user, or unavailable in this runtime)
 
 If this run installed new commands or agents via aimgr, add:
 

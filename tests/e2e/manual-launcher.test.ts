@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "fs/promises";
+import { createServer } from "net";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -47,7 +48,7 @@ describe("manual launcher preflight", () => {
       const isolatedPaths = await createIsolatedOpenCodePaths(tempRoot);
       const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
 
-      expect(opencodeConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(opencodeConfig).toContain('"plugin": []');
       expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
       expect(opencodeConfig).toContain('"theme": "catppuccin"');
     } finally {
@@ -206,7 +207,7 @@ describe("manual launcher preflight", () => {
       });
 
       const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
-      expect(opencodeConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(opencodeConfig).toContain('"plugin": []');
       expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
       expect(Object.prototype.hasOwnProperty.call(isolatedPaths.env, "OPENCODE_DISABLE_DEFAULT_PLUGINS")).toBe(true);
     } finally {
@@ -276,7 +277,7 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
 
       expect(await pluginLink.exists()).toBe(true);
       expect(await isolatedAuth.exists()).toBe(true);
-      expect(isolatedConfig).toContain('"@hk9890/opencode-dynatrace@0.6.0"');
+      expect(isolatedConfig).toContain('"plugin": []');
       expect(isolatedConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
     } finally {
       if (preservedRoot) {
@@ -293,8 +294,22 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
     await writeFile(authPath, "{}\n", "utf8");
 
     await mkdir(join(sourceRoot, ".git"), { recursive: true });
+    await mkdir(join(sourceRoot, ".beads"), { recursive: true });
+    await mkdir(join(sourceRoot, ".coder"), { recursive: true });
     await writeFile(join(sourceRoot, ".git", "SENTINEL"), "copied-git-metadata\n", "utf8");
+    await writeFile(join(sourceRoot, ".beads", "daemon.pid"), "123\n", "utf8");
+    await writeFile(join(sourceRoot, ".coder", "project.yaml"), "pluginVersion: stale\n", "utf8");
     await writeFile(join(sourceRoot, "README.md"), "external project fixture\n", "utf8");
+
+    const sourceSocketPath = join(sourceRoot, ".beads", "bd.sock");
+    const sourceSocketServer = createServer();
+    await new Promise<void>((resolve, reject) => {
+      sourceSocketServer.once("error", reject);
+      sourceSocketServer.listen(sourceSocketPath, () => {
+        sourceSocketServer.off("error", reject);
+        resolve();
+      });
+    });
 
     let preservedRoot: string | undefined;
 
@@ -325,11 +340,27 @@ describe.skipIf(!opencodeCheck.available)("manual launcher non-interactive mode"
       const copiedReadme = Bun.file(join(preservedRoot!, "project", "README.md"));
       const copiedGitHead = Bun.file(join(preservedRoot!, "project", ".git", "HEAD"));
       const copiedGitSentinel = Bun.file(join(preservedRoot!, "project", ".git", "SENTINEL"));
+      const copiedBeadsPid = Bun.file(join(preservedRoot!, "project", ".beads", "daemon.pid"));
+      const copiedBeadsSocket = Bun.file(join(preservedRoot!, "project", ".beads", "bd.sock"));
+      const copiedCoderProject = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
 
       expect(await copiedReadme.exists()).toBe(true);
       expect(await copiedGitHead.exists()).toBe(true);
       expect(await copiedGitSentinel.exists()).toBe(false);
+      expect(await copiedBeadsPid.exists()).toBe(false);
+      expect(await copiedBeadsSocket.exists()).toBe(false);
+      expect(await copiedCoderProject.exists()).toBe(false);
     } finally {
+      await new Promise<void>((resolve, reject) => {
+        sourceSocketServer.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve();
+        });
+      });
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });
       }

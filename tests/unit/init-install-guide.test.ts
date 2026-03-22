@@ -45,4 +45,15 @@ describe("getInstallGuideTemplate", () => {
     expect(template).toContain("DO NOT treat `.coder/` existence by itself as activation");
     expect(template).toContain("create `.coder/` only then");
   });
+
+  it("includes optional docs lifecycle follow-through with safe unavailable fallback", () => {
+    const template = getInstallGuideTemplate();
+
+    expect(template).toContain("### Step 5: Optional Docs Lifecycle Follow-through");
+    expect(template).toContain('if "/opencode-coder/docs" is available in this session');
+    expect(template).toContain("`Set up project docs now`");
+    expect(template).toContain("`Skip for now`");
+    expect(template).toContain("same lifecycle model used by `/opencode-coder/docs`");
+    expect(template).toContain("Continue and complete init without failing the no-skill/no-resource path");
+  });
 });

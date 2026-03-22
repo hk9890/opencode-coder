@@ -1,12 +1,10 @@
 # Project Setup
 
-> **Synced copy notice**
+> **Canonical-source rule (testable)**
 >
-> This file is the repo-local synced copy of:
-> `ai-resources/skills/opencode-coder/references/project-setup.md`
->
-> Canonical source: published skill reference file above.
-> Update the canonical file first, then mirror changes here in the same change.
+> - This file (`ai-resources/skills/opencode-coder/references/project-setup.md`) is the canonical source for project-setup guidance in the published skill.
+> - `docs/user-guide/project-setup.md` is a synced repo-local copy for this repository's own docs.
+> - Any content change to the shared guidance must be made here first, then mirrored to the repo-local copy in the same change.
 
 This guide describes a simple, tool-agnostic documentation structure for projects that want clear routing and controlled context for humans and coding agents.
 

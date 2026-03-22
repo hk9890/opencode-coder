@@ -97,6 +97,7 @@ export interface ResolvedAuthSeedPath {
 export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "share", "opencode", "auth.json");
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
+const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".coder"] as const;
 
 function parsePackageNameFromPluginSpec(spec: string): string {
   const trimmed = spec.trim();
@@ -478,7 +479,7 @@ function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
   }
 
   const segments = rel.split(sep).filter(Boolean);
-  return !segments.includes(".git");
+  return !EXCLUDED_COPY_SEGMENTS.some((excludedSegment) => segments.includes(excludedSegment));
 }
 
 async function createWorkspaceFromSource(workspaceSource: WorkspaceSource): Promise<FixtureWorkspace> {

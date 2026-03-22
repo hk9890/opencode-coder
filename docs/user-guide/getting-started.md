@@ -70,7 +70,7 @@ Common next steps:
 - run `bd ready` to see unblocked work if you use beads
 - create work with `bd create "Task description" --type task`
 - re-run `/opencode-coder/init` after installing new resources
-- run `/opencode-coder/update-agent-md` when you only need to refresh the routing table
+- run `/opencode-coder/docs` to inspect, refresh, audit, and verify the project docs lifecycle
 
 ## Optional manual setup
 

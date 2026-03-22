@@ -1,6 +1,8 @@
 # Generating AGENTS.md
 
-Instructions for generating or updating an AGENTS.md file for any project.
+Template/format guidance for generating or updating an AGENTS.md file.
+
+For project-doc lifecycle workflow logic (inspect/bootstrap/refresh/audit/slim/verify decisions), use [project-docs-lifecycle.md](project-docs-lifecycle.md).
 
 **Goal**: Produce a small AGENTS.md that acts as a routing table — each section points agents to the right documents and skills for a given use case. No inline content except Project Overview and Landing the Plane.
 
@@ -25,12 +27,12 @@ Use these placeholders throughout this template:
 
 ## Standard File Convention
 
-Each section maps to a standard file in `{docs}`:
+Each section can map to a standard file in `{docs}` when project-specific guidance exists:
 
 | Section | Standard File | Always Present |
 |---------|--------------|----------------|
 | Project Overview | *(inline)* | Yes |
-| Coding | `{docs}CODING.md` | Yes |
+| Coding | `{docs}CODING.md` | Only if project-specific coding guidance exists |
 | Testing | `{docs}TESTING.md` | Only if relevant docs/skills exist |
 | Releases | `{docs}RELEASING.md` | Only if relevant docs/skills exist |
 | Monitoring | `{docs}MONITORING.md` | Only if relevant docs/skills exist |
@@ -83,7 +85,7 @@ Also map installed skills to sections:
 - Skills matching "test" → Testing
 - Skills matching "pull request", "PR", "code review", "bitbucket", "github-pr" → Pull Requests
 
-A section is **active** if it has at least one matching doc file OR one matching skill. Exception: **Coding** is always active.
+A section is **active** if it has at least one matching project doc file OR one matching skill/workflow.
 
 ### Step 3: Migration Decision
 
@@ -119,9 +121,9 @@ If non-standard names are found, ask the user **once**:
 
 ### Step 4: Create Missing Standard Files
 
-For the **Coding** section (always active): if no conventions files exist anywhere, create `{docs}CODING.md` with build commands, directory structure, and basic conventions extracted from the codebase.
+Only create a standard file when the project has real local guidance for that topic.
 
-For other active sections: only create the standard file if the explore step gathered enough relevant content to populate it meaningfully. If a section is active only because a skill is installed (no doc content found), just reference the skill in AGENTS.md — don't create a hollow doc file.
+If a section is active only because a skill/workflow is installed (no project-specific doc content found), reference the skill/workflow in AGENTS.md and do not create a hollow topic doc.
 
 **Before creating any new file, ask the user to confirm** — show them a summary of what you plan to write and let them approve or adjust.
 
@@ -141,15 +143,17 @@ One-sentence description.
 
 Just what the project is and the tech stack. Nothing else.
 
-#### Coding (always)
+#### Coding (conditional)
 
 ```markdown
 ## Coding
 
-Read `{docs}CODING.md` for build commands, project structure, and code conventions.
+Read `{docs}CODING.md` for project-specific build commands, project structure, and code conventions.
 
 Read `CONTRIBUTING.md` for contribution workflow.
 ```
+
+If no project-specific coding doc exists and coding workflow is fully covered by skills/reusable guidance, route to the relevant skill/reference instead.
 
 #### Testing (conditional)
 
@@ -217,7 +221,8 @@ After generating, confirm:
 - [ ] Project Overview is just name + description + tech stack (no commands)
 - [ ] Every other section is a pointer (file or skill reference), not a summary
 - [ ] All referenced file paths actually exist
-- [ ] Coding section is present (always required)
+- [ ] Topic docs are referenced only when they exist and contain project-specific guidance
+- [ ] If a topic is skill-only, AGENTS routes to the skill/workflow and does not imply a missing doc is required
 - [ ] Conditional sections only appear when relevant docs/skills exist
 - [ ] Landing the Plane only appears if beads is installed
 - [ ] No duplicated content from referenced files
@@ -253,3 +258,11 @@ If a team `AGENTS.md` already exists and the repo is in stealth mode:
 - keep new doc references under `.coder/docs/`
 
 See [project-structure.md](project-structure.md) for the full rule set.
+
+---
+
+## Scope Boundary
+
+This reference defines AGENTS template/format conventions.
+
+It does **not** own the full project-doc lifecycle workflow. Lifecycle decisions about when to create, skip, refresh, audit, or slim topic docs belong to [project-docs-lifecycle.md](project-docs-lifecycle.md).

@@ -81,13 +81,18 @@ Use these file names under the active docs directory:
 
 | Topic | Standard file | Rule |
 |---|---|---|
-| Coding | `CODING.md` | Always required for active setups |
+| Coding | `CODING.md` | Create only if project-specific coding guidance exists |
 | Testing | `TESTING.md` | Create only if relevant |
 | Releases | `RELEASING.md` | Create only if relevant |
 | Monitoring | `MONITORING.md` | Create only if relevant |
 | Pull Requests | `PULL-REQUESTS.md` | Create only if relevant |
 
-**Create a standard doc only when it has real content.** If a section is active only because a skill exists, AGENTS.md can reference the skill without creating a hollow doc.
+**Create a standard doc only when it has real project-specific content.**
+
+If a topic is fully covered by an installed skill/workflow and the project has no extra local rules, do **not** create a hollow project doc.
+Route that topic from AGENTS to the skill/workflow instead.
+
+As a practical size guideline, keep topic docs under ~500 lines and split when they outgrow that limit.
 
 ## 5. AGENTS.md Rules
 

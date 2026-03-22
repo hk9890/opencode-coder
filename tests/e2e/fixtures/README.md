@@ -18,7 +18,7 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 ## Shared support fixtures
 
 - `_shared/opencode-config/opencode.json` — committed snapshot of the OpenCode config seeded into each isolated `OPENCODE_CONFIG_DIR` during manual and e2e runs. Update this file intentionally when the test baseline should change; tests do not read your live `~/.config/opencode/opencode.json`.
-  - Keeps `@hk9890/opencode-dynatrace@0.6.0` enabled for provider/model setup parity during tests.
+  - Keeps `plugin` empty so isolated startup does not attempt unavailable external plugin installs.
   - Does **not** pin `@dynatrace-oss/opencode-coder`; the coder plugin under test comes from the locally wired build artifact at `.opencode/plugins/opencode-coder.js`.
 
 For manual installed-vs-local comparison flows:

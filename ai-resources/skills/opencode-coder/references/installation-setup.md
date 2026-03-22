@@ -4,6 +4,8 @@ Lean reference for explicit enablement and `/opencode-coder/init`.
 
 **Canonical references**:
 - File locations, saved mode state, AGENTS rules, and stealth vs team behavior: [project-structure.md](project-structure.md)
+- Project docs setup model and AGENTS routing strategy: [project-setup.md](project-setup.md)
+- Shared inspect/bootstrap/refresh/verify lifecycle for docs work: [project-docs-lifecycle.md](project-docs-lifecycle.md)
 - Switching between modes: [mode-transition.md](mode-transition.md)
 - Common failures and fixes: [troubleshooting-patterns.md](troubleshooting-patterns.md)
 
@@ -73,6 +75,7 @@ It can:
 - switch between `stealth` and `team`
 - switch an active project back to saved `disabled`
 - migrate legacy initialized projects to explicit saved mode on first detection
+- optionally run a docs setup/refresh step using the shared docs lifecycle model
 
 ### Legacy upgrade behavior
 
@@ -144,7 +147,7 @@ Use [project-structure.md](project-structure.md) to verify the expected paths.
 - Safe to re-run
 - Should refresh or switch the active mode instead of assuming a fresh install
 - In stealth mode, the marker in `.git/info/exclude` should prevent ambiguous re-detection
-- Re-runs refresh generated docs and the active AGENTS file
+- Re-runs refresh the active AGENTS file; docs refresh is optional when selected and follows the shared lifecycle reference
 
 ### First Steps After Setup
 

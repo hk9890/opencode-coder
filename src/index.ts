@@ -15,6 +15,49 @@ import { getInstallGuideTemplate } from "./templates";
 
 const PROJECT_CONTEXT_TIMEOUT_MS = 30_000;
 const PROJECT_CONTEXT_TIMEOUT = Symbol("project-context-timeout");
+const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
+const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md" as const;
+
+const DOCS_LIFECYCLE_COMMAND_DEFINITIONS = {
+  "opencode-coder/docs": {
+    description: "Inspect, bootstrap, refresh, audit, and verify project docs lifecycle",
+    template: `# Project Docs Lifecycle
+
+Use /opencode-coder/docs as the primary docs lifecycle entry point.
+
+## Task
+
+Load the opencode-coder skill, then use:
+- references/project-structure.md
+- references/project-docs-lifecycle.md
+
+## Rules
+
+- keep this command as a dispatcher
+- lifecycle decision logic stays in references/project-docs-lifecycle.md
+- treat AGENTS updates as one lifecycle phase, not a separate command family
+`,
+  },
+  "opencode-coder/improve-doc": {
+    description: "Turn a documentation/routing incident into targeted recurrence-prevention updates",
+    template: `# Incident-Driven Docs Improvement
+
+Use /opencode-coder/improve-doc when guidance was missing, stale, unclear, or routed incorrectly.
+
+## Task
+
+Load the opencode-coder skill, then use:
+- references/project-structure.md
+- references/project-docs-lifecycle.md (incident-improvement section)
+
+## Rules
+
+- this command is incident-driven recurrence prevention
+- not a generic typo/grammar cleanup command
+- keep this file as a dispatcher; lifecycle logic stays in references/project-docs-lifecycle.md
+`,
+  },
+} as const;
 
 export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const log = createLogger(client, worktree);
@@ -189,6 +232,32 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           timeoutMs: PROJECT_CONTEXT_TIMEOUT_MS,
         });
       }
+
+      const docsLifecycleResourcesAvailable =
+        activeMode !== null && projectContext?.aimgr.resourcesHealthy === true;
+      if (docsLifecycleResourcesAvailable) {
+        input.command["opencode-coder/docs"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/docs"];
+        input.command["opencode-coder/improve-doc"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/improve-doc"];
+      } else {
+        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+          if (input.command[commandName]) {
+            delete input.command[commandName];
+          }
+        }
+      }
+
+      if (activeMode && !docsLifecycleResourcesAvailable) {
+        log.info("Docs lifecycle commands not registered because runtime resources are unavailable", {
+          mode: activeMode,
+          projectContextAvailable: projectContext !== null,
+          resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
+        });
+      }
+
+      if (input.command[LEGACY_DOCS_COMMAND]) {
+        delete input.command[LEGACY_DOCS_COMMAND];
+      }
+
       log.info("Registered /opencode-coder/init with installation guidance");
 
       // Set orchestrator as default agent when ecosystem is fully ready

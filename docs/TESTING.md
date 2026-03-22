@@ -104,7 +104,7 @@ E2E tests run the full plugin lifecycle against the real OpenCode CLI startup pa
 This isolation model prevents accidental double-loading from globally installed or legacy plugin copies.
 It also prevents tests from drifting when your personal `~/.config/opencode/opencode.json` changes.
 
-The committed shared config fixture intentionally keeps `@hk9890/opencode-dynatrace@0.6.0` enabled so provider/model setup matches real local usage during tests. The `opencode-coder` plugin itself is **not** loaded from `opencode.json` in this harness; the plugin under test is the locally built artifact wired into `.opencode/plugins/opencode-coder.js`.
+The committed shared config fixture intentionally keeps the `plugin` array empty to avoid startup noise from unavailable external packages in isolated runs. The `opencode-coder` plugin itself is **not** loaded from `opencode.json` in this harness; the plugin under test is the locally built artifact wired into `.opencode/plugins/opencode-coder.js`.
 
 ### Fixture Layout
 
@@ -349,6 +349,171 @@ If startup fails in e2e setup, inspect `tests/e2e/.artifacts/` for:
 - `stdout.log`
 - `stderr.log`
 - `notes.txt`
+
+## Docs lifecycle acceptance validation (automated + manual)
+
+For docs lifecycle changes (`/opencode-coder/docs`, `/opencode-coder/init` docs delegation behavior, `/opencode-coder/improve-doc`, and retirement of `/opencode-coder/update-agent-md`), split validation into two buckets:
+
+- **Automated (deterministic):** registration/gating/template contract checks in test suites
+- **Manual (agent-mediated):** end-to-end behavioral checks where output is semantically evaluated by a human reviewer
+
+### Automated checks (deterministic coverage)
+
+Run these first. They provide deterministic coverage for command registration, runtime gating, and lifecycle contract alignment.
+
+```bash
+bun test tests/unit/docs-lifecycle-contract.test.ts
+bun test tests/integration/plugin.test.ts
+bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario [1-4]"
+```
+
+Expected outcomes:
+
+- Inactive modes (fresh, saved disabled): `opencode-coder/init` is available, docs lifecycle commands are not
+- Active team and active stealth: both docs lifecycle commands are available
+- Legacy `opencode-coder/update-agent-md` is not exposed
+
+### Manual validation (acceptance review for non-deterministic behavior)
+
+Use the isolated launcher with `--keep` so you can preserve evidence if behavior is wrong.
+
+#### Prerequisite — use interactive mode + aimgr-ready workspace
+
+The docs lifecycle slash commands in this section are agent-mediated. To observe real lifecycle behavior, each run must include:
+
+- Interactive launcher mode (`--mode=shell` or `--mode=tui`) for slash-command execution
+- An aimgr-initialized workspace where opencode-coder resources are installed and healthy (recommended: `--project-path` pointing to a real prepared project)
+- An auth seed (`--auth <path>`)
+- Provider config in the isolated run (for example `OPENCODE_CONFIG_CONTENT` with `enabled_providers`)
+
+Do **not** use headless one-shot `--mode=command` as the primary acceptance path for these slash commands.
+
+Without the prerequisites above, slash-command runs may exit `0` with no model output or workspace mutations. That is expected setup/gating behavior, not a docs lifecycle product bug.
+
+Use the minimum strategy from [LLM-capable isolated runs (minimum strategy)](#llm-capable-isolated-runs-minimum-strategy).
+
+Diagnostic checkpoint for every preserved run (`--keep`): inspect `.coder/project.yaml` in the preserved workspace and confirm runtime evidence such as:
+
+- `aimgr.resourcesHealthy: true` when validating active docs lifecycle behavior
+- `pluginVersion` rewritten from fixture placeholder to the loaded plugin version
+
+If `aimgr.resourcesHealthy` remains `false` in an active-scenario run, treat that as failed prerequisites (commands may be gated), not command-behavior failure.
+
+#### Scenario 1 — Team mode `/opencode-coder/docs`
+
+- **Starting state**
+  - Repository: this repo
+  - Project source: aimgr-initialized team workspace (`--project-path`), copied by launcher into temp workspace
+  - Expect docs lifecycle commands to be available
+- **Command(s) to run**
+
+  ```bash
+  bun run test:manual -- --mode=shell --project-path "$HOME/dev/<aimgr-ready-team-project>" --keep --auth "$HOME/.local/share/opencode/auth.json"
+  ```
+
+  Then, inside the opened shell session:
+
+  ```bash
+  export OPENCODE_CONFIG_CONTENT='{"enabled_providers":["github-copilot"]}'
+  opencode run --command "/opencode-coder/docs" --format json
+  ```
+
+- **Expected observable outcomes**
+  - Command executes (no "unknown command" / gating suppression)
+  - Response follows docs lifecycle flow for team mode (does not redirect to init-only flow)
+  - No reference to retired `/opencode-coder/update-agent-md`
+- **If wrong, capture this evidence**
+  - Full terminal output (stdout/stderr)
+  - Preserved temp path printed by launcher (`Environment preserved at: ...`)
+  - `.coder/project.yaml` from preserved workspace
+  - Any command list/suggestion output showing missing or wrong command exposure
+
+#### Scenario 2 — Stealth mode `/opencode-coder/docs`
+
+- **Starting state**
+  - Repository: this repo
+  - Project source: aimgr-initialized stealth workspace (`--project-path`), copied by launcher into temp workspace
+  - Expect docs lifecycle commands to be available
+- **Command(s) to run**
+
+  ```bash
+  bun run test:manual -- --mode=shell --project-path "$HOME/dev/<aimgr-ready-stealth-project>" --keep --auth "$HOME/.local/share/opencode/auth.json"
+  ```
+
+  Then, inside the opened shell session:
+
+  ```bash
+  export OPENCODE_CONFIG_CONTENT='{"enabled_providers":["github-copilot"]}'
+  opencode run --command "/opencode-coder/docs" --format json
+  ```
+
+- **Expected observable outcomes**
+  - Command executes in stealth mode (not suppressed)
+  - Response remains docs-lifecycle oriented and mode-appropriate
+  - No regression to legacy update-agent flow
+- **If wrong, capture this evidence**
+  - Full terminal output (stdout/stderr)
+  - Preserved temp workspace path from launcher output
+  - `.coder/project.yaml` and relevant generated docs artifacts in preserved workspace
+
+#### Scenario 3 — `/opencode-coder/init` delegates into docs lifecycle
+
+- **Starting state**
+  - Repository: this repo
+  - Project source/mode: run in both states below to validate branch behavior:
+    1. aimgr-initialized active workspace via `--project-path` (docs resources available)
+    2. `fresh-inactive-project` fixture (docs resources unavailable)
+- **Command(s) to run**
+
+  ```bash
+  bun run test:manual -- --mode=shell --project-path "$HOME/dev/<aimgr-ready-active-project>" --keep --auth "$HOME/.local/share/opencode/auth.json"
+  bun run test:manual -- --mode=shell --fixture=fresh-inactive-project --keep --auth "$HOME/.local/share/opencode/auth.json"
+  ```
+
+  Then, inside each opened shell session:
+
+  ```bash
+  export OPENCODE_CONFIG_CONTENT='{"enabled_providers":["github-copilot"]}'
+  opencode run --command "/opencode-coder/init" --format json
+  ```
+
+- **Expected observable outcomes**
+  - In active mode, init includes intentional docs-lifecycle follow-through guidance (for example setup-now vs skip-for-now decision)
+  - In inactive mode, init explicitly handles docs lifecycle as unavailable and completes safely without runtime failure
+  - Behavior is consistent with automated gating expectations above
+- **If wrong, capture this evidence**
+  - Both command outputs for side-by-side comparison
+  - Preserved workspace paths for both runs
+  - Any error text indicating failed delegation or incorrect mode handling
+
+#### Scenario 4 — `/opencode-coder/improve-doc` with incident (missing `validate-before-release.sh`)
+
+- **Starting state**
+  - Repository: this repo
+  - Project source: aimgr-initialized team workspace (`--project-path`), copied by launcher into temp workspace
+  - Incident to simulate: required validation script missing from workspace (`scripts/validate-before-release.sh`)
+- **Command(s) to run**
+
+  ```bash
+  bun run test:manual -- --mode=shell --project-path "$HOME/dev/<aimgr-ready-team-project>" --keep --auth "$HOME/.local/share/opencode/auth.json"
+  ```
+
+  Then, inside the opened shell session:
+
+  ```bash
+  export OPENCODE_CONFIG_CONTENT='{"enabled_providers":["github-copilot"]}'
+  rm -f scripts/validate-before-release.sh
+  opencode run --command "/opencode-coder/improve-doc docs/TESTING.md" --format json
+  ```
+
+- **Expected observable outcomes**
+  - `/opencode-coder/improve-doc` still runs (no command registration failure)
+  - Response surfaces the missing-script incident as actionable validation debt (or equivalent explicit warning), rather than silently claiming full validation success
+  - Guidance remains scoped to docs lifecycle improvement and validation remediation
+- **If wrong, capture this evidence**
+  - Shell transcript including `rm` and `opencode run` output
+  - Preserved workspace path and resulting file tree state
+  - Any misleading "all checks passed" output despite missing script incident
 
 ## Test Fixtures
 

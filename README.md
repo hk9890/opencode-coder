@@ -158,7 +158,8 @@ These commands are provided by this plugin and available in OpenCode:
 | `/opencode-coder/status` | Show plugin status |
 | `/opencode-coder/report-bug` | Report a bug with session context |
 | `/opencode-coder/dump-session` | Export current session data |
-| `/opencode-coder/update-agent-md` | Refresh AGENTS.md after installing new resources |
+| `/opencode-coder/docs` | Run docs lifecycle (inspect, bootstrap, refresh, audit, slim, verify) |
+| `/opencode-coder/improve-doc` | Turn an incident into targeted doc/routing fixes to prevent recurrence |
 | `/opencode-coder-dev/analyze-logs` | Analyze OpenCode logs for errors (dev use) |
 | `/opencode-coder-dev/fix-bugs` | Triage and fix bugs from logs (dev use) |
 | `/opencode-coder-dev/import-tasks` | Import tasks from GitHub issues (dev use) |

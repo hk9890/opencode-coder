@@ -37,6 +37,26 @@ function savedModeResolution(mode: PluginModeResolution["mode"], source: PluginM
   };
 }
 
+const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
+const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";
+
+function createLifecycleCommandFixture() {
+  return {
+    "opencode-coder/docs": {
+      description: "docs lifecycle",
+      template: "docs template",
+    },
+    "opencode-coder/improve-doc": {
+      description: "incident improvement",
+      template: "improve template",
+    },
+    "opencode-coder/update-agent-md": {
+      description: "legacy docs command",
+      template: "legacy template",
+    },
+  } as Record<string, { description: string; template: string }>;
+}
+
 describe("OpencodeCoder Plugin Integration", () => {
   beforeEach(() => {
     spyOn(BeadsService.prototype, "checkBeadsAvailability").mockResolvedValue(undefined);
@@ -112,10 +132,14 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = {};
+      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
       await hooks.config?.(cfg as any);
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeUndefined();
+      }
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
       expect(cfg.default_agent).toBeUndefined();
       expect(hooks.tool?.coder).toBeUndefined();
       expect(autoInitializeSpy).not.toHaveBeenCalled();
@@ -148,16 +172,173 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = {};
+      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
       await hooks.config?.(cfg as any);
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeUndefined();
+      }
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
       expect(cfg.default_agent).toBeUndefined();
       expect(hooks.tool?.coder).toBeUndefined();
       expect(autoInitializeSpy).not.toHaveBeenCalled();
       expect(healthSpy).not.toHaveBeenCalled();
       expect(detectSpy).not.toHaveBeenCalled();
       expect(mockInput.client.tui.toasts).toHaveLength(0);
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("keeps docs lifecycle commands for active team mode when runtime resources are healthy", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [] },
+        resourcesHealthy: true,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({ ecosystemReady: true })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const seededCommands = createLifecycleCommandFixture();
+      const cfg: Record<string, any> = { command: seededCommands };
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeDefined();
+      }
+      expect(cfg.command?.["opencode-coder/docs"]?.description).toBe(
+        "Inspect, bootstrap, refresh, audit, and verify project docs lifecycle"
+      );
+      expect(cfg.command?.["opencode-coder/docs"]?.template).toContain("references/project-docs-lifecycle.md");
+      expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe(
+        "Turn a documentation/routing incident into targeted recurrence-prevention updates"
+      );
+      expect(cfg.command?.["opencode-coder/improve-doc"]?.template).toContain("incident-improvement section");
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("keeps docs lifecycle commands for active stealth mode when runtime resources are healthy", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [] },
+        resourcesHealthy: true,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({ mode: "stealth", ecosystemReady: true })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const seededCommands = createLifecycleCommandFixture();
+      const cfg: Record<string, any> = { command: seededCommands };
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeDefined();
+      }
+      expect(cfg.command?.["opencode-coder/docs"]?.description).toBe(
+        "Inspect, bootstrap, refresh, audit, and verify project docs lifecycle"
+      );
+      expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe(
+        "Turn a documentation/routing incident into targeted recurrence-prevention updates"
+      );
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("suppresses docs lifecycle commands for active team mode when runtime resources are unavailable", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [{ id: "missing-docs-lifecycle-resource" }] },
+        resourcesHealthy: false,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({
+          ecosystemReady: false,
+          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
+        })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeUndefined();
+      }
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) => entry.message === "Docs lifecycle commands not registered because runtime resources are unavailable"
+        )
+      ).toBe(true);
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("suppresses docs lifecycle commands for active stealth mode when runtime resources are unavailable", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [{ id: "missing-docs-lifecycle-resource" }] },
+        resourcesHealthy: false,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({
+          mode: "stealth",
+          ecosystemReady: false,
+          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
+        })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+        expect(cfg.command?.[commandName]).toBeUndefined();
+      }
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) => entry.message === "Docs lifecycle commands not registered because runtime resources are unavailable"
+        )
+      ).toBe(true);
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();

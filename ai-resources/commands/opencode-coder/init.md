@@ -17,11 +17,13 @@ skill({ name: "opencode-coder" })
 Use these references as the source of truth:
 
 - `references/installation-setup.md` — explicit enablement model and init flow
+- `references/project-setup.md` — project-doc structure and project-specific-content rules
+- `references/project-docs-lifecycle.md` — shared docs lifecycle phases and reporting model
 - `references/project-structure.md` — mode detection, saved state, paths, file-writing rules
 - `references/mode-transition.md` — switching between stealth and team
 - `references/agents-md-template.md` — AGENTS generation workflow
 
-Then follow this 4-step command flow:
+Then follow this 5-step command flow:
 
 ---
 
@@ -93,7 +95,7 @@ Rules:
 
 ---
 
-### Step 3: Skill discovery and setup work
+### Step 3: Skill discovery and core setup work
 
 For enabled or refreshed modes, continue with setup in the same session.
 
@@ -134,7 +136,65 @@ Key rules:
 
 ---
 
-### Step 4: Report completion
+### Step 4: Optional project-doc setup/refresh
+
+After mode selection and core setup, explicitly ask the user:
+
+- `Set up project docs now`
+- `Skip for now`
+
+Rules:
+
+- If the user chooses `Skip for now`, do not create/refresh docs in this run
+- If the user chooses `Set up project docs now`, use the shared lifecycle model from:
+  - `references/project-docs-lifecycle.md`
+  - `references/project-setup.md`
+  - `references/project-structure.md`
+- Do not define or invent a second docs lifecycle inside init
+
+#### 4a. Inspection (explicit, required before write actions)
+
+Run lifecycle **Phase 1 — Inspect** with these explicit checks:
+
+1. Resolve active docs directory from mode (`project-structure.md`):
+   - team: `docs/`
+   - stealth: `.coder/docs/`
+2. Inspect existing standard topic docs in the active docs directory:
+   - `OVERVIEW.md`
+   - `CODING.md`
+   - `TESTING.md`
+   - `RELEASING.md`
+   - `MONITORING.md`
+   - `PULL-REQUESTS.md`
+3. Inspect installed skills/workflows relevant to these topics (for example `.opencode/skills/` when present)
+4. Classify each topic as exactly one of:
+   - `existing doc` (project-specific local doc exists)
+   - `skill-only` (no local doc, but relevant reusable skill/workflow exists)
+   - `neither` (no local doc and no relevant skill/workflow signal)
+5. Show the topic decision matrix to the user **before** creating or refreshing docs
+
+#### 4b. Apply lifecycle phases for docs
+
+After presenting the matrix, execute lifecycle phases from `project-docs-lifecycle.md` as appropriate:
+
+- bootstrap/setup when active baseline is missing
+- refresh/update when baseline exists
+- AGENTS phase as part of lifecycle (not a separate command family)
+- verify/report phase before completion
+
+Docs-writing rules:
+
+- Create/update docs only in the active mode path:
+  - team: `docs/`
+  - stealth: `.coder/docs/`
+- Create only docs with real project-specific content
+- For `skill-only` topics with no extra local project rules, do **not** create hollow docs; route those topics through mode-correct AGENTS:
+  - team: `AGENTS.md`
+  - stealth: `.coder/AGENTS.md`
+
+---
+
+### Step 5: Report completion
 
 Summarize the run clearly:
 
@@ -145,6 +205,14 @@ Summarize the run clearly:
 > ✓ Beads initialized or refreshed when enabled
 > ✓ Git hooks installed
 > ✓ AGENTS.md created or refreshed for the active mode
+> ✓ Docs step: created/updated/skipped/routed topics reported
+
+When docs step is executed, include a compact docs summary with:
+
+- `created`: docs newly created with project-specific content
+- `updated`: existing docs refreshed
+- `skipped`: topics not created/changed (with short reason)
+- `routed via skills only`: topics routed through AGENTS without local doc creation
 
 If the user chose inactive or disabled instead, summarize that no active project-local startup behavior will run until they re-enable the project with `/opencode-coder/init`.
 

@@ -65,8 +65,24 @@ async function runLoggedOpencodeCli(
 
 describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
+  const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
+  const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";
   const COPILOT_MODEL_ENV = "E2E_COPILOT_MODEL";
   const DEFAULT_COPILOT_MODEL = "github-copilot/gpt-5.3-codex";
+
+  const expectDocsLifecycleCommands = (commandNames: string[]) => {
+    for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+      expect(commandNames).toContain(commandName);
+    }
+    expect(commandNames).not.toContain(LEGACY_DOCS_COMMAND);
+  };
+
+  const expectNoDocsLifecycleCommands = (commandNames: string[]) => {
+    for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+      expect(commandNames).not.toContain(commandName);
+    }
+    expect(commandNames).not.toContain(LEGACY_DOCS_COMMAND);
+  };
 
   const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
     const startedAt = Date.now();
@@ -123,6 +139,7 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
 
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
           expect(pluginSignals.commandNames).toContain("opencode-coder/init");
+          expectDocsLifecycleCommands(pluginSignals.commandNames);
 
           const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           expect(projectYamlAfter).toContain("pluginVersion:");
@@ -226,6 +243,7 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
           expect(projectYamlAfter).toContain("mode: stealth");
           expect(projectYamlAfter).toContain("pluginVersion:");
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+          expectDocsLifecycleCommands(pluginSignals.commandNames);
         } finally {
           await cleanupFixtureWorkspace(workspace);
         }
@@ -265,6 +283,7 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
           expect(projectYamlAfter).toBeUndefined();
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(0);
           expect(pluginSignals.commandNames).toContain("opencode-coder/init");
+          expectNoDocsLifecycleCommands(pluginSignals.commandNames);
         } finally {
           await cleanupFixtureWorkspace(workspace);
         }
