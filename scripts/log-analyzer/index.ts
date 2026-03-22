@@ -27,6 +27,7 @@ import {
   formatProcessForFzf,
   formatSessionForFzf,
 } from "./formatter";
+import { hasExplicitFilters, parseArgs } from "./cli-args";
 
 const HELP = `
 OpenCode Log Analyzer
@@ -116,67 +117,6 @@ async function runFzf(choices: string[], prompt: string): Promise<string | null>
       reject(new Error(`Failed to run fzf: ${err.message}`));
     });
   });
-}
-
-/**
- * Parse command line arguments.
- */
-function parseArgs(args: string[]): CliArgs {
-  const result: CliArgs = {
-    filter: {},
-    format: {},
-    source: "opencode",
-  };
-
-  let i = 0;
-  while (i < args.length) {
-    const arg = args[i];
-
-    if (arg === "help" || arg === "--help" || arg === "-h") {
-      result.help = true;
-    } else if (arg === "list") {
-      result.command = "list";
-      if (args[i + 1] === "processes" || args[i + 1] === "sessions") {
-        result.listType = args[i + 1] as "processes" | "sessions";
-        i++;
-      }
-    } else if (arg.startsWith("--pid=")) {
-      result.filter.pid = parseInt(arg.slice(6), 10);
-    } else if (arg.startsWith("--session=")) {
-      result.filter.sessionID = arg.slice(10);
-    } else if (arg.startsWith("--service=")) {
-      const services = arg.slice(10).split(",");
-      result.filter.service = services.length === 1 ? services[0] : services;
-    } else if (arg.startsWith("--source=")) {
-      const source = arg.slice(9);
-      if (source === "opencode" || source === "project-local" || source === "both") {
-        result.source = source;
-      }
-    } else if (arg.startsWith("--project-log-dir=")) {
-      result.projectLogDir = arg.slice(18);
-    } else if (arg.startsWith("--level=")) {
-      result.filter.level = arg.slice(8).split(",") as LogLevel[];
-    } else if (arg.startsWith("--tail=")) {
-      result.filter.tail = parseInt(arg.slice(7), 10);
-    } else if (arg === "--json") {
-      result.format.json = true;
-    } else if (arg === "--no-color") {
-      result.format.noColor = true;
-    } else if (arg === "--raw") {
-      result.format.raw = true;
-    } else if (arg === "--full-timestamp") {
-      result.format.fullTimestamp = true;
-    }
-
-    i++;
-  }
-
-  // If no command and no filters, assume interactive mode
-  if (!result.command && !result.filter.pid && !result.filter.sessionID) {
-    result.interactive = true;
-  }
-
-  return result;
 }
 
 /**
@@ -310,8 +250,8 @@ async function main(): Promise<void> {
     }
 
     // Filter mode
-    if (!args.filter.pid && !args.filter.sessionID && !args.filter.service) {
-      console.error("Error: Please specify at least one filter (--pid, --session, or --service)");
+    if (!hasExplicitFilters(args.filter)) {
+      console.error("Error: Please specify at least one filter (--pid, --session, --service, or --level)");
       console.error("Or run without arguments for interactive mode.");
       process.exit(1);
     }

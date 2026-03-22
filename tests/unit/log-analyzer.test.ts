@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { parseLine } from "../../scripts/log-analyzer/parser";
 import { matchesFilter } from "../../scripts/log-analyzer/filters";
+import { hasExplicitFilters, parseArgs } from "../../scripts/log-analyzer/cli-args";
 
 describe("log-analyzer", () => {
   it("parses OpenCode log lines with explicit source", () => {
@@ -46,5 +47,48 @@ describe("log-analyzer", () => {
     expect(matchesFilter(parsed, { source: "opencode" })).toBe(true);
     expect(matchesFilter(parsed, { source: "project-local" })).toBe(false);
     expect(matchesFilter(parsed, { source: ["project-local", "opencode"] })).toBe(true);
+  });
+
+  describe("parseArgs interactive mode gating", () => {
+    it("treats --service-only queries as non-interactive", () => {
+      const parsed = parseArgs(["--source=project-local", "--service=opencode-coder"]);
+
+      expect(parsed.interactive).toBeUndefined();
+      expect(parsed.filter.service).toBe("opencode-coder");
+      expect(parsed.source).toBe("project-local");
+    });
+
+    it("treats --level-only queries as non-interactive", () => {
+      const parsed = parseArgs(["--source=project-local", "--level=ERROR,WARN"]);
+
+      expect(parsed.interactive).toBeUndefined();
+      expect(parsed.filter.level).toEqual(["ERROR", "WARN"]);
+      expect(parsed.source).toBe("project-local");
+    });
+
+    it("keeps no-filter runs interactive", () => {
+      const parsed = parseArgs([]);
+
+      expect(parsed.interactive).toBe(true);
+    });
+
+    it("treats --source alone as config and keeps interactive mode", () => {
+      const parsed = parseArgs(["--source=project-local"]);
+
+      expect(parsed.interactive).toBe(true);
+      expect(parsed.source).toBe("project-local");
+    });
+  });
+
+  describe("hasExplicitFilters", () => {
+    it("returns true for service-only and level-only filters", () => {
+      expect(hasExplicitFilters({ service: "opencode-coder" })).toBe(true);
+      expect(hasExplicitFilters({ level: ["ERROR"] })).toBe(true);
+    });
+
+    it("returns false for source-only configuration and tail-only shaping", () => {
+      expect(hasExplicitFilters({ source: "project-local" })).toBe(false);
+      expect(hasExplicitFilters({ tail: 200 })).toBe(false);
+    });
   });
 });
