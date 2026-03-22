@@ -1,195 +1,71 @@
 # Contributing to opencode-coder
 
-Thank you for your interest in contributing to the opencode-coder plugin! This guide will help you get started.
+Thanks for contributing to the OpenCode plugin for story-driven development.
 
-## Development Setup
+This document owns **contributor onboarding and workflow**.
+
+- For repository context and doc routing, start with [`docs/OVERVIEW.md`](docs/OVERVIEW.md)
+- For architecture and code conventions, see [`docs/CODING.md`](docs/CODING.md)
+- For unit/integration/e2e strategy and commands, see [`docs/TESTING.md`](docs/TESTING.md)
+- For branching and PR expectations, see [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
+- For issue lifecycle and `bd` usage conventions, see [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md)
+
+## Local Development Setup
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) runtime installed
-- [OpenCode CLI](https://opencode.ai/) for testing
+- [Bun](https://bun.sh/)
+- [OpenCode CLI](https://opencode.ai/) (required for e2e/manual plugin verification)
 
 ### Getting Started
 
 ```bash
-# Clone the repository
 git clone https://github.com/dynatrace-oss/opencode-coder.git
 cd opencode-coder
-
-# Install dependencies
 bun install
-
-# Build the plugin
-bun run build
-
-# Run tests
-bun test
 ```
 
-## Project Structure
+### Baseline Checks
 
-```
-src/
-├── index.ts           # Plugin entry point - minimal, delegates to packages
-├── core/              # Foundation utilities (logger, version, parser)
-├── config/            # Configuration loading and schema
-├── service/           # Main services (AimgrService, BeadsService,
-│                      #   SessionExportService, ProjectDetectorService)
-├── templates/         # Install guide and init templates
-├── tool/              # Coder tool definition
-└── beads/             # Beads integration (detector)
-```
-
-## Directory Guidelines
-
-### `ai-resources/` - Published Content
-
-Everything in `ai-resources/` is published with the npm package and accessible to ALL users who install this plugin.
-
-**Include:**
-- Generic commands (bd, coder utilities)
-- Generic documentation (beads workflow, bug structure)
-- Generic agents (beads agents)
-- Shared skills
-
-**Never include:**
-- Project-specific content
-- Commands specific to developing this plugin
-- Internal tooling or workflows
-
-### `.opencode/` - Local Project Content
-
-Project-specific commands and configuration that are NOT published:
-
-- Commands for developing this plugin (release, analyze-logs)
-- Internal tooling
-- Project-specific workflows
-
-**Rule of thumb:** If it only makes sense for opencode-coder development, it goes in `.opencode/`. If it's useful for any project using this plugin, it goes in `ai-resources/`.
-
-## Coding Guidelines
-
-For detailed architecture patterns and conventions, see [`docs/CODING.md`](docs/CODING.md).
-
-### Key Patterns
-
-**Package Index Pattern**
-- Import from package index, not internal files: `import { Logger } from "./core"`
-- Never import from internal files: `import { Logger } from "./core/logger"`
-- Export both values AND types explicitly
-
-**Minimal Entry Point**
-- `src/index.ts` is intentionally minimal (~167 lines)
-- Delegates ALL functionality to domain packages
-- Only orchestrates initialization order and wires dependencies
-
-## Testing
-
-### Test Levels
-
-| Level | Location | Description | Command |
-|-------|----------|-------------|---------|
-| Unit | `tests/unit/` | Fast, isolated tests with mocks | `bun run test:unit` |
-| Integration | `tests/integration/` | Tests with real dependencies | `bun run test:integration` |
-| E2E | `tests/e2e/` | Full plugin tests with opencode | `bun run test:e2e` |
-
-### Test Structure
-
-```
-tests/
-├── unit/          # Fast, isolated tests with mocks
-├── integration/   # Tests with real dependencies
-├── e2e/           # Full plugin tests (requires build + opencode)
-├── helpers/       # Shared test utilities
-│   ├── mock-client.ts
-│   └── mock-logger.ts
-└── fixtures/      # Test data files
-    ├── configs/   # JSON config fixtures
-    └── markdown/  # Command/agent fixtures
-```
-
-### Running Tests
+Run these before opening a PR:
 
 ```bash
-bun test                    # All tests
-bun test tests/unit         # Unit tests only (or: bun run test:unit)
-bun test tests/integration  # Integration tests (or: bun run test:integration)
-bun test tests/e2e          # E2E tests (or: bun run test:e2e)
+bun run build
+bun run typecheck
+bun run test
 ```
 
-## Scripts Reference
+For targeted test levels (unit, integration, e2e), use the commands in [`docs/TESTING.md`](docs/TESTING.md).
 
-| Script | Description |
-|--------|-------------|
-| `bun run build` | Build the plugin to `dist/` |
-| `bun run dev` | Watch mode for development |
-| `bun test` | Run all tests |
-| `bun test tests/unit` | Run unit tests only |
-| `bun test tests/integration` | Run integration tests |
-| `bun test tests/e2e` | Run E2E tests (requires build) |
-| `bun run typecheck` | Run TypeScript type checking |
-| `bun run opencode:dev` | Build and test with opencode CLI |
-| `bun run test:coverage` | Run tests with coverage |
-| `bun run clean` | Remove build artifacts |
+## Contribution Workflow
 
-## Pull Request Process
+1. Pick or create an issue (this repo uses `bd` for issue tracking)
+2. Create a branch from `main`
+3. Implement your change following [`docs/CODING.md`](docs/CODING.md)
+4. Run relevant tests from [`docs/TESTING.md`](docs/TESTING.md)
+5. Open a PR and follow [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
 
-For detailed branching strategy, PR conventions, and code review guidelines, see [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md).
+## Where To Put Commands and Agents
 
-Quick checklist:
+### `ai-resources/` (published with the plugin)
 
-1. **Fork** the repository and create a feature branch
-2. **Make your changes** following the coding guidelines
-3. **Run tests** before submitting: `bun test`
-4. **Run type checking**: `bun run typecheck`
-5. **Write clear commit messages** that explain the "why"
-6. **Reference issues** in your PR if applicable
+Use for reusable resources that should ship to every plugin user:
 
-## Adding Commands and Agents
+- Generic commands
+- Generic agents
+- Shared skills
+- Generic documentation
 
-### Adding Commands
+### `.opencode/` (project-local, not published)
 
-Commands can be added in two locations depending on their purpose:
+Use for repository-specific development workflows:
 
-**Generic commands** (for all users) go in `ai-resources/commands/` as Markdown files with YAML frontmatter.
+- Commands for maintaining this plugin
+- Internal tooling/configuration
+- Project-specific helper instructions
 
-**Project-specific commands** (for developing this plugin) go in `.opencode/commands/`.
+Rule of thumb: if it only makes sense while developing `opencode-coder`, keep it in `.opencode/`.
 
-Example command structure:
+## Questions
 
-```markdown
----
-description: What my command does
----
-
-# My Command
-
-Instructions for the command...
-```
-
-### Adding Agents
-
-Agents go in `ai-resources/agents/` as Markdown files:
-
-```markdown
----
-description: Agent description
-mode: primary
-model: github-copilot/claude-sonnet-4.6
-color: '#6366F1'
----
-
-Agent system prompt...
-```
-
-## Documentation Resources
-
-- [OpenCode Commands](https://opencode.ai/docs/commands/) - Custom commands with arguments
-- [OpenCode Agents](https://opencode.ai/docs/agents/) - Agent configuration and modes
-- [OpenCode Skills](https://opencode.ai/docs/skills/) - Agent skills (SKILL.md)
-- [OpenCode Plugins](https://opencode.ai/docs/plugins/) - Plugin development
-- [OpenCode SDK](https://opencode.ai/docs/sdk/) - TypeScript SDK reference
-
-## Questions?
-
-If you have questions about contributing, feel free to open an issue or discussion on the repository.
+If something is unclear, open an issue or discussion in the repository.

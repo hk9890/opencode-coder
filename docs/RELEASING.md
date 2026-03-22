@@ -1,5 +1,11 @@
 # Release Process
 
+Related docs:
+
+- [`OVERVIEW.md`](OVERVIEW.md) for project context and doc map
+- [`PULL-REQUESTS.md`](PULL-REQUESTS.md) for branch/merge expectations
+- [`TESTING.md`](TESTING.md) for test-level commands and prerequisites
+
 ## Prerequisites
 
 - Bun installed (latest version)
@@ -55,7 +61,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 - [ ] Startup no-`.coder` regression test passes locally (`bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"`)
 - [ ] Type checking passes (`bun run typecheck`)
 - [ ] Build succeeds (`bun run build`)
-- [ ] CHANGELOG.md updated with new version and changes
+- [ ] [`../CHANGELOG.md`](../CHANGELOG.md) updated with new version and changes
 - [ ] No uncommitted changes (`git status`)
 - [ ] CI green on main branch (`gh run list --limit 1`)
 - [ ] Breaking changes documented with migration guide (if major/minor)
@@ -166,7 +172,7 @@ After releasing:
    you may use that instead of writing a temporary token.
 
 4. **Announce release** (if significant):
-   - Update project README.md if needed
+   - Update project [`../README.md`](../README.md) if needed
    - Post in relevant channels/forums
    - Update documentation site
 

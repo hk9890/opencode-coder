@@ -11,11 +11,11 @@ This guide helps you install the `@dynatrace-oss/opencode-coder` plugin and get 
 
 ## 1. Install the plugin
 
-Add the plugin to your OpenCode config at `~/.config/opencode/config.json`:
+Add the plugin to your OpenCode config at `~/.config/opencode/opencode.json`:
 
 ```json
 {
-  "plugins": ["@dynatrace-oss/opencode-coder"]
+  "plugin": ["@dynatrace-oss/opencode-coder"]
 }
 ```
 

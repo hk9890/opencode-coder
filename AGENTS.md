@@ -4,165 +4,82 @@ OpenCode plugin for story-driven development with agents and commands.
 
 **Tech Stack**: TypeScript, Bun, @opencode-ai/plugin SDK, zod, yaml
 
-## Coding
+## Start Here
 
-Read `docs/CODING.md` for architecture patterns, project structure, and code conventions.
+- Project overview and repository map: [`docs/OVERVIEW.md`](docs/OVERVIEW.md)
+- Contributor setup and local workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- This file is a routing layer; use topic docs below for detailed guidance.
 
-Read `CONTRIBUTING.md` for build commands, development setup, and contribution workflow.
+## Route by Task
 
-## Testing
+### Coding
 
-Read `docs/TESTING.md` for integration tests, e2e setup, and test infrastructure.
+- Read [`docs/CODING.md`](docs/CODING.md) for architecture, repository structure, coding conventions, and build commands.
 
-## Releases
+### Testing
 
-Load the **github-releases** skill for release workflow. Read `docs/RELEASING.md` for details.
+- Read [`docs/TESTING.md`](docs/TESTING.md) for test levels, commands, and local/e2e requirements.
 
-## Monitoring
+### Releases
 
-Load the **observability-triage** skill for analyzing logs, metrics, and triaging issues. Read `docs/MONITORING.md` for data sources.
+- Load the **github-releases** skill for release workflow.
+- Read [`docs/RELEASING.md`](docs/RELEASING.md) for repository-specific release details.
 
-## Pull Requests
+### Monitoring and Triage
 
-Read `docs/PULL-REQUESTS.md` for branching strategy, PR conventions, and code review guidelines.
+- Load the **observability-triage** skill for logs/metrics triage.
+- Read [`docs/MONITORING.md`](docs/MONITORING.md) for project-specific monitoring sources and workflows.
 
-## OpenCode Documentation
+### Pull Requests
+
+- Read [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md) for branch strategy, PR expectations, and merge rules.
+
+### Issue Tracking (beads)
+
+- Use `bd` for all project issue tracking.
+- Read [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md) for commands, workflow, and dependency linking.
+
+## OpenCode Reference Docs
 
 - [Commands](https://opencode.ai/docs/commands/) - Custom commands with arguments
 - [Agents](https://opencode.ai/docs/agents/) - Agent configuration and modes
-- [Skills](https://opencode.ai/docs/skills/) - Agent skills (SKILL.md)
+- [Skills](https://opencode.ai/docs/skills/) - Agent skills
 - [Plugins](https://opencode.ai/docs/plugins/) - Plugin development
 - [SDK](https://opencode.ai/docs/sdk/) - TypeScript SDK reference
 
-## Task Synchronization
+## Critical Global Rules
 
-Load the **task-sync** skill for syncing beads issues with external systems (GitHub Issues, etc.).
+### Required Session-End Workflow
 
-## Landing the Plane (Session Completion)
+When ending a work session, complete all steps:
 
-**When ending a work session**, complete ALL steps:
+1. File follow-up issues for remaining work.
+2. Run quality gates for changed code (tests, lint, build as applicable).
+3. Update issue status (close finished work, keep in-progress accurate).
+4. Push all committed work:
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
    git push
-   git status  # MUST show "up to date with origin"
+   git status  # must show up to date with origin
    ```
-5. **Verify** - All changes committed AND pushed
 
-**CRITICAL**: Work is NOT complete until `git push` succeeds.
+5. Verify no work is stranded locally.
 
-<!-- BEGIN BEADS INTEGRATION -->
-## Issue Tracking with bd (beads)
+**Critical**: Work is not complete until `git push` succeeds.
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+### Task Tracking Policy
 
-### Why bd?
+- Use **bd (beads)** for all task tracking.
+- Do not create markdown TODO trackers.
+- For agent/programmatic flows, use `--json` with `bd` commands.
 
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Dolt-powered version control with native sync
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
+### Discovered Work Policy
 
-### Quick Start
-
-**Check for ready work:**
+If you find unrelated problems while executing an issue, create a linked bug:
 
 ```bash
-bd ready --json
+bd create --title="Found: <description>" --type=bug --priority=2 --description="Discovered while working on <task-id>. <details>"
 ```
 
-**Create new issues:**
-
-```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
-```
-
-**Claim and update:**
-
-```bash
-bd update <id> --claim --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task atomically**: `bd update <id> --claim`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Auto-Sync
-
-bd automatically syncs via Dolt:
-
-- Each write auto-commits to Dolt history
-- Use `bd dolt push`/`bd dolt pull` for remote sync
-- No manual export/import needed!
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-
-For more details, see README.md and docs/QUICKSTART.md.
-
-## Landing the Plane (Session Completion)
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-
-<!-- END BEADS INTEGRATION -->
+Link discovered follow-up work with `discovered-from:<parent-id>` dependencies where appropriate.

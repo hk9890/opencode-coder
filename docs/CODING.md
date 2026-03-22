@@ -1,5 +1,26 @@
 # Coding Guidelines
 
+This document owns **implementation guidance**:
+
+- source architecture and package boundaries
+- coding conventions and patterns
+- build/development commands used while coding
+
+For local onboarding and contribution flow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
+For test strategy and all test-level commands, see [`TESTING.md`](TESTING.md).
+For issue tracking workflow and `bd` conventions, see [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md).
+
+## Build & Development Commands
+
+Use these while implementing changes:
+
+| Command | Purpose |
+|---|---|
+| `bun run build` | Build plugin artifact at `dist/opencode-coder.js` |
+| `bun run dev` | Run watch mode for iterative development |
+| `bun run typecheck` | Run TypeScript type checks |
+| `bun run opencode:dev` | Build and start OpenCode with DEBUG logging |
+
 ## 1. Source Architecture Overview
 
 ### Minimal Entry Point Pattern
@@ -45,22 +66,15 @@ export type { Frontmatter, ParsedDocument } from "./parser";
 - Export both values AND types explicitly
 - Keep implementation details private (not exported)
 
-## 3. Unit Testing
+## 3. Testing Boundary
 
-One test file per source module (e.g., `config.test.ts` → `src/config/`):
+Keep code-level testing strategy in [`TESTING.md`](TESTING.md):
 
-- Use mocks via helpers (`createMockLogger`, `createMockPluginInput`)
-- Test edge cases and error handling
-- Fast, no external dependencies
+- unit test patterns and commands
+- integration/e2e setup and execution
+- test fixtures/helpers organization
 
-```bash
-bun test                                # All tests
-bun test tests/unit                     # Unit tests only
-bun test tests/unit/parser.test.ts      # Single test file
-bun test --test-name-pattern "pattern"  # Pattern match
-```
-
-For integration tests, e2e tests, fixtures, and test helpers, see [TESTING.md](TESTING.md).
+This keeps `CODING.md` focused on implementation architecture and patterns.
 
 
 ## PluginModeService
@@ -332,4 +346,5 @@ const result = await sessionExportService.exportSession(sessionID, outputDir);
 
 ### Testing
 
-- See `tests/unit/service/session-export-service.test.ts`
+- No dedicated `SessionExportService` unit test exists yet in `tests/unit/service/`
+- When updating this service, add focused unit coverage alongside other service tests

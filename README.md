@@ -2,12 +2,29 @@
 
 OpenCode plugin for story-driven development with agents and commands.
 
+## Documentation Map
+
+Use these docs as the primary navigation path:
+
+- [`AGENTS.md`](AGENTS.md) — routing entrypoint for agents and task-focused guidance
+- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context and repository map
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor setup and workflow
+
+Focused guides under `docs/`:
+
+- [`docs/CODING.md`](docs/CODING.md)
+- [`docs/TESTING.md`](docs/TESTING.md)
+- [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
+- [`docs/RELEASING.md`](docs/RELEASING.md)
+- [`docs/MONITORING.md`](docs/MONITORING.md)
+- [`docs/ISSUE-TRACKING.md`](docs/ISSUE-TRACKING.md)
+
 ## Features
 
 - **Beads Integration (Optional)** - Local-first issue tracking with stealth mode (local-only) or team mode (git-synced)
 - **Custom Agents** - Four specialized agents for planning, review, task execution, and verification
 - **Knowledge Base Commands** - Rich command library for issue management (`bd/*`)
-- **Skills as Commands** - Skills from `ai-resources/skills/` and other locations automatically available as `/skills/*` commands
+- **Skills as Commands** - Skills from `.opencode/skills/` and other installed locations automatically available as `/skills/*` commands
 - **Template Support** - Customizable workflows and issue templates
 
 
@@ -21,11 +38,11 @@ OpenCode plugin for story-driven development with agents and commands.
 
 ### 1. Configure the plugin
 
-Add the plugin to your OpenCode configuration (`~/.config/opencode/config.json`):
+Add the plugin to your OpenCode configuration (`~/.config/opencode/opencode.json`):
 
 ```json
 {
-  "plugins": ["@dynatrace-oss/opencode-coder"]
+  "plugin": ["@dynatrace-oss/opencode-coder"]
 }
 ```
 
@@ -207,7 +224,7 @@ Sync tasks bidirectionally
 - GitHub CLI (`gh`) authenticated: `gh auth login`
 - Beads initialized: `bd init`
 
-For detailed workflow documentation, see the skills at `ai-resources/skills/task-sync/` and `ai-resources/skills/github-task-sync/`.
+For detailed workflow documentation, see the skills at `.opencode/skills/task-sync/` and `.opencode/skills/github-task-sync/`.
 
 ## Available Agents
 

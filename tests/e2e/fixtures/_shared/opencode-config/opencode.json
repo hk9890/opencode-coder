@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "catppuccin",
+  "share": "disabled",
+  "tui": {
+    "scroll_acceleration": {
+      "enabled": true
+    }
+  },
+  "keybinds": {
+    "app_exit": "ctrl+q",
+    "input_clear": "ctrl+d"
+  },
+  "snapshot": false,
+  "watcher": {
+    "ignore": [
+      ".beads/**",
+      ".agent-history/**",
+      ".git/**",
+      ".dolt/**",
+      "build/**",
+      "dist/**",
+      "target/**",
+      "coverage/**",
+      "**/*.log",
+      "**/*.jsonl"
+    ]
+  },
+  "autoupdate": false,
+  "permission": "allow",
+  "plugin": [
+    "@dynatrace-oss/opencode-coder@0.34.2",
+    "@hk9890/opencode-dynatrace@0.6.0"
+  ]
+}

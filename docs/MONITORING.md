@@ -3,6 +3,11 @@
 This document describes how to analyze monitoring data for the
 opencode-coder plugin.
 
+Related docs:
+
+- [`OVERVIEW.md`](OVERVIEW.md) for documentation routing
+- [`ISSUE-TRACKING.md`](ISSUE-TRACKING.md) for filing triaged bugs with `bd`
+
 ## How to Get Monitoring Data
 
 ### OpenCode Logs

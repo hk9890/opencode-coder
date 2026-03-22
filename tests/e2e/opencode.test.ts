@@ -1,231 +1,299 @@
-import { describe, expect, it, beforeAll, afterAll } from "bun:test";
-import { createOpencodeClient, createOpencodeServer, type OpencodeClient } from "@opencode-ai/sdk";
-import { join, dirname } from "path";
+import { createOpencodeClient, createOpencodeServer } from "@opencode-ai/sdk";
+import { describe, expect, it } from "bun:test";
+import { mkdir, readFile } from "fs/promises";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { access, mkdir, writeFile, rm, symlink } from "fs/promises";
-import { $ } from "bun";
-import { createServer } from "net";
+import {
+  checkOpencodeAvailability,
+  cleanupFixtureWorkspace,
+  createFixtureWorkspace,
+  createIsolatedOpenCodePaths,
+  findAvailablePort,
+  readIfExists,
+  resolveCopilotAuthSeedFromEnv,
+  runOpencodeCli,
+  seedIsolatedOpenCodeAuth,
+  withEnvironment,
+  wireBuiltPluginArtifact,
+  writeFailureArtifacts,
+} from "./helpers/harness";
 
-// Get project root directory
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..", "..");
-const PLUGIN_PATH = join(PROJECT_ROOT, "dist", "opencode-coder.js");
-const TEST_PROJECT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".test-project");
+const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
 
-/**
- * Check if opencode CLI is available (required by SDK's createOpencodeServer)
- * Returns diagnostic info if not available
- */
-async function checkOpencodeAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
-  try {
-    const result = await $`which opencode`.quiet();
-    if (result.exitCode === 0) {
-      return { available: true };
-    }
-  } catch {
-    // fall through to diagnostics
-  }
-
-  // Build diagnostic message
-  const diagnostics: string[] = [
-    "opencode binary not found in PATH.",
-    "",
-    "This usually happens when:",
-    "  1. OpenCode was recently updated via mise",
-    "  2. The current shell/session has a stale PATH",
-    "",
-    "To fix: Restart OpenCode to refresh the PATH environment.",
-    "",
-    "Diagnostic info:",
-  ];
-
-  // Check if opencode exists in mise installs
-  try {
-    const miseCheck = await $`ls -d ~/.local/share/mise/installs/opencode/*/opencode 2>/dev/null`.quiet();
-    if (miseCheck.exitCode === 0) {
-      diagnostics.push(`  Found mise install: ${miseCheck.stdout.toString().trim()}`);
-      diagnostics.push("  -> OpenCode IS installed but not in current PATH");
-      diagnostics.push("  -> Restart OpenCode to pick up the new PATH");
-    }
-  } catch {
-    diagnostics.push("  No mise opencode installation found");
-  }
-
-  // Show PATH entries with opencode
-  const pathEntries = process.env.PATH?.split(":").filter((p) => p.includes("opencode")) || [];
-  if (pathEntries.length > 0) {
-    diagnostics.push(`  PATH entries with 'opencode': ${pathEntries.join(", ")}`);
-  }
-
-  return { available: false, diagnostics: diagnostics.join("\n") };
-}
-
-// Check availability before defining tests - SDK requires opencode binary
 const opencodeCheck = await checkOpencodeAvailability();
 if (!opencodeCheck.available && opencodeCheck.diagnostics) {
   console.warn("\n" + opencodeCheck.diagnostics + "\n");
 }
 
-/**
- * Find an available port
- */
-async function findAvailablePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.listen(0, () => {
-      const address = server.address();
-      if (address && typeof address === "object") {
-        const port = address.port;
-        server.close(() => resolve(port));
-      } else {
-        server.close(() => reject(new Error("Could not get port")));
-      }
-    });
-    server.on("error", reject);
-  });
-}
+  describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
+  const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
+  const COPILOT_MODEL_ENV = "E2E_COPILOT_MODEL";
+  const DEFAULT_COPILOT_MODEL = "github-copilot/gpt-5.3-codex";
 
-/**
- * Check if the plugin has been built
- */
-async function isPluginBuilt(): Promise<boolean> {
-  try {
-    await access(PLUGIN_PATH);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Build the plugin
- */
-async function buildPlugin(): Promise<void> {
-  const result = await $`bun run build`.cwd(PROJECT_ROOT).quiet();
-  if (result.exitCode !== 0) {
-    throw new Error(`Failed to build plugin: ${result.stderr}`);
-  }
-}
-
-/**
- * Set up a test project directory with opencode configuration
- */
-async function setupTestProject(): Promise<void> {
-  // Create test project directory structure
-  await mkdir(TEST_PROJECT_DIR, { recursive: true });
-
-  // Create .opencode directory with plugin
-  const opencodeDir = join(TEST_PROJECT_DIR, ".opencode");
-  const pluginDir = join(opencodeDir, "plugin");
-  await mkdir(pluginDir, { recursive: true });
-
-  // Create package.json for opencode
-  await writeFile(
-    join(opencodeDir, "package.json"),
-    JSON.stringify({
-      dependencies: {
-        "@opencode-ai/plugin": "^1.0.185",
-      },
-    })
-  );
-
-  // Install dependencies
-  await $`bun install`.cwd(opencodeDir).quiet();
-
-  // Create symlink to the plugin
-  const pluginSymlink = join(pluginDir, "opencode-coder.js");
-  try {
-    await rm(pluginSymlink, { force: true });
-  } catch {
-    // Ignore if doesn't exist
-  }
-  await symlink(PLUGIN_PATH, pluginSymlink);
-}
-
-/**
- * Clean up test project directory
- */
-async function cleanupTestProject(): Promise<void> {
-  try {
-    await rm(TEST_PROJECT_DIR, { recursive: true, force: true });
-  } catch {
-    // Ignore errors
-  }
-}
-
-describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
-  let server: { url: string; close: () => void } | null = null;
-  let client: OpencodeClient | null = null;
-
-  beforeAll(async () => {
-    // Build plugin if needed
-    if (!(await isPluginBuilt())) {
-      console.log("Building plugin...");
-      await buildPlugin();
-    }
-
-    // Set up test project
-    console.log("Setting up test project...");
-    await setupTestProject();
-
-    // Find an available port
+  const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
     const port = await findAvailablePort();
-    console.log(`Using port ${port} for opencode server`);
-
-    // Start opencode server in the test project directory
-    console.log("Starting opencode server...");
-    
-    // Save current directory and change to test project
-    const originalCwd = process.cwd();
-    process.chdir(TEST_PROJECT_DIR);
-    
-    try {
-      server = await createOpencodeServer({
+    const server = await withEnvironment(isolatedEnv, () =>
+      createOpencodeServer({
+        hostname: "127.0.0.1",
         port,
         timeout: 30000,
-      });
+        config: {
+          autoupdate: false,
+          snapshot: false,
+        },
+      })
+    );
 
-      // Create client connected to the server
-      client = createOpencodeClient({
-        baseUrl: server.url,
-      });
+    const client = createOpencodeClient({
+      baseUrl: server.url,
+      responseStyle: "data",
+      throwOnError: true,
+    });
 
-      console.log(`OpenCode server started at ${server.url}`);
+    try {
+      const toolIdsResult = await client.tool.ids({ query: { directory: workspaceDir } });
+      const commandListResult = await client.command.list({ query: { directory: workspaceDir } });
+
+      const toolIds = "data" in toolIdsResult ? toolIdsResult.data : toolIdsResult;
+      const commands = "data" in commandListResult ? commandListResult.data : commandListResult;
+
+      if (!Array.isArray(toolIds) || !Array.isArray(commands)) {
+        throw new Error("Failed to query tool IDs or command list from real-server startup path");
+      }
+
+      return {
+        toolIds,
+        commandNames: commands.map((command) => command.name),
+      };
     } finally {
-      // Restore original directory
-      process.chdir(originalCwd);
-    }
-  }, 60000); // 60 second timeout for setup
-
-  afterAll(async () => {
-    // Close server
-    if (server) {
-      console.log("Stopping opencode server...");
       server.close();
     }
+  };
 
-    // Clean up test project
-    await cleanupTestProject();
-  });
+  describe("real startup scenario coverage", () => {
+    it("scenario 1: should load once in existing real-server startup path", async () => {
+      const workspace = await createFixtureWorkspace("existing-active-project");
+      try {
+        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
-  describe("plugin registration", () => {
-    it("should have server running", () => {
-      expect(server).not.toBeNull();
-      expect(server?.url).toBeDefined();
-    });
+        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
 
-    it("should register plugin agents", async () => {
-      const response = await client!.app.agents();
-      const agents = response.data;
+        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+        expect(pluginSignals.commandNames).toContain("opencode-coder/init");
 
-      expect(agents).toBeDefined();
-      expect(Array.isArray(agents)).toBe(true);
+        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+        expect(projectYamlAfter).toContain("pluginVersion:");
+        expect(projectYamlAfter).not.toContain("pluginVersion: fixture");
 
-      // Plugin no longer ships agents via knowledge-base.
-      // Agents are now provided by ai-resources/ and loaded by OpenCode's skill system.
-      // Verify the agents list is available (may be empty from plugin's perspective)
-      console.log(`Found ${agents?.length ?? 0} total agents`);
-      console.log("Agent names:", agents?.map((a) => a.name));
-    });
+        const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
+        expect(await isolatedDb.exists()).toBe(true);
+      } catch (error) {
+        const artifactPath = await writeFailureArtifacts({
+          artifactDir: ARTIFACT_DIR,
+          testName: "scenario-1-existing-real-server-startup",
+          notes: `Failed while querying real-server startup path.\n${String(error)}`,
+        });
+        throw new Error(`Scenario 1 failed. Artifacts: ${artifactPath}`);
+      } finally {
+        await cleanupFixtureWorkspace(workspace);
+      }
+    }, 120000);
+
+    it("scenario 2: should run CLI smoke startup path via opencode run equivalent", async () => {
+      const workspace = await createFixtureWorkspace("cli-smoke-project");
+      try {
+        await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
+        await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
+
+        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
+          cwd: workspace.workdir,
+          env: isolatedPaths.env,
+          timeoutMs: 120000,
+        });
+
+        if (result.exitCode !== 0 || result.timedOut) {
+          const artifactPath = await writeFailureArtifacts({
+            artifactDir: ARTIFACT_DIR,
+            testName: "scenario-2-cli-smoke-run-pwd",
+            command: result.command,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            notes: result.timedOut ? "CLI smoke command timed out" : "CLI smoke command failed",
+            isolationPaths: isolatedPaths,
+          });
+
+          throw new Error(`CLI smoke command failed. Artifacts: ${artifactPath}`);
+        }
+
+        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+        expect(result.exitCode).toBe(0);
+        expect(result.timedOut).toBe(false);
+        expect(projectYamlAfter).toContain("pluginVersion:");
+        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+
+        const gitHead = await readFile(join(workspace.workdir, ".git", "HEAD"), "utf8");
+        expect(gitHead.length).toBeGreaterThan(0);
+
+        const isolatedDb = Bun.file(join(isolatedPaths.xdgDataHome, "opencode", "opencode.db"));
+        expect(await isolatedDb.exists()).toBe(true);
+      } finally {
+        await cleanupFixtureWorkspace(workspace);
+      }
+    }, 120000);
+
+    it("scenario 3: should keep local-startup parity on real CLI entrypoint", async () => {
+      const workspace = await createFixtureWorkspace("local-startup-parity-project");
+      try {
+        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
+          cwd: workspace.workdir,
+          env: isolatedPaths.env,
+          timeoutMs: 120000,
+        });
+
+        if (result.exitCode !== 0 || result.timedOut) {
+          const artifactPath = await writeFailureArtifacts({
+            artifactDir: ARTIFACT_DIR,
+            testName: "scenario-3-local-startup-parity",
+            command: result.command,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            notes: result.timedOut ? "Local parity command timed out" : "Local parity command failed",
+            isolationPaths: isolatedPaths,
+          });
+
+          throw new Error(`Local startup parity command failed. Artifacts: ${artifactPath}`);
+        }
+
+        const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+        expect(result.exitCode).toBe(0);
+        expect(projectYamlAfter).toContain("mode: stealth");
+        expect(projectYamlAfter).toContain("pluginVersion:");
+        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+      } finally {
+        await cleanupFixtureWorkspace(workspace);
+      }
+    }, 120000);
+
+    it("scenario 4: should keep fresh project inactive and expose init behavior only", async () => {
+      const workspace = await createFixtureWorkspace("fresh-inactive-project");
+      try {
+        await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+        const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+        const result = await runOpencodeCli(["run", "--command", "pwd", "--format", "json"], {
+          cwd: workspace.workdir,
+          env: isolatedPaths.env,
+          timeoutMs: 120000,
+        });
+
+        if (result.exitCode !== 0 || result.timedOut) {
+          const artifactPath = await writeFailureArtifacts({
+            artifactDir: ARTIFACT_DIR,
+            testName: "scenario-4-fresh-inactive-startup",
+            command: result.command,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            notes: result.timedOut ? "Fresh inactive command timed out" : "Fresh inactive command failed",
+            isolationPaths: isolatedPaths,
+          });
+
+          throw new Error(`Fresh inactive startup command failed. Artifacts: ${artifactPath}`);
+        }
+
+        const projectYamlAfter = await readIfExists(join(workspace.workdir, ".coder", "project.yaml"));
+        const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+        expect(projectYamlAfter).toBeUndefined();
+        expect(countMatches(pluginSignals.toolIds, "coder")).toBe(0);
+        expect(pluginSignals.commandNames).toContain("opencode-coder/init");
+      } finally {
+        await cleanupFixtureWorkspace(workspace);
+      }
+    }, 120000);
+
+    const copilotAuthSeed = resolveCopilotAuthSeedFromEnv();
+
+    it.skipIf(!copilotAuthSeed)(
+      "scenario 5 (optional): should support isolated GitHub Copilot auth-seeded LLM-backed CLI run",
+      async () => {
+        const workspace = await createFixtureWorkspace("cli-smoke-project");
+        try {
+          await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
+          await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
+
+          await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+          const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+          if (!copilotAuthSeed) {
+            throw new Error("Missing copilot auth seed after skip guard");
+          }
+
+          const model = process.env[COPILOT_MODEL_ENV] ?? DEFAULT_COPILOT_MODEL;
+
+          const seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, copilotAuthSeed.seed);
+
+          const llmConfig = {
+            model,
+            autoupdate: false,
+            snapshot: false,
+            enabled_providers: ["github-copilot"],
+          };
+
+          const result = await runOpencodeCli([
+            "run",
+            "Respond with exactly E2E_LLM_OK and nothing else.",
+            "--format",
+            "default",
+          ], {
+            cwd: workspace.workdir,
+            env: {
+              ...isolatedPaths.env,
+              OPENCODE_CONFIG_CONTENT: JSON.stringify(llmConfig),
+            },
+            timeoutMs: 180000,
+          });
+
+          if (result.exitCode !== 0 || result.timedOut) {
+            const artifactPath = await writeFailureArtifacts({
+              artifactDir: ARTIFACT_DIR,
+              testName: "scenario-5-llm-backed-isolated-run",
+                command: result.command,
+                stdout: result.stdout,
+                stderr: result.stderr,
+                notes: result.timedOut
+                  ? "LLM-backed command timed out"
+                  : `LLM-backed command failed for model ${model} using isolated auth seed source ${copilotAuthSeed.source} at ${seededAuthPath}`,
+                isolationPaths: isolatedPaths,
+              });
+
+              throw new Error(`LLM-backed isolated run failed. Artifacts: ${artifactPath}`);
+            }
+
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+          expect(result.exitCode).toBe(0);
+          expect(result.stdout).toContain("E2E_LLM_OK");
+          expect(result.stderr).not.toContain("No providers configured");
+          expect(result.stderr).not.toContain("opencode providers");
+          expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      },
+      180000
+    );
   });
 });
