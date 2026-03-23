@@ -38,6 +38,7 @@ credentials.json
 # Plugin runtime state (regenerated on every startup)
 .coder/project.yaml
 .coder/logs/
+tests/e2e/.artifacts/
 
 # Local mise config (machine-specific)
 mise.local.toml

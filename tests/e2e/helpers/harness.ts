@@ -448,6 +448,26 @@ export async function checkOpencodeAvailability(): Promise<{ available: boolean;
 }
 
 /**
+ * Checks whether the `aimgr` binary is available in PATH.
+ */
+export async function checkAimgrAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
+  try {
+    const result = await $`which aimgr`.quiet();
+    if (result.exitCode === 0) {
+      return { available: true };
+    }
+  } catch {
+    // fall through to diagnostics
+  }
+
+  return {
+    available: false,
+    diagnostics:
+      "aimgr binary not found in PATH. Active e2e scenarios may still prove plugin load and startup parity, but docs lifecycle commands remain gated when runtime resource verification cannot confirm healthy resources.",
+  };
+}
+
+/**
  * Finds an available local TCP port.
  */
 export async function findAvailablePort(): Promise<number> {
@@ -860,6 +880,7 @@ export async function runOpencodeCli(
 export async function writeFailureArtifacts(input: FailureArtifactInput): Promise<string> {
   const safeName = input.testName.replace(/[^a-z0-9-_.]+/gi, "-").toLowerCase();
   const outputDir = join(input.artifactDir, safeName);
+  await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
 
   const summary = {

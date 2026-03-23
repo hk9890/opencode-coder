@@ -4,6 +4,7 @@ import { mkdir, readFile } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
+  checkAimgrAvailability,
   checkOpencodeAvailability,
   cleanupFixtureWorkspace,
   createFixtureWorkspace,
@@ -27,6 +28,11 @@ const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
 const opencodeCheck = await checkOpencodeAvailability();
 if (!opencodeCheck.available && opencodeCheck.diagnostics) {
   console.warn("\n" + opencodeCheck.diagnostics + "\n");
+}
+
+const aimgrCheck = await checkAimgrAvailability();
+if (!aimgrCheck.available && aimgrCheck.diagnostics) {
+  console.warn("\n" + aimgrCheck.diagnostics + "\n");
 }
 
 async function withScenarioLogging<T>(name: string, fn: () => Promise<T>): Promise<T> {
@@ -146,7 +152,11 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
 
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
           expect(pluginSignals.commandNames).toContain("opencode-coder/init");
-          expectDocsLifecycleCommands(pluginSignals.commandNames);
+          if (aimgrCheck.available) {
+            expectDocsLifecycleCommands(pluginSignals.commandNames);
+          } else {
+            expectNoDocsLifecycleCommands(pluginSignals.commandNames);
+          }
 
           const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           expect(projectYamlAfter).toContain("pluginVersion:");
@@ -250,7 +260,11 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
           expect(projectYamlAfter).toContain("mode: stealth");
           expect(projectYamlAfter).toContain("pluginVersion:");
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-          expectDocsLifecycleCommands(pluginSignals.commandNames);
+          if (aimgrCheck.available) {
+            expectDocsLifecycleCommands(pluginSignals.commandNames);
+          } else {
+            expectNoDocsLifecycleCommands(pluginSignals.commandNames);
+          }
         } finally {
           await cleanupFixtureWorkspace(workspace);
         }

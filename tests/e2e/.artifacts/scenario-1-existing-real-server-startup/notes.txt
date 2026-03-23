@@ -1,5 +1,0 @@
-Failed while querying real-server startup path.
-Error: expect(received).toContain(expected)
-
-Expected to contain: "opencode-coder/docs"
-Received: [ "init", "review", "opencode-coder/init" ]

@@ -123,6 +123,17 @@ describe("OpencodeCoder Plugin Integration", () => {
       const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-runtime-evidence-"));
 
       try {
+        const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+        const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+          verifyResult: { status: "ok", issues: [] },
+          resourcesHealthy: true,
+          repairAttempted: false,
+          repairSucceeded: false,
+        });
+        const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+          createProjectContext({ ecosystemReady: true })
+        );
+
         mkdirSync(join(worktree, ".coder"), { recursive: true });
         writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: team\n", "utf-8");
 
@@ -158,6 +169,10 @@ describe("OpencodeCoder Plugin Integration", () => {
             line.includes('"action":"registered"')
           )
         ).toBe(true);
+
+        autoInitializeSpy.mockRestore();
+        healthSpy.mockRestore();
+        detectSpy.mockRestore();
       } finally {
         rmSync(worktree, { recursive: true, force: true });
       }

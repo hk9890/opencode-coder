@@ -379,6 +379,17 @@ If startup fails in e2e setup, inspect `tests/e2e/.artifacts/` for:
 
 Failures are usually written under a scenario-specific subdirectory such as `tests/e2e/.artifacts/scenario-1-existing-real-server-startup/`.
 
+Artifact policy:
+
+- `tests/e2e/.artifacts/` is intentionally generated and untracked
+- failing scenarios rewrite their own scenario directory before writing fresh evidence, so repeated failures do not mix stale per-scenario files with new ones
+- successful runs do not auto-delete the folder because preserved failure evidence is often useful during active debugging
+- clear old artifacts explicitly with:
+
+```bash
+bun run clean:e2e-artifacts
+```
+
 ## Docs lifecycle acceptance validation (automated + manual)
 
 For docs lifecycle changes (`/opencode-coder/docs`, `/opencode-coder/init` docs delegation behavior, `/opencode-coder/improve-doc`, and retirement of `/opencode-coder/update-agent-md`), split validation into two buckets:
@@ -399,7 +410,7 @@ bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario [1-4]"
 Expected outcomes:
 
 - Inactive modes (fresh, saved disabled): `opencode-coder/init` is available, docs lifecycle commands are not
-- Active team and active stealth: both docs lifecycle commands are available
+- Active team and active stealth: docs lifecycle commands are available when `aimgr` is present and runtime resource verification can mark resources healthy; otherwise startup still proves plugin load but docs lifecycle commands remain gated
 - Legacy `opencode-coder/update-agent-md` is not exposed
 
 ### Manual validation (acceptance review for non-deterministic behavior)

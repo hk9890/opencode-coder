@@ -29,6 +29,7 @@
     "test:e2e": "bun run build && bun run test:e2e:raw",
     "test:e2e:raw": "bun test tests/e2e --bail=1 --timeout 60000",
     "test:manual": "bun run scripts/manual-test/index.ts --",
+    "clean:e2e-artifacts": "rm -rf tests/e2e/.artifacts",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "clean": "rm -rf dist",
