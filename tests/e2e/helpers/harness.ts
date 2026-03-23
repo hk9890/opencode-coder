@@ -375,7 +375,7 @@ export interface ProgressHeartbeatOptions {
   intervalMs?: number;
 }
 
-function formatElapsedForProgress(ms: number): string {
+export function formatElapsed(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
@@ -389,7 +389,7 @@ export function startProgressHeartbeat(options: ProgressHeartbeatOptions): Progr
   console.error(`[e2e] ${options.label}: start${detailSuffix}`);
 
   const interval = setInterval(() => {
-    const elapsed = formatElapsedForProgress(Date.now() - startedAt);
+    const elapsed = formatElapsed(Date.now() - startedAt);
     console.error(`[e2e] ${options.label}: heartbeat after ${elapsed}`);
   }, intervalMs);
 
@@ -397,7 +397,7 @@ export function startProgressHeartbeat(options: ProgressHeartbeatOptions): Progr
     startedAt,
     stop: (summary: string) => {
       clearInterval(interval);
-      const elapsed = formatElapsedForProgress(Date.now() - startedAt);
+      const elapsed = formatElapsed(Date.now() - startedAt);
       console.error(`[e2e] ${options.label}: ${summary} after ${elapsed}`);
     },
     elapsedMs: () => Date.now() - startedAt,
@@ -822,7 +822,7 @@ export async function runOpencodeCli(
   const timer = setTimeout(() => {
     timedOut = true;
     console.error(
-      `[e2e] ${options.progressLabel ?? "opencode cli"}: timeout reached at ${formatElapsedForProgress(
+      `[e2e] ${options.progressLabel ?? "opencode cli"}: timeout reached at ${formatElapsed(
         progress.elapsedMs()
       )}; sending kill signal`
     );

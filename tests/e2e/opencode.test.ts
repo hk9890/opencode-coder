@@ -8,6 +8,7 @@ import {
   cleanupFixtureWorkspace,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
+  formatElapsed,
   findAvailablePort,
   readIfExists,
   resolveCopilotAuthSeedFromEnv,
@@ -26,10 +27,6 @@ const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
 const opencodeCheck = await checkOpencodeAvailability();
 if (!opencodeCheck.available && opencodeCheck.diagnostics) {
   console.warn("\n" + opencodeCheck.diagnostics + "\n");
-}
-
-function formatElapsed(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 async function withScenarioLogging<T>(name: string, fn: () => Promise<T>): Promise<T> {
