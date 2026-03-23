@@ -28,5 +28,7 @@
   },
   "autoupdate": false,
   "permission": "allow",
-  "plugin": []
+  "plugin": [
+    "@hk9890/opencode-dynatrace@0.6.0"
+  ]
 }

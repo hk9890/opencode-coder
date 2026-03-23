@@ -39,6 +39,7 @@ credentials.json
 .coder/project.yaml
 .coder/logs/
 tests/e2e/.artifacts/
+.manual-test-runs/
 
 # Local mise config (machine-specific)
 mise.local.toml

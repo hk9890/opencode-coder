@@ -1,0 +1,6 @@
+{
+  "pins": {
+    "@hk9890/opencode-dynatrace": "0.6.0",
+    "@opencode-ai/plugin": "^1.2.16"
+  }
+}

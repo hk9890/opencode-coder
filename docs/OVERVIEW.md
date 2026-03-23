@@ -28,7 +28,7 @@ At a high level, the codebase is organized as a small startup entry point plus f
 - `src/config/` handles configuration loading and validation
 - `src/service/` contains core services (startup, integration, detection, session export)
 - `src/tool/` defines exposed tools
-- `src/beads/` contains beads-specific integration logic
+- `src/service/beads-service.ts` and related services contain beads-specific integration logic
 - `src/templates/` contains template generation used by setup/init flows
 - `ai-resources/` contains published, reusable AI resources (agents, commands, skills)
 - `.opencode/` contains project-local resources for developing this plugin repository

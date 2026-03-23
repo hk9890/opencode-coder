@@ -17,7 +17,7 @@ bun install
 bun run build
 ```
 
-Output: `dist/` directory with compiled JavaScript and TypeScript definitions.
+Output: `dist/opencode-coder.js` compiled JavaScript bundle.
 
 ## Tests
 
@@ -55,6 +55,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 ## Pre-Release Checklist
 
 - [ ] All tests pass (`bun run test:unit && bun run test:integration`)
+- [ ] Isolated pin consistency passes (`bun run validate:isolated-pins`)
 - [ ] Startup no-`.coder` regression test passes locally (`bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"`)
 - [ ] Type checking passes (`bun run typecheck`)
 - [ ] Build succeeds (`bun run build`)

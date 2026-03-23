@@ -13,6 +13,8 @@ export const FIXTURES_DIR = join(E2E_DIR, "fixtures");
 export const SHARED_FIXTURES_DIR = join(FIXTURES_DIR, "_shared");
 export const OPENCODE_CONFIG_FIXTURE_DIR = join(SHARED_FIXTURES_DIR, "opencode-config");
 export const OPENCODE_CONFIG_FIXTURE_PATH = join(OPENCODE_CONFIG_FIXTURE_DIR, "opencode.json");
+export const ISOLATED_TEST_MANIFEST_PATH = join(SHARED_FIXTURES_DIR, "test-manifest.json");
+export const HARNESS_SOURCE_PATH = join(E2E_DIR, "helpers", "harness.ts");
 
 export const FIXTURE_NAMES = [
   "existing-active-project",
@@ -48,7 +50,12 @@ export interface FixtureWorkspace {
   workdir: string;
 }
 
+export interface WorkspaceCreationOptions {
+  tempRoot?: string;
+}
+
 export const OPENCODE_CODER_PACKAGE_NAME = "@dynatrace-oss/opencode-coder";
+export const OPENCODE_DYNATRACE_PACKAGE_NAME = "@hk9890/opencode-dynatrace";
 
 export type PluginSource = "local-build" | "installed-configured";
 
@@ -67,6 +74,10 @@ export interface PreparedPluginSource {
 
 export interface IsolatedOpenCodePathOptions {
   pluginSource?: PluginSource;
+}
+
+interface IsolatedTestManifest {
+  pins: Record<string, string>;
 }
 
 export interface IsolatedOpenCodePaths {
@@ -98,6 +109,87 @@ export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
 const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".opencode"] as const;
+let isolatedTestManifestCache: IsolatedTestManifest | null = null;
+
+function buildPluginSpecFromPin(packageName: string, versionRange: string): string {
+  const trimmedPackage = packageName.trim();
+  const trimmedVersion = versionRange.trim();
+  if (!trimmedPackage || !trimmedVersion) {
+    throw new Error(`Cannot build plugin spec from invalid pin: ${packageName} -> ${versionRange}`);
+  }
+  return `${trimmedPackage}@${trimmedVersion}`;
+}
+
+export async function readIsolatedTestManifest(): Promise<IsolatedTestManifest> {
+  if (isolatedTestManifestCache) {
+    return isolatedTestManifestCache;
+  }
+
+  const raw = await readFile(ISOLATED_TEST_MANIFEST_PATH, "utf8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`Isolated test manifest is invalid JSON: ${ISOLATED_TEST_MANIFEST_PATH}`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || !("pins" in parsed)) {
+    throw new Error(`Isolated test manifest must include a pins object: ${ISOLATED_TEST_MANIFEST_PATH}`);
+  }
+
+  const pins = (parsed as { pins: unknown }).pins;
+  if (!pins || typeof pins !== "object" || Array.isArray(pins)) {
+    throw new Error(`Isolated test manifest pins must be an object: ${ISOLATED_TEST_MANIFEST_PATH}`);
+  }
+
+  const normalizedPins: Record<string, string> = {};
+  for (const [key, value] of Object.entries(pins as Record<string, unknown>)) {
+    if (typeof value !== "string" || !value.trim()) {
+      throw new Error(
+        `Isolated test manifest pin must be a non-empty string for ${key}: ${ISOLATED_TEST_MANIFEST_PATH}`
+      );
+    }
+    normalizedPins[key] = value.trim();
+  }
+
+  isolatedTestManifestCache = { pins: normalizedPins };
+  return isolatedTestManifestCache;
+}
+
+async function getPinnedVersionFromManifest(packageName: string): Promise<string> {
+  const manifest = await readIsolatedTestManifest();
+  const pinned = manifest.pins[packageName]?.trim();
+  if (!pinned) {
+    throw new Error(`Missing required pinned dependency '${packageName}' in ${ISOLATED_TEST_MANIFEST_PATH}`);
+  }
+
+  return pinned;
+}
+
+async function getPinnedDynatracePluginSpec(): Promise<string> {
+  const pinnedVersion = await getPinnedVersionFromManifest(OPENCODE_DYNATRACE_PACKAGE_NAME);
+  return buildPluginSpecFromPin(OPENCODE_DYNATRACE_PACKAGE_NAME, pinnedVersion);
+}
+
+export async function readHarnessScaffoldDependenciesFromManifest(): Promise<Record<string, string>> {
+  return {
+    "@opencode-ai/plugin": await getPinnedVersionFromManifest("@opencode-ai/plugin"),
+  };
+}
+
+async function buildSharedConfiguredPluginSpecs(): Promise<string[]> {
+  const fixtureRaw = await readFile(OPENCODE_CONFIG_FIXTURE_PATH, "utf8");
+  const fixtureConfig = JSON.parse(fixtureRaw) as unknown;
+  const fixturePluginSpecs = readPluginSpecsFromConfig(fixtureConfig);
+  const dynatraceSpec = await getPinnedDynatracePluginSpec();
+
+  const filtered = fixturePluginSpecs.filter((spec) => {
+    const packageName = parsePackageNameFromPluginSpec(spec);
+    return packageName !== OPENCODE_CODER_PACKAGE_NAME && packageName !== OPENCODE_DYNATRACE_PACKAGE_NAME;
+  });
+
+  return [...filtered, dynatraceSpec];
+}
 
 function parsePackageNameFromPluginSpec(spec: string): string {
   const trimmed = spec.trim();
@@ -194,13 +286,6 @@ export async function resolveInstalledConfiguredPluginFromHostConfig(
   };
 }
 
-async function readSharedProviderPluginSpecs(): Promise<string[]> {
-  const fixtureRaw = await readFile(OPENCODE_CONFIG_FIXTURE_PATH, "utf8");
-  const fixtureConfig = JSON.parse(fixtureRaw) as unknown;
-  const fixturePluginSpecs = readPluginSpecsFromConfig(fixtureConfig);
-  return fixturePluginSpecs.filter((spec) => parsePackageNameFromPluginSpec(spec) !== OPENCODE_CODER_PACKAGE_NAME);
-}
-
 function parseExactVersionFromPluginSpec(spec: string): string | null {
   const trimmed = spec.trim();
   if (!trimmed) {
@@ -226,6 +311,40 @@ function parseExactVersionFromPluginSpec(spec: string): string | null {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate) ? candidate : null;
 }
 
+async function installWorkspacePluginDependencies(workdir: string, pluginSpecsToPrepare: string[]): Promise<void> {
+  const opencodeDir = join(workdir, ".opencode");
+  const scaffoldDependencies = await readHarnessScaffoldDependenciesFromManifest();
+
+  await writeFile(
+    join(opencodeDir, "package.json"),
+    JSON.stringify(
+      {
+        private: true,
+        dependencies: scaffoldDependencies,
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  const installBaseResult = await $`bun install`.cwd(opencodeDir).quiet();
+  if (installBaseResult.exitCode !== 0) {
+    throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
+  }
+
+  for (const spec of pluginSpecsToPrepare) {
+    const normalizedSpec = spec.trim();
+    if (!normalizedSpec) {
+      continue;
+    }
+
+    const addResult = await $`bun add --exact ${normalizedSpec}`.cwd(opencodeDir).quiet();
+    if (addResult.exitCode !== 0) {
+      throw new Error(`Failed to prepare configured plugin package (${normalizedSpec}):\n${addResult.stderr.toString()}`);
+    }
+  }
+}
+
 async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpec: string): Promise<{
   pluginSymlink: string;
   installedVersion: string;
@@ -243,31 +362,7 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
   const packageJsonPath = join(packageDir, "package.json");
 
   await mkdir(pluginDir, { recursive: true });
-  await writeFile(
-    join(opencodeDir, "package.json"),
-    JSON.stringify(
-      {
-        private: true,
-        dependencies: {
-          "@opencode-ai/plugin": "^1.2.16",
-        },
-      },
-      null,
-      2
-    ) + "\n"
-  );
-
-  const installBaseResult = await $`bun install`.cwd(opencodeDir).quiet();
-  if (installBaseResult.exitCode !== 0) {
-    throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
-  }
-
-  const addInstalledResult = await $`bun add --exact ${normalizedSpec}`.cwd(opencodeDir).quiet();
-  if (addInstalledResult.exitCode !== 0) {
-    throw new Error(
-      `Failed to prepare installed-configured plugin package (${normalizedSpec}):\n${addInstalledResult.stderr.toString()}`
-    );
-  }
+  await installWorkspacePluginDependencies(workdir, [await getPinnedDynatracePluginSpec(), normalizedSpec]);
 
   let installedPackageJsonRaw: string;
   try {
@@ -508,20 +603,26 @@ export async function ensurePluginBuilt(projectRoot: string): Promise<string> {
 /**
  * Copies a committed fixture into an isolated temp workdir.
  */
-export async function createFixtureWorkspace(fixtureName: FixtureName): Promise<FixtureWorkspace> {
+export async function createFixtureWorkspace(
+  fixtureName: FixtureName,
+  options?: WorkspaceCreationOptions
+): Promise<FixtureWorkspace> {
   const fixtureSourceDir = join(FIXTURES_DIR, fixtureName);
 
   return createWorkspaceFromSource({
     kind: "fixture",
     fixtureName,
     sourceDir: fixtureSourceDir,
-  });
+  }, options);
 }
 
 /**
  * Copies an external project directory into an isolated temp workdir.
  */
-export async function createProjectPathWorkspace(projectPath: string): Promise<FixtureWorkspace> {
+export async function createProjectPathWorkspace(
+  projectPath: string,
+  options?: WorkspaceCreationOptions
+): Promise<FixtureWorkspace> {
   const normalizedPath = projectPath.trim();
   if (!normalizedPath) {
     throw new Error("Missing external project path");
@@ -531,7 +632,7 @@ export async function createProjectPathWorkspace(projectPath: string): Promise<F
     kind: "project-path",
     projectPath: normalizedPath,
     sourceDir: normalizedPath,
-  });
+  }, options);
 }
 
 function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
@@ -558,9 +659,12 @@ function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
   return true;
 }
 
-async function createWorkspaceFromSource(workspaceSource: WorkspaceSource): Promise<FixtureWorkspace> {
+async function createWorkspaceFromSource(
+  workspaceSource: WorkspaceSource,
+  options?: WorkspaceCreationOptions
+): Promise<FixtureWorkspace> {
   const sourceLabel = workspaceSource.kind === "fixture" ? workspaceSource.fixtureName : "project-path";
-  const tempRoot = await mkdtemp(join(tmpdir(), `opencode-coder-${sourceLabel}-`));
+  const tempRoot = options?.tempRoot ?? (await mkdtemp(join(tmpdir(), `opencode-coder-${sourceLabel}-`)));
   const workdir = join(tempRoot, "project");
 
   if (workspaceSource.kind === "project-path") {
@@ -594,27 +698,10 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   const pluginSymlink = join(pluginDir, "opencode-coder.js");
 
   await mkdir(pluginDir, { recursive: true });
-  await writeFile(
-    join(opencodeDir, "package.json"),
-    JSON.stringify(
-      {
-        private: true,
-        dependencies: {
-          "@opencode-ai/plugin": "^1.2.16",
-        },
-      },
-      null,
-      2
-    ) + "\n"
-  );
+  await installWorkspacePluginDependencies(workdir, [await getPinnedDynatracePluginSpec()]);
 
   await rm(pluginSymlink, { force: true });
   await symlink(pluginPath, pluginSymlink);
-
-  const installResult = await $`bun install`.cwd(opencodeDir).quiet();
-  if (installResult.exitCode !== 0) {
-    throw new Error(`Failed to install .opencode dependencies:\n${installResult.stderr.toString()}`);
-  }
 
   return pluginSymlink;
 }
@@ -674,7 +761,11 @@ export async function createIsolatedOpenCodePaths(baseDir: string): Promise<Isol
   await mkdir(xdgDataHome, { recursive: true });
   await mkdir(xdgCacheHome, { recursive: true });
   await mkdir(opencodeConfigDir, { recursive: true });
-  await cp(OPENCODE_CONFIG_FIXTURE_PATH, join(opencodeConfigDir, "opencode.json"), { force: true });
+
+  const fixtureRaw = await readFile(OPENCODE_CONFIG_FIXTURE_PATH, "utf8");
+  const parsed = JSON.parse(fixtureRaw) as Record<string, unknown>;
+  parsed.plugin = await buildSharedConfiguredPluginSpecs();
+  await writeFile(join(opencodeConfigDir, "opencode.json"), JSON.stringify(parsed, null, 2) + "\n", "utf8");
 
   return {
     root,
@@ -708,8 +799,7 @@ export async function createIsolatedOpenCodePathsWithPluginSource(
   const configPath = join(paths.opencodeConfigDir, "opencode.json");
   const configRaw = await readFile(configPath, "utf8");
   const parsed = JSON.parse(configRaw) as { plugin?: unknown };
-  const sharedProviderSpecs = await readSharedProviderPluginSpecs();
-  parsed.plugin = sharedProviderSpecs;
+  parsed.plugin = await buildSharedConfiguredPluginSpecs();
   await writeFile(configPath, JSON.stringify(parsed, null, 2) + "\n", "utf8");
 
   return paths;

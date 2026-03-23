@@ -138,6 +138,20 @@ Core helpers:
 - `runOpencodeCli()` — run real `opencode` CLI commands with explicit isolated env/cwd
 - `writeFailureArtifacts()` — write summary/stdout/stderr/notes on failure
 
+### Isolated pin consistency validation
+
+Run the dedicated consistency check when changing isolated harness pins/config:
+
+```bash
+bun run validate:isolated-pins
+```
+
+This command fails on drift between the shared isolated manifest/config and harness expectations, including:
+
+- `@hk9890/opencode-dynatrace` pin in `tests/e2e/fixtures/_shared/test-manifest.json` vs version suffix in `tests/e2e/fixtures/_shared/opencode-config/opencode.json`
+- `@opencode-ai/plugin` pin in the manifest vs harness-scaffolded `.opencode/package.json` dependencies
+- accidental configured `@dynatrace-oss/opencode-coder` entries in shared isolated `opencode.json`
+
 ## Manual Isolated Launcher
 
 The manual launcher is a shared harness/debugging tool, not part of the raw real-e2e suite.
@@ -156,12 +170,19 @@ Entry point:
 bun run test:manual -- --help
 ```
 
+When no relevant explicit args are provided and stdin is a TTY, `bun run test:manual` starts a minimal interactive wizard that asks only:
+
+1. project source (fixture vs external project path, including fixture selection)
+2. mode (`tui` or `shell`)
+
+In non-TTY contexts, the launcher does not prompt. If project source/mode are missing there, it exits with a concise usage error telling you to pass flags explicitly.
+
 ### Source modes: project under test
 
 The launcher supports two project-source modes:
 
-1. **Committed fixture (default)**
-   - `--fixture=<name>` (defaults to `cli-smoke-project`)
+1. **Committed fixture**
+   - `--fixture=<name>`
    - copies `tests/e2e/fixtures/<name>` into a temp workspace
 2. **External project path**
    - `--project-path <absolute-or-relative-path>`
@@ -192,6 +213,9 @@ Examples:
 # 1) Open interactive OpenCode TUI in isolated fixture workspace
 bun run test:manual -- --mode=tui --fixture=cli-smoke-project
 
+# 1a) Start wizard (TTY only) and choose fixture + mode interactively
+bun run test:manual
+
 # 2) Open an interactive shell in isolated fixture workspace
 bun run test:manual -- --mode=shell --fixture=existing-active-project
 
@@ -201,7 +225,7 @@ bun run test:manual -- --mode=command --fixture=cli-smoke-project -- env
 # 4) Seed auth from explicit file path (copied into isolated XDG data)
 bun run test:manual -- --mode=command --auth "$HOME/.local/share/opencode/auth.json" -- opencode run --command "pwd" --format json
 
-# 5) Preserve workspace for inspection
+# 5) --keep remains accepted (backward-compatible no-op)
 bun run test:manual -- --mode=command --keep -- opencode run --command "pwd" --format json
 
 # 6) Reproduce from an external project safely (copied into temp workspace)
@@ -217,10 +241,12 @@ bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --
 Recommended shared workflow:
 
 - Start here for quick smoke checks: `bun run test:manual -- --mode=tui --fixture=cli-smoke-project`
+- Or run just `bun run test:manual` in a TTY and use the minimal wizard
 - Use `--mode=shell` when you want to run several commands in the same isolated temp project
 - Use `--mode=command -- ...` when you want a reproducible one-shot command that mirrors automated runs
 - Let auth fall back to `~/.local/share/opencode/auth.json` in normal local use; pass `--auth <path>` only when you want to test with a different auth file
-- Use `--keep` when debugging; otherwise successful runs clean up automatically
+- Manual launcher workspaces are always preserved under `.manual-test-runs/run-*/` and the path is always printed at the end
+- `--keep` is kept for backward compatibility and is now a no-op
 - Do **not** run manual tests directly in the real fixture or repo workspace if you want parity with e2e behavior — use the launcher so the fixture is copied into a temp project first
 
 ### Installed-vs-local comparison workflow ("is this already fixed?")
@@ -259,8 +285,8 @@ Behavior notes:
 - Performs preflight checks for `opencode` availability and fixture validity
 - Invalid `--auth` paths fail in preflight with a concise `Auth seed error: ...` message (no raw runtime stack trace)
 - `--require-auth` fails fast when no auth seed source is available
-- `--keep` preserves temp workspace always
-- Non-zero exit or signal preserves temp workspace automatically (even without `--keep`)
+- Manual runs preserve workspace always under project-local `.manual-test-runs/run-*/`
+- Launcher always prints `Environment preserved at: ...` for manual runs
 
 Environment isolation policy for manual launcher child processes:
 
@@ -612,4 +638,5 @@ These commands map to `package.json` scripts and current test directories:
 | `bun run test:e2e` | Recommended real e2e workflow: build first, then run raw e2e |
 | `bun run test:e2e:raw` | Lower-level real e2e workflow: `bun test tests/e2e --bail=1 --timeout 60000` |
 | `bun run test:manual -- --help` | Manual isolated launcher help |
+| `bun run validate:isolated-pins` | Validate isolated manifest/config/harness pin consistency |
 | `bun run test:coverage` | Coverage run |
