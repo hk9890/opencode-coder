@@ -119,6 +119,50 @@ describe("OpencodeCoder Plugin Integration", () => {
       }
     });
 
+    it("records startup/runtime structured evidence in the project-local diagnostic log sink", async () => {
+      const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-runtime-evidence-"));
+
+      try {
+        mkdirSync(join(worktree, ".coder"), { recursive: true });
+        writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: team\n", "utf-8");
+
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        const today = new Date().toISOString().slice(0, 10);
+        const logPath = join(worktree, ".coder", "logs", `coder-${today}.log`);
+        const lines = readFileSync(logPath, "utf8").trim().split("\n");
+        const evidenceLines = lines.filter((line) =>
+          line.includes("Runtime diagnostic signal") && line.includes("extra=")
+        );
+
+        expect(evidenceLines.length).toBeGreaterThan(0);
+        expect(
+          evidenceLines.some((line) =>
+            line.includes('"signal":"runtime.startup_mode.resolved"') &&
+            line.includes('"startupMode":"team"') &&
+            line.includes('"active":true')
+          )
+        ).toBe(true);
+        expect(
+          evidenceLines.some((line) =>
+            line.includes('"signal":"runtime.project_context.available"') &&
+            line.includes('"mode":"team"')
+          )
+        ).toBe(true);
+        expect(
+          evidenceLines.some((line) =>
+            line.includes('"signal":"runtime.command_registration.docs_lifecycle"') &&
+            line.includes('"action":"registered"')
+          )
+        ).toBe(true);
+      } finally {
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
     it("registers /opencode-coder/init for a fresh inactive project and skips active startup management", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
         savedModeResolution("not-enabled", "fresh")

@@ -1,173 +1,165 @@
-# Monitoring Configuration
+# Monitoring & Analysis Guide
 
-Use the **observability-triage** skill for the generic monitoring analysis and triage workflow.
-This file records the repository-specific log sources, scripts, and signals for opencode-coder.
+Use the **observability-triage** skill for generic monitoring triage patterns.
+This file is the **canonical repository-specific workflow** for analyzing
+opencode-coder/OpenCode behavior in this repo.
 
-## How to Get Monitoring Data
+## Canonical Evidence Sources
 
-### OpenCode Logs
+Use these sources together (not in isolation):
 
-OpenCode stores logs in `~/.local/share/opencode/log/`. The log-analyzer
-script parses these structured logs.
+| Source | Purpose | Typical location / access |
+|---|---|---|
+| Project runtime context | Snapshot of detected mode/readiness and plugin version | `.coder/project.yaml` |
+| Project-local plugin logs | Repository-scoped plugin timeline (`opencode-coder` events) | `.coder/logs/coder-YYYY-MM-DD.log` |
+| OpenCode logs | Host/runtime-wide session/process log stream | auto-discovered by `scripts/log-analyzer` (Linux default: `~/.local/share/opencode/log/`) |
+| Session data access/export | Ground truth for message/tool timeline and token usage | `coder("session")`, `coder("list-sessions")`, `coder("session-export <path> [session-id]")`, `/opencode-coder/dump-session` |
+| Diagnostics bundle | Portable evidence package combining available artifacts | `.coder/diagnostics/diagnostics-<timestamp>/` |
 
-> opencode-coder plugin logs continue to be emitted to OpenCode logs.
-> The project-local file logs described below are an additional sink, not a
-> replacement.
+`docs/TESTING.md` may point here for deep troubleshooting, but this document owns
+the monitoring/analysis workflow.
 
-### Project-Local Plugin Logs
+## Recommended Triage Sequence
 
-In addition to OpenCode logs, opencode-coder writes plugin logs to a
-project-local file under:
+Follow this order for most plugin/runtime incidents:
+
+1. **Capture runtime context** from `.coder/project.yaml`.
+2. **Inspect project-local logs** for repository-scoped plugin events.
+3. **Query OpenCode logs** with `scripts/log-analyzer` (session/service filters).
+4. **Access/export session evidence** when behavior depends on tool-call/message flow.
+5. **Collect a diagnostics bundle** for sharing/review.
+6. **Correlate across all sources** (timestamps, `sessionID`, `pid`, plugin version).
+
+This sequence stays general-purpose for local dev, manual repro, or automated runs.
+
+## 1) Runtime Context Evidence (`.coder/project.yaml`)
+
+Treat `.coder/project.yaml` as the current runtime snapshot for the project:
+
+- mode (`stealth`, `team`, `uninitialized`)
+- readiness signals (`installReady`, `ecosystemReady`)
+- detector facts for git/beads/aimgr
+- `pluginVersion` observed by runtime detection
+
+Use it to quickly answer:
+
+- Is the plugin running in the expected mode?
+- Were ecosystem prerequisites detected as healthy?
+- Does the observed plugin version match the scenario being analyzed?
+
+## 2) Project-Local Plugin Logs
+
+opencode-coder writes project-local logs to:
 
 `<project-root>/.coder/logs/coder-YYYY-MM-DD.log`
 
-- `YYYY-MM-DD` is the UTC calendar date of the log file
-- one file is used per day (daily rotation by filename)
-- `.coder/logs/` is created lazily when logging starts
+- daily filename rotation (`YYYY-MM-DD`, UTC)
+- log directory created lazily
+- 7-day retention (older files pruned at startup)
 
-This location is intentionally project-local so plugin debugging is possible
-directly from the repository, without needing to inspect ephemeral OpenCode
-file descriptors under `/proc/<pid>/fd/...`.
+These logs are ideal for repository-scoped investigation and process overlap analysis
+because they persist in the project workspace.
 
-Runtime diagnostics now emit a stable `Runtime diagnostic signal` event with
-structured `signal` and readiness fields. The same signal model is emitted to
-both sinks, and `.coder/project.yaml` remains the snapshot of current detected
-runtime state.
+## 3) OpenCode Logs + `scripts/log-analyzer`
 
-#### Retention
-
-Project-local `coder-YYYY-MM-DD.log` files are retained for 7 days.
-Files older than 7 days are pruned automatically during startup.
-
-Retention is based on the date in the filename (not file modification time),
-so manually touching old files does not prevent pruning.
-
-#### List Recent Sessions
+The log analyzer is the primary query tool for OpenCode and project-local logs.
 
 ```bash
+# List recent sessions from default source (opencode)
 bun run scripts/log-analyzer list sessions
-```
 
-By default, `log-analyzer` reads OpenCode logs. To analyze project-local logs,
-add `--source=project-local`. To merge both streams in one query, use
-`--source=both`.
+# Query one session for plugin warnings/errors
+bun run scripts/log-analyzer --session=<session-id> --service=opencode-coder --level=WARN,ERROR
 
-```bash
-# OpenCode logs (default)
-bun run scripts/log-analyzer --session=<session-id> --service=opencode-coder
+# Merge OpenCode + project-local logs in one timeline
+bun run scripts/log-analyzer --source=both --session=<session-id> --tail=200
 
-# Project-local plugin logs from <cwd>/.coder/logs
-bun run scripts/log-analyzer --source=project-local --service=opencode-coder
-
-# Merge OpenCode + project-local in one timeline
-bun run scripts/log-analyzer --source=both --service=opencode-coder --tail=200
-```
-
-This shows all recent OpenCode sessions with timestamps and session IDs.
-
-#### Get Errors and Warnings
-
-```bash
+# Structured output for automation
 bun run scripts/log-analyzer --session=<session-id> --level=ERROR,WARN --json
 ```
 
-Replace `<session-id>` with the actual session ID from the list. Use
-`--json` for structured output that's easier to parse programmatically.
+Source options:
 
-#### Filter by Service
+- `--source=opencode` (default)
+- `--source=project-local`
+- `--source=both`
 
-```bash
-# Plugin loading issues
-bun run scripts/log-analyzer --session=<session-id> \
-  --service=opencode-coder --level=ERROR,WARN
+For quick aliases, `package.json` also exposes:
 
-# Beads-related issues
-bun run scripts/log-analyzer --session=<session-id> \
-  --service=beads --level=ERROR,WARN
+- `bun run logs:sessions`
+- `bun run logs:processes`
 
-# Agent execution issues
-bun run scripts/log-analyzer --session=<session-id> \
-  --service=agent --level=ERROR,WARN
+## 4) Session Access and Session Export Evidence
+
+When incident analysis depends on message/tool-call sequencing, include direct
+session data evidence:
+
+```text
+coder("session")
+coder("list-sessions")
+coder("tokens")
+coder("session-export private/session-dump/<session-id>")
 ```
 
-#### Recent Errors Across All Sessions
+You can also use `/opencode-coder/dump-session` to guide session export in-agent.
+
+Session exports (`session.json`) are especially useful when logs alone do not explain
+tool orchestration or assistant decision flow.
+
+## 5) Project Diagnostics Collection (`diagnostics:collect`)
+
+Use the diagnostics collector for a self-describing bundle of available evidence:
 
 ```bash
-# Get the 3 most recent sessions and check each for errors
-bun run scripts/log-analyzer list sessions | head -5
+bun run diagnostics:collect
 ```
 
-Then query each session for errors.
-
-### Inspect Project-Local Logs
+Session-focused collection with existing export(s):
 
 ```bash
-# list local plugin log files for this project
-ls .coder/logs/
-
-# inspect today's log file
-less ".coder/logs/coder-$(date -u +%F).log"
+bun run diagnostics:collect \
+  --session=<session-id> \
+  --session-export=private/session-dump/<session-id>
 ```
 
-## What to Look For
+Output bundle:
 
-### Critical (needs immediate attention)
+`<project-root>/.coder/diagnostics/diagnostics-<timestamp>/`
 
-- **Plugin loading failures** — Errors from `service=opencode-coder`
-  during startup
-  - "Failed to load plugin" or "Plugin initialization error"
-  - These prevent the plugin from functioning at all
+Key artifacts (best effort):
 
-- **Beads sync failures** — Errors from `service=beads` or services
-  containing "beads"
-  - "Sync failed" or "Failed to sync"
-  - Git operation failures during sync
-  - These can cause data loss or inconsistent state
+- `manifest.json` (what was included, missing, or errored)
+- `README.md` (human summary + privacy checklist)
+- `.coder/project.yaml` copy (if present)
+- recent project-local logs
+- OpenCode session index and optional session extracts
+- included/provided `session.json` export files
 
-- **Agent execution crashes** — Errors from `service=agent`
-  - Unhandled exceptions during agent execution
-  - Tool execution failures
+Missing sources are recorded in the manifest; collection does not fail solely
+because one source is unavailable.
 
-### Important (should be tracked)
+### Privacy
 
-- **Warnings that recur frequently** — Any WARN level message appearing
-  multiple times
-  - May indicate a pattern or systematic issue
+Diagnostics and session exports may include prompts, code snippets, paths, and
+environment details. Review/redact before sharing outside your trust boundary.
 
-- **Tool execution warnings** — Problems running tools like `bd` commands
-  - May indicate misconfiguration or missing dependencies
+## 6) Correlating Evidence Across Sources
 
-- **File system errors** — Permission issues, missing directories
-  - Can affect beads storage or plugin functionality
+Use the following fields to build a consistent timeline:
 
-### Can Usually Ignore
+- **`sessionID`**: join OpenCode logs, project-local extracts, and session export.
+- **`pid`**: separate overlapping processes in merged logs.
+- **timestamps**: align startup, command, and failure windows.
+- **plugin version**: compare `.coder/project.yaml` with package/runtime expectations.
+- **readiness signals**: relate failures to `installReady` / `ecosystemReady` state.
 
-- **Single INFO messages** — Normal operational logging
-- **Transient network errors** — One-off connection issues that don't
-  repeat
-- **Debug-level output** — Only relevant when actively debugging
+A practical classification after correlation:
 
-## Troubleshooting
+- runtime/context mismatch (mode/readiness/version)
+- command registration/exposure problems
+- resource or dependency gating failures
+- tool execution/runtime exceptions
+- workspace/setup issues in isolated reproductions
 
-### Startup Debugging
-
-If startup behavior is hard to reproduce, inspect both log sources:
-
-1. OpenCode session logs (`~/.local/share/opencode/log/`) for full runtime context
-2. Project-local plugin logs (`.coder/logs/coder-YYYY-MM-DD.log`) for a stable,
-   repository-scoped plugin timeline
-
-When debug logging is enabled (for example via `OPENCODE_CODER_DEBUG`), the
-same debug events are written to both destinations.
-
-### Duplicate-Process Investigation
-
-When multiple OpenCode/plugin processes overlap, use the project-local logs to
-disambiguate behavior by process ID (`pid`) in each line:
-
-- scan `.coder/logs/coder-YYYY-MM-DD.log` for interleaved entries
-- group by `pid` to separate concurrent plugin processes
-- correlate timestamps with OpenCode session logs as needed
-
-This is typically easier than chasing active process file handles via
-`/proc/<pid>/fd/...`, especially after processes exit.
+Record the classification together with evidence paths to make bug reports and
+follow-up debugging reproducible.

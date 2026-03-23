@@ -13,6 +13,7 @@ import {
   resolveCopilotAuthSeedFromEnv,
   runOpencodeCli,
   seedIsolatedOpenCodeAuth,
+  startProgressHeartbeat,
   withEnvironment,
   wireBuiltPluginArtifact,
   writeFailureArtifacts,
@@ -57,7 +58,10 @@ async function runLoggedOpencodeCli(
     `[e2e] ${scenarioName}: running ${command} (timeout ${(options.timeoutMs ?? 30000).toString()}ms)`
   );
 
-  const result = await runOpencodeCli(args, options);
+  const result = await runOpencodeCli(args, {
+    ...options,
+    progressLabel: `${scenarioName}: opencode cli`,
+  });
   const status = result.timedOut ? "timed out" : `exit ${result.exitCode.toString()}`;
   console.error(`[e2e] ${scenarioName}: ${status} after ${formatElapsed(Date.now() - startedAt)}`);
   return result;
@@ -85,28 +89,33 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   };
 
   const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
-    const startedAt = Date.now();
-    console.error(`[e2e] real-server probe: start for ${workspaceDir}`);
-    const port = await findAvailablePort();
-    const server = await withEnvironment(isolatedEnv, () =>
-      createOpencodeServer({
-        hostname: "127.0.0.1",
-        port,
-        timeout: 30000,
-        config: {
-          autoupdate: false,
-          snapshot: false,
-        },
-      })
-    );
-
-    const client = createOpencodeClient({
-      baseUrl: server.url,
-      responseStyle: "data",
-      throwOnError: true,
+    const progress = startProgressHeartbeat({
+      label: "real-server probe",
+      details: `workspace ${workspaceDir}`,
     });
+    let server: Awaited<ReturnType<typeof createOpencodeServer>> | undefined;
+    let completed = false;
 
     try {
+      const port = await findAvailablePort();
+      server = await withEnvironment(isolatedEnv, () =>
+        createOpencodeServer({
+          hostname: "127.0.0.1",
+          port,
+          timeout: 30000,
+          config: {
+            autoupdate: false,
+            snapshot: false,
+          },
+        })
+      );
+
+      const client = createOpencodeClient({
+        baseUrl: server.url,
+        responseStyle: "data",
+        throwOnError: true,
+      });
+
       const toolIdsResult = await client.tool.ids({ query: { directory: workspaceDir } });
       const commandListResult = await client.command.list({ query: { directory: workspaceDir } });
 
@@ -117,13 +126,14 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
         throw new Error("Failed to query tool IDs or command list from real-server startup path");
       }
 
+      completed = true;
       return {
         toolIds,
         commandNames: commands.map((command) => command.name),
       };
     } finally {
-      console.error(`[e2e] real-server probe: done after ${formatElapsed(Date.now() - startedAt)}`);
-      server.close();
+      progress.stop(completed ? "done" : "failed");
+      server?.close();
     }
   };
 

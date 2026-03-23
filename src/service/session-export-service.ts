@@ -41,6 +41,9 @@ export interface ExportResult {
  * Used by the `coder` tool and `/dump-session` command.
  */
 export class SessionExportService {
+  private static readonly SUMMARY_MAX_LINES = 8;
+  private static readonly SUMMARY_MAX_LINE_LENGTH = 160;
+
   private readonly log: Logger;
   private readonly client: OpencodeClient;
 
@@ -202,9 +205,60 @@ export class SessionExportService {
     if (session.title) lines.push(`Title: ${session.title}`);
     if (session.createdAt) lines.push(`Created: ${session.createdAt}`);
     if (session.updatedAt) lines.push(`Updated: ${session.updatedAt}`);
-    if (session.summary) lines.push(`Summary: ${session.summary}`);
+
+    const summaryLines = this.formatSessionSummary(session.summary);
+    if (summaryLines) {
+      if (summaryLines.length === 1) {
+        lines.push(`Summary: ${summaryLines[0]}`);
+      } else {
+        lines.push("Summary:");
+        lines.push(...summaryLines.map((line) => `  ${line}`));
+      }
+    }
 
     return lines.join("\n");
+  }
+
+  private formatSessionSummary(summary: unknown): string[] | null {
+    if (summary === undefined || summary === null) {
+      return null;
+    }
+
+    if (typeof summary === "string") {
+      const normalized = summary.trim().replace(/\s+/g, " ");
+      return normalized ? [normalized] : null;
+    }
+
+    if (
+      typeof summary === "number" ||
+      typeof summary === "boolean" ||
+      typeof summary === "bigint"
+    ) {
+      return [String(summary)];
+    }
+
+    let json = "";
+    try {
+      json = JSON.stringify(summary, null, 2) ?? "";
+    } catch {
+      return ["[unserializable summary]"];
+    }
+
+    if (!json) {
+      return null;
+    }
+
+    const lines = json.split("\n").map((line) =>
+      line.length > SessionExportService.SUMMARY_MAX_LINE_LENGTH
+        ? `${line.slice(0, SessionExportService.SUMMARY_MAX_LINE_LENGTH - 3)}...`
+        : line,
+    );
+
+    if (lines.length <= SessionExportService.SUMMARY_MAX_LINES) {
+      return lines;
+    }
+
+    return [...lines.slice(0, SessionExportService.SUMMARY_MAX_LINES), "..."];
   }
 
   /**

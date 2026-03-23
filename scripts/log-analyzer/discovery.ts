@@ -11,11 +11,21 @@ import { getOpenCodeLogDirectoryCandidates } from "../../src/core";
 import type { LogSource, ProcessInfo, SessionInfo } from "./types";
 import { parseLine } from "./parser";
 
-const LOG_LOCATIONS = {
-  linux: getOpenCodeLogDirectoryCandidates({ platform: "linux", homeDir: homedir() }),
-  darwin: getOpenCodeLogDirectoryCandidates({ platform: "darwin", homeDir: homedir() }),
-  win32: getOpenCodeLogDirectoryCandidates({ platform: "win32", homeDir: homedir() }),
-};
+interface LogDirectoryCandidateOptions {
+  platform?: NodeJS.Platform;
+  homeDir?: string;
+  localAppData?: string;
+}
+
+export function getLogDirectoryCandidates(
+  options: LogDirectoryCandidateOptions = {},
+): string[] {
+  return getOpenCodeLogDirectoryCandidates({
+    ...(options.platform ? { platform: options.platform } : {}),
+    ...(options.homeDir ? { homeDir: options.homeDir } : {}),
+    ...(options.localAppData ? { localAppData: options.localAppData } : {}),
+  });
+}
 
 /**
  * Find the OpenCode log directory.
@@ -24,8 +34,13 @@ const LOG_LOCATIONS = {
  * @throws Error if no log directory found
  */
 export async function findLogDirectory(): Promise<string> {
-  const platform = process.platform as "linux" | "darwin" | "win32";
-  const locations = LOG_LOCATIONS[platform] ?? LOG_LOCATIONS.linux;
+  const locations = getLogDirectoryCandidates({
+    platform: process.platform,
+    homeDir: homedir(),
+    ...(process.env["LOCALAPPDATA"]
+      ? { localAppData: process.env["LOCALAPPDATA"] }
+      : {}),
+  });
 
   for (const location of locations) {
     try {

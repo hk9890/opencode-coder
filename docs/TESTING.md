@@ -11,7 +11,7 @@ This project uses three test levels:
 |-------|----------|-------------|---------|
 | Unit | `tests/unit/` | During development | `bun test tests/unit` |
 | Integration | `tests/integration/` | Before committing | `bun test tests/integration` |
-| E2E | `tests/e2e/` | Before releases | `bun test tests/e2e` |
+| E2E | `tests/e2e/` | Before releases / real CLI validation | `bun run test:e2e` |
 
 ## Which workflow should I use? (decision matrix)
 
@@ -48,6 +48,14 @@ Integration tests are **not** the right tool for validating real CLI startup/run
 - installed-vs-local plugin loading differences
 
 Use e2e tests or the manual isolated launcher for those scenarios.
+
+### Harness-backed integration coverage
+
+`tests/integration/manual-launcher.test.ts` covers deterministic manual-launcher setup and proof behavior.
+
+- It is part of the integration suite, not the real e2e suite.
+- It validates launcher and harness behavior without making it part of the raw `tests/e2e` command path.
+- If you want real CLI startup coverage, run `bun run test:e2e` or `bun run test:e2e:raw` instead.
 
 ```bash
 bun test tests/integration    # Run integration tests
@@ -130,7 +138,13 @@ Core helpers:
 - `runOpencodeCli()` — run real `opencode` CLI commands with explicit isolated env/cwd
 - `writeFailureArtifacts()` — write summary/stdout/stderr/notes on failure
 
-### Manual Isolated Launcher (shared with e2e harness)
+## Manual Isolated Launcher
+
+The manual launcher is a shared harness/debugging tool, not part of the raw real-e2e suite.
+
+- Automated real e2e coverage lives in `tests/e2e/`.
+- Deterministic launcher regression coverage lives in `tests/integration/manual-launcher.test.ts`.
+- Ad-hoc manual reproduction uses `bun run test:manual -- ...`.
 
 Use the manual launcher when you want ad-hoc testing with the **same setup model** as automated e2e runs (fixture copy, plugin wiring, isolated HOME/XDG/OpenCode roots, committed config snapshot seeded into isolated `OPENCODE_CONFIG_DIR`, and auth copied into isolated XDG data).
 
@@ -310,23 +324,32 @@ bun test tests/e2e --timeout 180000
 
 ### Running
 
+Recommended default workflow:
+
 ```bash
-bun test tests/e2e                     # Run with default timeout
-bun test tests/e2e --timeout 60000     # Extended timeout (for CI)
-bun run test:e2e                       # Package script equivalent
+bun run test:e2e
+```
+
+This package script is the default entrypoint for humans and agents because it builds first, then runs the real e2e suite through the lower-level command.
+
+```bash
+bun run test:e2e                       # Recommended default: build first, then run raw e2e
+bun run test:e2e:raw                   # Lower-level real e2e entrypoint
+bun test tests/e2e                     # Raw Bun command
+bun test tests/e2e --timeout 60000     # Raw Bun command with explicit default timeout
 ```
 
 ### Timeouts and hang detection
 
 - `bun test --timeout <ms>` is a **per-test timeout**, not one timeout for the whole suite.
-- In this repository, several e2e tests also set explicit test-level timeouts such as `120000` or `180000`, so the CLI flag mainly changes the default for tests that do not already specify their own timeout.
+- In this repository, several e2e tests also set explicit scenario/test-level timeouts such as `120000` or `180000`, so the CLI flag mainly changes the default for tests that do not already specify their own timeout.
 - The e2e harness also applies command-level timeouts inside `runOpencodeCli(...)`, so many stuck CLI runs fail before the outer Bun test timeout is reached.
-- The e2e tests now print explicit progress lines such as `START scenario 2`, per-command `running opencode ...`, and `PASS` / `FAIL` summaries with elapsed time, so you can see which scenario is active before a timeout fires.
+- The e2e tests now print explicit progress lines such as `START scenario 2`, per-command `running opencode ...`, heartbeat lines during long waits, and `PASS` / `FAIL` summaries with elapsed time, so you can see which scenario is active before a timeout fires.
 
 For faster local feedback, prefer:
 
 ```bash
-bun test tests/e2e --bail=1 --timeout 60000
+bun run test:e2e:raw
 ```
 
 To narrow failure quickly to one scenario:
@@ -336,6 +359,10 @@ bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario 2" --bail=1 --
 ```
 
 ### Troubleshooting
+
+For repository-specific monitoring and cross-source incident analysis (logs,
+`.coder/project.yaml`, session export evidence, diagnostics bundles), use
+[`MONITORING.md`](MONITORING.md) as the canonical workflow.
 
 If e2e tests skip with "opencode binary not found":
 
@@ -349,6 +376,8 @@ If startup fails in e2e setup, inspect `tests/e2e/.artifacts/` for:
 - `stdout.log`
 - `stderr.log`
 - `notes.txt`
+
+Failures are usually written under a scenario-specific subdirectory such as `tests/e2e/.artifacts/scenario-1-existing-real-server-startup/`.
 
 ## Docs lifecycle acceptance validation (automated + manual)
 
@@ -569,6 +598,7 @@ These commands map to `package.json` scripts and current test directories:
 | `bun run test` | Run all tests |
 | `bun run test:unit` | Run unit tests in `tests/unit` |
 | `bun run test:integration` | Run integration tests in `tests/integration` |
-| `bun run test:e2e` | Run e2e tests in `tests/e2e` (`--timeout 60000`) |
+| `bun run test:e2e` | Recommended real e2e workflow: build first, then run raw e2e |
+| `bun run test:e2e:raw` | Lower-level real e2e workflow: `bun test tests/e2e --bail=1 --timeout 60000` |
 | `bun run test:manual -- --help` | Manual isolated launcher help |
 | `bun run test:coverage` | Coverage run |

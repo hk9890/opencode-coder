@@ -97,7 +97,7 @@ export interface ResolvedAuthSeedPath {
 export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "share", "opencode", "auth.json");
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
-const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".coder"] as const;
+const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".opencode"] as const;
 
 function parsePackageNameFromPluginSpec(spec: string): string {
   const trimmed = spec.trim();
@@ -352,6 +352,7 @@ export interface OpencodeCliRunOptions {
   cwd: string;
   env: Record<string, string>;
   timeoutMs?: number;
+  progressLabel?: string;
 }
 
 export interface OpencodeCliRunResult {
@@ -360,6 +361,47 @@ export interface OpencodeCliRunResult {
   stdout: string;
   stderr: string;
   timedOut: boolean;
+}
+
+export interface ProgressHeartbeatHandle {
+  startedAt: number;
+  stop: (summary: string) => void;
+  elapsedMs: () => number;
+}
+
+export interface ProgressHeartbeatOptions {
+  label: string;
+  details?: string;
+  intervalMs?: number;
+}
+
+function formatElapsedForProgress(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Emits start/heartbeat/summary progress lines to stderr for long-running e2e operations.
+ */
+export function startProgressHeartbeat(options: ProgressHeartbeatOptions): ProgressHeartbeatHandle {
+  const startedAt = Date.now();
+  const intervalMs = options.intervalMs ?? 15000;
+  const detailSuffix = options.details ? ` (${options.details})` : "";
+  console.error(`[e2e] ${options.label}: start${detailSuffix}`);
+
+  const interval = setInterval(() => {
+    const elapsed = formatElapsedForProgress(Date.now() - startedAt);
+    console.error(`[e2e] ${options.label}: heartbeat after ${elapsed}`);
+  }, intervalMs);
+
+  return {
+    startedAt,
+    stop: (summary: string) => {
+      clearInterval(interval);
+      const elapsed = formatElapsedForProgress(Date.now() - startedAt);
+      console.error(`[e2e] ${options.label}: ${summary} after ${elapsed}`);
+    },
+    elapsedMs: () => Date.now() - startedAt,
+  };
 }
 
 /**
@@ -479,7 +521,21 @@ function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
   }
 
   const segments = rel.split(sep).filter(Boolean);
-  return !EXCLUDED_COPY_SEGMENTS.some((excludedSegment) => segments.includes(excludedSegment));
+  if (EXCLUDED_COPY_SEGMENTS.some((excludedSegment) => segments.includes(excludedSegment))) {
+    return false;
+  }
+
+  if (segments[0] === ".coder") {
+    if (segments[1] === "project.yaml") {
+      return false;
+    }
+
+    if (segments[1] === "logs") {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 async function createWorkspaceFromSource(workspaceSource: WorkspaceSource): Promise<FixtureWorkspace> {
@@ -746,6 +802,10 @@ export async function runOpencodeCli(
 ): Promise<OpencodeCliRunResult> {
   const command = `opencode ${args.join(" ")}`;
   const timeoutMs = options.timeoutMs ?? 30000;
+  const progress = startProgressHeartbeat({
+    label: options.progressLabel ?? "opencode cli",
+    details: `${command}; timeout ${timeoutMs.toString()}ms`,
+  });
 
   const proc = Bun.spawn({
     cmd: ["opencode", ...args],
@@ -761,16 +821,29 @@ export async function runOpencodeCli(
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
+    console.error(
+      `[e2e] ${options.progressLabel ?? "opencode cli"}: timeout reached at ${formatElapsedForProgress(
+        progress.elapsedMs()
+      )}; sending kill signal`
+    );
     proc.kill();
   }, timeoutMs);
 
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
+  let stdout = "";
+  let stderr = "";
+  let exitCode = -1;
 
-  clearTimeout(timer);
+  try {
+    [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+  } finally {
+    clearTimeout(timer);
+    const status = timedOut ? "timed out" : `exit ${exitCode.toString()}`;
+    progress.stop(status);
+  }
 
   return {
     command,

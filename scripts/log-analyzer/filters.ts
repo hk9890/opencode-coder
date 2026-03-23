@@ -10,6 +10,20 @@ import type { FilterOptions, LogLine, LogSource } from "./types";
 import { parseLine, parseLines } from "./parser";
 import { listLogFiles } from "./discovery";
 
+type RipgrepRuntime = {
+  hasRipgrep: () => Promise<boolean>;
+  runRipgrep: (logFiles: string[], pattern: string) => Promise<Map<string, string[]>>;
+};
+
+const defaultRuntime: RipgrepRuntime = {
+  hasRipgrep,
+  runRipgrep,
+};
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Check if ripgrep (rg) is available.
  */
@@ -25,21 +39,35 @@ export async function hasRipgrep(): Promise<boolean> {
  * Build ripgrep pattern from filter options.
  * Returns null if no pattern can be built (use full file read instead).
  */
-function buildRipgrepPattern(options: FilterOptions): string | null {
+function buildRipgrepPattern(options: FilterOptions, source: LogSource): string | null {
   const patterns: string[] = [];
 
   if (options.pid) {
-    patterns.push(`pid=${options.pid}`);
+    if (source === "project-local") {
+      patterns.push(`\\(pid=${options.pid}\\)`);
+    } else {
+      patterns.push(`pid=${options.pid}`);
+    }
   }
 
   if (options.sessionID) {
-    patterns.push(`sessionID=${options.sessionID}`);
+    const escapedSessionId = escapeRegex(options.sessionID);
+    if (source === "project-local") {
+      patterns.push(`("sessionID"\\s*:\\s*"${escapedSessionId}"|sessionID=${escapedSessionId})`);
+    } else {
+      patterns.push(`sessionID=${escapedSessionId}`);
+    }
   }
 
   if (options.service) {
     const services = Array.isArray(options.service) ? options.service : [options.service];
     if (services.length === 1) {
-      patterns.push(`service=${services[0]}`);
+      const escapedService = escapeRegex(services[0]);
+      if (source === "project-local") {
+        patterns.push(`\\[${escapedService}\\]`);
+      } else {
+        patterns.push(`service=${escapedService}`);
+      }
     }
     // Multiple services handled by post-filtering
   }
@@ -47,7 +75,11 @@ function buildRipgrepPattern(options: FilterOptions): string | null {
   if (options.level && options.level.length > 0 && options.level.length < 4) {
     // Only add level filter if not all levels
     const levelPattern = options.level.join("|");
-    patterns.push(`^(${levelPattern})`);
+    if (source === "project-local") {
+      patterns.push(`\\s(${levelPattern})\\s+\\[`);
+    } else {
+      patterns.push(`^(${levelPattern})\\b`);
+    }
   }
 
   if (patterns.length === 0) {
@@ -61,10 +93,14 @@ function buildRipgrepPattern(options: FilterOptions): string | null {
 }
 
 /**
- * Run ripgrep on log files with the given pattern.
+ * Run ripgrep on explicit log file paths with the given pattern.
  * Returns raw matching lines.
  */
-async function runRipgrep(logDir: string, pattern: string): Promise<Map<string, string[]>> {
+async function runRipgrep(logFiles: string[], pattern: string): Promise<Map<string, string[]>> {
+  if (logFiles.length === 0) {
+    return new Map();
+  }
+
   return new Promise((resolve, reject) => {
     const results = new Map<string, string[]>();
     
@@ -74,7 +110,8 @@ async function runRipgrep(logDir: string, pattern: string): Promise<Map<string, 
       "--line-number",
       "-e",
       pattern,
-      logDir,
+      "--",
+      ...logFiles,
     ]);
 
     let stdout = "";
@@ -134,16 +171,23 @@ async function runRipgrep(logDir: string, pattern: string): Promise<Map<string, 
 export async function filterLogs(
   logDir: string,
   options: FilterOptions,
-  source: LogSource = "opencode"
+  source: LogSource = "opencode",
+  runtime: Partial<RipgrepRuntime> = {}
 ): Promise<LogLine[]> {
-  const useRipgrep = await hasRipgrep();
-  const pattern = buildRipgrepPattern(options);
+  const runtimeWithDefaults: RipgrepRuntime = {
+    ...defaultRuntime,
+    ...runtime,
+  };
+
+  const useRipgrep = await runtimeWithDefaults.hasRipgrep();
+  const pattern = buildRipgrepPattern(options, source);
+  const logFiles = await listLogFiles(logDir);
 
   let allLines: LogLine[] = [];
 
   if (useRipgrep && pattern) {
     // Use ripgrep for fast filtering
-    const matches = await runRipgrep(logDir, pattern);
+    const matches = await runtimeWithDefaults.runRipgrep(logFiles, pattern);
     
     for (const [filename, lines] of matches) {
       for (const line of lines) {
@@ -155,8 +199,6 @@ export async function filterLogs(
     }
   } else {
     // Fall back to reading all files
-    const logFiles = await listLogFiles(logDir);
-    
     for (const logFile of logFiles) {
       const content = await readFile(logFile, "utf-8");
       const lines = parseLines(content, logFile, source);
@@ -179,6 +221,10 @@ export async function filterLogs(
 
   return allLines;
 }
+
+export const __testing = {
+  buildRipgrepPattern,
+};
 
 /**
  * Check if a log line matches all filter criteria.

@@ -75,6 +75,35 @@ A structured template is bundled at [`../assets/bug-report-template.md`](../asse
 
 > **Tip**: For complex issues that are hard to reproduce, consider including a session export (see Session Export section below) to provide full context of what happened.
 
+### Choosing Evidence: Session Export vs Diagnostics Bundle
+
+Use this quick rule:
+
+- **Session export only** (`session.json`) when the main question is about one specific conversation flow/tool-call chain.
+- **Diagnostics bundle** when the issue may involve runtime setup, plugin loading, logs, or environment/project context.
+- **Both** for hard-to-reproduce failures: include a session export and run diagnostics with the session ID.
+
+Project-level diagnostics collection (works without requiring a special plugin runtime command):
+
+```bash
+bun run diagnostics:collect
+```
+
+Session-focused bundle with an existing export:
+
+```bash
+bun run diagnostics:collect \
+  --session=<session-id> \
+  --session-export=private/session-dump/<session-id>
+```
+
+What to attach/share from diagnostics collection:
+
+1. `manifest.json` (required; lists what was included/missing)
+2. `README.md` (privacy checklist + human summary)
+3. Session export JSON(s), if included and sanitized
+4. Relevant log extracts from the bundle
+
 ### Collecting System Information
 
 **Automated Collection:**
@@ -145,6 +174,9 @@ For complex issues that are hard to reproduce or describe, you can export your e
 - You need to show exactly what happened, not just describe it
 - The AI assistant made unexpected decisions
 
+If you also need runtime/environment evidence (plugin logs, project context, OpenCode
+session/log index), pair session export with diagnostics collection as shown above.
+
 **How to export:**
 
 Ask your AI assistant to export the session:
@@ -177,6 +209,10 @@ For issues reported via GitHub:
 2. Review the JSON for sensitive data
 3. Either attach the file or include relevant excerpts
 4. Reference the session in your bug report description
+
+For diagnostics bundles, additionally:
+5. Attach or link `manifest.json` and `README.md`
+6. Mention any artifacts marked missing/error in the manifest so maintainers understand collection limits
 
 ### Quick Report Pattern
 

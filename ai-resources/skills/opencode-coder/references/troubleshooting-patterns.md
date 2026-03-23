@@ -312,7 +312,8 @@ ls -la ~/.local/share/opencode/log/
 # macOS:
 ls -la ~/Library/Application\ Support/opencode/log/
 
-# macOS fallback:
+# macOS fallback (older/alternate setups only; use this only if the canonical
+# ~/Library/Application Support/opencode/log/ path is absent):
 ls -la ~/.local/share/opencode/log/
 
 # Windows (PowerShell):
