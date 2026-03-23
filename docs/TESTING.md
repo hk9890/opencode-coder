@@ -140,7 +140,7 @@ Core helpers:
 
 ### Isolated pin consistency validation
 
-Run the dedicated consistency check when changing isolated harness pins/config:
+Run the dedicated consistency check when changing isolated harness pins/config, and as a release preflight gate:
 
 ```bash
 bun run validate:isolated-pins
@@ -638,5 +638,5 @@ These commands map to `package.json` scripts and current test directories:
 | `bun run test:e2e` | Recommended real e2e workflow: build first, then run raw e2e |
 | `bun run test:e2e:raw` | Lower-level real e2e workflow: `bun test tests/e2e --bail=1 --timeout 60000` |
 | `bun run test:manual -- --help` | Manual isolated launcher help |
-| `bun run validate:isolated-pins` | Validate isolated manifest/config/harness pin consistency |
+| `bun run validate:isolated-pins` | Release-critical validation of isolated manifest/config/harness pin consistency |
 | `bun run test:coverage` | Coverage run |

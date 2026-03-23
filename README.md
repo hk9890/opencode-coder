@@ -29,14 +29,22 @@ Focused guides under `docs/`:
 ## Prerequisites
 
 - Node.js (v18+)
-- Bun or npm
+- Bun (recommended for local scripts/tests)
 - [OpenCode CLI](https://opencode.ai)
+- npm authentication for GitHub Packages (token with `read:packages` when installing from `npm.pkg.github.com`)
 
 ## Installation
 
-### 1. Configure the plugin
+### 1. Configure package access + plugin loading
 
-Add the plugin to your OpenCode configuration (`~/.config/opencode/opencode.json`):
+Since this package is published to GitHub Packages, configure npm for the `@dynatrace-oss` scope (and provide a token with package read access):
+
+```ini
+@dynatrace-oss:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=<token-with-read:packages>
+```
+
+Then add the plugin to your OpenCode configuration (`~/.config/opencode/opencode.json`):
 
 ```json
 {
@@ -44,15 +52,9 @@ Add the plugin to your OpenCode configuration (`~/.config/opencode/opencode.json
 }
 ```
 
-Since this package is published to GitHub Packages, you may need to configure npm to use the GitHub registry for this scope. Create or update `~/.npmrc`:
+### 2. Explicitly enable your project for project-local behavior
 
-```
-@dynatrace-oss:registry=https://npm.pkg.github.com
-```
-
-### 2. Explicitly enable your project (optional)
-
-The plugin now starts in an inactive state for fresh projects. It will not create `.coder/` files or activate project-local behavior until you explicitly opt in with `/opencode-coder/init`.
+The plugin starts in an inactive state for fresh projects. It will not create `.coder/` files or activate project-local behavior until you explicitly opt in with `/opencode-coder/init`.
 
 If you want to use the project-local workflow, run `/opencode-coder/init` inside the repository and choose one of these saved modes:
 
@@ -128,7 +130,9 @@ The env var hard override disables the plugin entirely and hides its commands. S
 
 ### With Beads
 
-Initialize beads in your project, then track issues:
+First run `/opencode-coder/init` in OpenCode and choose `stealth` or `team` mode so plugin-managed project setup is explicit and repeatable.
+
+Then track issues with `bd`:
 
 ```bash
 # Create your first issue

@@ -21,16 +21,17 @@ Output: `dist/opencode-coder.js` compiled JavaScript bundle.
 
 ## Tests
 
-Run all test suites before releasing:
+Run release-critical checks before triggering a release:
 
 ```bash
-bun run test:unit          # Unit tests
-bun run test:integration   # Integration tests
+bun run test:unit
+bun run test:integration
 bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"  # REQUIRED for startup no-.coder safeguard
-bun run test:e2e          # End-to-end tests (optional, slower)
+bun run validate:isolated-pins  # REQUIRED: isolated harness/config pin drift guard
+bun run test:e2e
 ```
 
-All tests must pass with no failures.
+All checks above must pass with no failures.
 
 ## Type Checking
 
@@ -54,13 +55,16 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 ## Pre-Release Checklist
 
+- [ ] Dependencies installed (`bun install`)
+- [ ] Working tree and branch state checked (`git status --short --branch`)
 - [ ] All tests pass (`bun run test:unit && bun run test:integration`)
 - [ ] Isolated pin consistency passes (`bun run validate:isolated-pins`)
 - [ ] Startup no-`.coder` regression test passes locally (`bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"`)
 - [ ] Type checking passes (`bun run typecheck`)
 - [ ] Build succeeds (`bun run build`)
+- [ ] E2E suite passes (`bun run test:e2e`)
 - [ ] [`../CHANGELOG.md`](../CHANGELOG.md) updated with new version and changes
-- [ ] No uncommitted changes (`git status`)
+- [ ] No uncommitted changes before dispatch (`git status`)
 - [ ] CI green on main branch (`gh run list --limit 1`)
 - [ ] Breaking changes documented with migration guide (if major/minor)
 
@@ -85,8 +89,9 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 3. **Trigger release workflow**:
    ```bash
+   VERSION="0.35.0"
    gh workflow run release.yml \
-     -f version="0.25.0" \
+     -f version="$VERSION" \
      -f release_notes="## What's New
    
    ### Added
@@ -107,7 +112,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 
 5. **Verify release**:
    ```bash
-   gh release view v0.25.0
+   gh release view "v$VERSION"
    ```
 
 ### Manual Release (Fallback)
@@ -116,7 +121,7 @@ Only use if GitHub Actions workflow fails or is unavailable.
 
 ```bash
 # 1. Update version in package.json
-NEW_VERSION="0.25.0"
+NEW_VERSION="0.35.0"
 bun -e "
   const pkg = await Bun.file('package.json').json();
   pkg.version = '$NEW_VERSION';
@@ -182,11 +187,12 @@ If a release has critical issues:
 
 ```bash
 # Delete the release
-gh release delete v0.25.0 -y
+VERSION="0.35.0"
+gh release delete "v$VERSION" -y
 
 # Delete the tag locally and remotely
-git tag -d v0.25.0
-git push origin :refs/tags/v0.25.0
+git tag -d "v$VERSION"
+git push origin ":refs/tags/v$VERSION"
 
 # Revert the version bump commit
 git revert HEAD
@@ -199,12 +205,13 @@ git push origin main
 
 ```bash
 # Fix the issue, then release a patch version
+VERSION="0.35.1"
 gh workflow run release.yml \
-  -f version="0.25.1" \
+  -f version="$VERSION" \
   -f release_notes="## Hotfix
 
 ### Fixed
-- Critical bug in v0.25.0"
+- Critical bug in v0.35.0"
 ```
 
 ## Troubleshooting
@@ -213,11 +220,12 @@ gh workflow run release.yml \
 
 ```bash
 # Check if tag exists
-git tag -l "v0.25.0"
+VERSION="0.35.0"
+git tag -l "v$VERSION"
 
 # Delete tag if needed
-git tag -d v0.25.0
-git push origin :refs/tags/v0.25.0
+git tag -d "v$VERSION"
+git push origin ":refs/tags/v$VERSION"
 ```
 
 ### Workflow fails: "Tests failed"
@@ -271,7 +279,7 @@ The GitHub Actions workflow (`.github/workflows/release.yml`) performs:
 6. **GitHub Release**: Creates release with provided notes
 
 **Inputs:**
-- `version` (required): Semver version (e.g., "0.25.0")
+- `version` (required): Semver version (e.g., "0.35.0")
 - `release_notes` (required): Markdown-formatted release notes
 
 **Outputs:**

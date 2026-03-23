@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- *(No unreleased changes yet)*
+
+## [0.35.0] - 2026-03-23
+
 ### Changed
 
 - **Explicit project enablement**: Startup now requires an explicit saved project mode (`disabled`, `stealth`, or `team`) before opencode-coder activates project-local behavior or creates `.coder/` files.
