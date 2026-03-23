@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -477,7 +477,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       const sourceReadme = Bun.file(join(sourceRoot, "README.md"));
       const sourceGitSentinel = Bun.file(join(sourceRoot, ".git", "SENTINEL"));
       const sourceBeadsPid = Bun.file(join(sourceRoot, ".beads", "daemon.pid"));
-      const sourceBeadsSocket = Bun.file(join(sourceRoot, ".beads", "bd.sock"));
+      const sourceBeadsSocketPath = join(sourceRoot, ".beads", "bd.sock");
       const sourceCoderProject = Bun.file(join(sourceRoot, ".coder", "project.yaml"));
       const sourceCoderModeState = Bun.file(join(sourceRoot, ".coder", "opencode-coder.yaml"));
       const sourceOpencodeLocalCommand = Bun.file(join(sourceRoot, ".opencode", "commands", "local-command.md"));
@@ -490,7 +490,9 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(await sourceReadme.exists()).toBe(true);
       expect(await sourceGitSentinel.exists()).toBe(true);
       expect(await sourceBeadsPid.exists()).toBe(true);
-      expect(await sourceBeadsSocket.exists()).toBe(true);
+      // Bun.file().exists() returns false for Unix domain sockets — use stat instead
+      const sourceBeadsSocketStat = await stat(sourceBeadsSocketPath).catch(() => null);
+      expect(sourceBeadsSocketStat?.isSocket()).toBe(true);
       expect(await sourceCoderProject.exists()).toBe(true);
       expect(await sourceCoderProject.text()).toContain("pluginVersion: stale");
       expect(await sourceCoderModeState.exists()).toBe(true);
