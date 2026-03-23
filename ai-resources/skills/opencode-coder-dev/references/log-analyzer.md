@@ -458,7 +458,7 @@ bun run scripts/log-analyzer --session=ses_xxx
 Check that:
 1. Debug logging is enabled: `echo $OPENCODE_DEFAULT_OPTIONS`
 2. The session ID is correct: `bun run scripts/log-analyzer list sessions`
-3. Log files exist: `ls -la ~/.config/opencode/logs/` (Linux)
+3. Log files exist: `ls -la ~/.local/share/opencode/log/` (Linux)
 4. Filters aren't too restrictive: remove `--level` or `--service` filters
 
 ### Summary

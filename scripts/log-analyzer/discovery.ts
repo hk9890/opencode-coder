@@ -7,19 +7,14 @@
 import { homedir } from "os";
 import { join, basename } from "path";
 import { readdir, access, readFile, stat } from "fs/promises";
+import { getOpenCodeLogDirectoryCandidates } from "../../src/core";
 import type { LogSource, ProcessInfo, SessionInfo } from "./types";
 import { parseLine } from "./parser";
 
-/**
- * Possible log directory locations by platform.
- */
 const LOG_LOCATIONS = {
-  linux: [join(homedir(), ".local/share/opencode/log")],
-  darwin: [
-    join(homedir(), "Library/Application Support/opencode/log"),
-    join(homedir(), ".local/share/opencode/log"),
-  ],
-  win32: [join(homedir(), "AppData/Local/opencode/log")],
+  linux: getOpenCodeLogDirectoryCandidates({ platform: "linux", homeDir: homedir() }),
+  darwin: getOpenCodeLogDirectoryCandidates({ platform: "darwin", homeDir: homedir() }),
+  win32: getOpenCodeLogDirectoryCandidates({ platform: "win32", homeDir: homedir() }),
 };
 
 /**

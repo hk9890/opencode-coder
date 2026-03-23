@@ -24,3 +24,7 @@ export type { VersionInfo } from "./version";
 // Parser
 export { parseFrontmatter } from "./parser";
 export type { Frontmatter, ParsedDocument } from "./parser";
+
+// OpenCode log locations
+export { getOpenCodeLogDirectoryCandidates } from "./opencode-log-paths";
+export type { OpenCodeLogDirectoryCandidateOptions } from "./opencode-log-paths";

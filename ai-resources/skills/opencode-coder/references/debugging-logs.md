@@ -71,10 +71,10 @@ When plugin debug logging is enabled, messages are tagged with the service name.
 
 ```bash
 # View only opencode-coder plugin messages
-grep "opencode-coder" ~/.config/opencode/logs/*.log
+grep "opencode-coder" ~/.local/share/opencode/log/*.log
 
 # View plugin messages with context (3 lines before/after)
-grep -C 3 "opencode-coder" ~/.config/opencode/logs/*.log
+grep -C 3 "opencode-coder" ~/.local/share/opencode/log/*.log
 ```
 
 See [Analyzing Log Files](#analyzing-log-files) for more log analysis techniques.
@@ -107,7 +107,7 @@ OpenCode log locations vary by operating system:
 
 **Linux:**
 ```
-~/.config/opencode/logs/
+~/.local/share/opencode/log/
 ```
 
 **macOS:**
@@ -117,7 +117,7 @@ OpenCode log locations vary by operating system:
 
 **Windows:**
 ```
-%APPDATA%\opencode\logs\
+%LOCALAPPDATA%\opencode\log\
 ```
 
 ### Finding Log Files
@@ -126,13 +126,13 @@ To locate your log directory:
 
 ```bash
 # Linux
-ls -la ~/.config/opencode/logs/
+ls -la ~/.local/share/opencode/log/
 
 # macOS
 ls -la ~/Library/Logs/opencode/
 
 # Windows (PowerShell)
-dir $env:APPDATA\opencode\logs\
+dir $env:LOCALAPPDATA\opencode\log\
 ```
 
 ### Analyzing Log Files
@@ -148,22 +148,22 @@ Log files are named by date and session. Look for:
 
 ```bash
 # Find most recent log file (Linux/macOS)
-ls -lt ~/.config/opencode/logs/ | head -5
+ls -lt ~/.local/share/opencode/log/ | head -5
 
 # Search for errors in recent logs
-grep -i "error" ~/.config/opencode/logs/*.log
+grep -i "error" ~/.local/share/opencode/log/*.log
 
 # View last 100 lines of most recent log
-tail -100 $(ls -t ~/.config/opencode/logs/*.log | head -1)
+tail -100 $(ls -t ~/.local/share/opencode/log/*.log | head -1)
 
 # Search for opencode-coder plugin messages (when OPENCODE_CODER_DEBUG=1)
-grep "opencode-coder" ~/.config/opencode/logs/*.log
+grep "opencode-coder" ~/.local/share/opencode/log/*.log
 
 # Search for plugin messages with context
-grep -C 3 "opencode-coder" ~/.config/opencode/logs/*.log
+grep -C 3 "opencode-coder" ~/.local/share/opencode/log/*.log
 
 # Search for any coder-related messages
-grep -i "coder" ~/.config/opencode/logs/*.log
+grep -i "coder" ~/.local/share/opencode/log/*.log
 ```
 
 ### What to Look For
