@@ -587,12 +587,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     }
   }
 
-  const opencodeCheck = await checkOpencodeAvailability();
-  if (!opencodeCheck.available) {
-    console.error(opencodeCheck.diagnostics ?? "opencode binary not found in PATH.");
-    return 1;
-  }
-
   let authSeedPath: ReturnType<typeof resolveAuthSeedPath>;
   try {
     authSeedPath = resolveAuthSeedPath(args.authPath);
@@ -604,6 +598,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (args.requireAuth && !authSeedPath) {
     console.error("No usable auth seed found.");
     console.error("Provide --auth <path> or ensure ~/.local/share/opencode/auth.json exists.");
+    return 1;
+  }
+
+  const opencodeCheck = await checkOpencodeAvailability();
+  if (!opencodeCheck.available) {
+    console.error(opencodeCheck.diagnostics ?? "opencode binary not found in PATH.");
     return 1;
   }
 

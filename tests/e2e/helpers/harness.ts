@@ -1,6 +1,6 @@
 import { $ } from "bun";
-import { existsSync } from "fs";
-import { access, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "fs/promises";
+import { constants, existsSync } from "fs";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
 import { dirname, join, relative, sep } from "path";
@@ -110,6 +110,52 @@ export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
 const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".opencode"] as const;
 let isolatedTestManifestCache: IsolatedTestManifest | null = null;
+
+async function findExecutableOnPath(
+  executableName: string,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string | null> {
+  const pathEntries = env.PATH?.split(":").filter(Boolean) ?? [];
+
+  for (const entry of pathEntries) {
+    const candidate = join(entry, executableName);
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // continue searching other PATH entries
+    }
+  }
+
+  return null;
+}
+
+async function findMiseInstalledExecutable(
+  executableName: string,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string[]> {
+  const homeDir = env.HOME?.trim() || homedir();
+  const installsDir = join(homeDir, ".local", "share", "mise", "installs", executableName);
+
+  try {
+    const versions = await readdir(installsDir);
+    const matches: string[] = [];
+
+    for (const version of versions) {
+      const candidate = join(installsDir, version, executableName);
+      try {
+        await access(candidate, constants.X_OK);
+        matches.push(candidate);
+      } catch {
+        // skip non-executable/missing candidates
+      }
+    }
+
+    return matches.sort();
+  } catch {
+    return [];
+  }
+}
 
 function buildPluginSpecFromPin(packageName: string, versionRange: string): string {
   const trimmedPackage = packageName.trim();
@@ -503,13 +549,9 @@ export function startProgressHeartbeat(options: ProgressHeartbeatOptions): Progr
  * Checks whether the `opencode` binary is available in PATH.
  */
 export async function checkOpencodeAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
-  try {
-    const result = await $`which opencode`.quiet();
-    if (result.exitCode === 0) {
-      return { available: true };
-    }
-  } catch {
-    // fall through to diagnostics
+  const opencodePath = await findExecutableOnPath("opencode");
+  if (opencodePath) {
+    return { available: true };
   }
 
   const diagnostics: string[] = [
@@ -522,16 +564,12 @@ export async function checkOpencodeAvailability(): Promise<{ available: boolean;
     "Diagnostic info:",
   ];
 
-  try {
-    const miseCheck = await $`ls -d ~/.local/share/mise/installs/opencode/*/opencode 2>/dev/null`.quiet();
-    if (miseCheck.exitCode === 0) {
-      diagnostics.push(`  Found mise install: ${miseCheck.stdout.toString().trim()}`);
-      diagnostics.push("  -> OpenCode exists on disk but is not currently on PATH");
-    } else {
-      diagnostics.push("  No opencode binary found in common mise install path");
-    }
-  } catch {
-    diagnostics.push("  Could not inspect mise install path");
+  const miseInstalls = await findMiseInstalledExecutable("opencode");
+  if (miseInstalls.length > 0) {
+    diagnostics.push(`  Found mise install: ${miseInstalls.join(", ")}`);
+    diagnostics.push("  -> OpenCode exists on disk but is not currently on PATH");
+  } else {
+    diagnostics.push("  No opencode binary found in common mise install path");
   }
 
   const pathEntries = process.env.PATH?.split(":").filter((entry) => entry.includes("opencode")) ?? [];
@@ -546,13 +584,9 @@ export async function checkOpencodeAvailability(): Promise<{ available: boolean;
  * Checks whether the `aimgr` binary is available in PATH.
  */
 export async function checkAimgrAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
-  try {
-    const result = await $`which aimgr`.quiet();
-    if (result.exitCode === 0) {
-      return { available: true };
-    }
-  } catch {
-    // fall through to diagnostics
+  const aimgrPath = await findExecutableOnPath("aimgr");
+  if (aimgrPath) {
+    return { available: true };
   }
 
   return {
