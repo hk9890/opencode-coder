@@ -23,38 +23,6 @@ import {
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const DYNATRACE_PLUGIN_SPEC = `${OPENCODE_DYNATRACE_PACKAGE_NAME}@0.6.0`;
 
-async function hasGitHubPackagesAuthConfig(): Promise<boolean> {
-  const tokenCandidates = [process.env.NODE_AUTH_TOKEN, process.env.NPM_TOKEN, process.env.GITHUB_TOKEN]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
-
-  if (tokenCandidates.length > 0) {
-    return true;
-  }
-
-  const configCandidates = [
-    process.env.NPM_CONFIG_USERCONFIG,
-    process.env.npm_config_userconfig,
-    process.env.HOME ? join(process.env.HOME, ".npmrc") : undefined,
-    join(PROJECT_ROOT, ".npmrc"),
-  ]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
-
-  for (const configPath of new Set(configCandidates)) {
-    try {
-      const content = await readFile(configPath, "utf8");
-      if (content.includes("npm.pkg.github.com") && content.includes("_authToken")) {
-        return true;
-      }
-    } catch {
-      // ignore unreadable/non-existent config candidates
-    }
-  }
-
-  return false;
-}
-
 async function runLauncher(
   args: string[],
   extraEnv: Record<string, string> = {}
@@ -82,7 +50,7 @@ async function runLauncher(
 }
 
 const opencodeCheck = await checkOpencodeAvailability();
-const githubPackagesAuthCheck = await hasGitHubPackagesAuthConfig();
+const privateTestsEnabled = process.env.OPENCODE_CODER_PRIVATE_TESTS === "true";
 
 describe("manual launcher preflight", () => {
   it("seeds isolated .zshrc for zsh shell mode in empty HOME", async () => {
@@ -332,7 +300,7 @@ describe("manual launcher preflight", () => {
     }
   });
 
-  it.skipIf(!githubPackagesAuthCheck)("prepares pinned Dynatrace package deterministically for isolated local-build startup", async () => {
+  it.skipIf(!privateTestsEnabled)("prepares pinned Dynatrace package deterministically for isolated local-build startup", async () => {
     const workspace = await createFixtureWorkspace("cli-smoke-project");
 
     try {
@@ -358,7 +326,7 @@ describe("manual launcher preflight", () => {
   }, 120000);
 });
 
-describe.skipIf(!opencodeCheck.available || !githubPackagesAuthCheck)("manual launcher non-interactive mode", () => {
+describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launcher non-interactive mode", () => {
   it("runs one-shot command with shared isolated setup and explicit auth seed", async () => {
     const tempAuthDir = await mkdtemp(join(tmpdir(), "opencode-coder-manual-auth-"));
     const authPath = join(tempAuthDir, "auth.json");

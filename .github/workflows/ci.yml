@@ -31,8 +31,8 @@ jobs:
       - name: Run unit tests
         run: bun run test:unit
 
-      - name: Skip integration tests temporarily for v0.35.0 unblock
-        run: echo "Skipping bun run test:integration temporarily for v0.35.0 release unblock; see follow-up bug opencode-coder-0a8"
+      - name: Run integration tests
+        run: bun run test:integration
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

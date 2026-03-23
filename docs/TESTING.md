@@ -160,6 +160,25 @@ The manual launcher is a shared harness/debugging tool, not part of the raw real
 - Deterministic launcher regression coverage lives in `tests/integration/manual-launcher.test.ts`.
 - Ad-hoc manual reproduction uses `bun run test:manual -- ...`.
 
+Default repository integration coverage is intentionally **public-safe**:
+
+- `bun run test:integration` must work for external contributors without private Dynatrace plugin access.
+- GitHub CI and the release workflow run this same public-safe integration command.
+- Private/auth/opencode-dependent launcher cases are **not** enabled implicitly from ambient tokens or `.npmrc` detection.
+
+To opt in to the extended private launcher coverage locally, run the integration suite with:
+
+```bash
+OPENCODE_CODER_PRIVATE_TESTS=true bun run test:integration
+```
+
+Extended private mode additionally expects:
+
+- valid GitHub Packages auth for the private/pinned plugin dependencies
+- `opencode` available on `PATH` for the launcher scenarios that actually execute it
+
+If those capabilities are not available, leave `OPENCODE_CODER_PRIVATE_TESTS` unset and use the default public-safe suite.
+
 Use the manual launcher when you want ad-hoc testing with the **same setup model** as automated e2e runs (fixture copy, plugin wiring, isolated HOME/XDG/OpenCode roots, committed config snapshot seeded into isolated `OPENCODE_CONFIG_DIR`, and auth copied into isolated XDG data).
 
 This is the preferred workflow for both **you** and the **assistant** when reproducing behavior manually, because it keeps manual checks aligned with automated tests.
