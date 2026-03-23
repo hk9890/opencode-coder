@@ -310,7 +310,10 @@ export OPENCODE_DEFAULT_OPTIONS="--log-level DEBUG"
 ls -la ~/.local/share/opencode/log/
 
 # macOS:
-ls -la ~/Library/Logs/opencode/
+ls -la ~/Library/Application\ Support/opencode/log/
+
+# macOS fallback:
+ls -la ~/.local/share/opencode/log/
 
 # Windows (PowerShell):
 dir $env:LOCALAPPDATA\opencode\log\
@@ -468,10 +471,22 @@ bd gc --dry-run
 **Solution**:
 
 ```bash
-# Find large logs (Linux/macOS)
+# Linux
 du -sh ~/.local/share/opencode/log/
 
-# Remove old logs
+# macOS (canonical)
+du -sh ~/Library/Application\ Support/opencode/log/
+
+# macOS fallback (older/alternate setups only)
+du -sh ~/.local/share/opencode/log/
+
+# Remove old logs (Linux)
+find ~/.local/share/opencode/log/ -name "*.log" -mtime +30 -delete
+
+# Remove old logs (macOS canonical)
+find ~/Library/Application\ Support/opencode/log/ -name "*.log" -mtime +30 -delete
+
+# Remove old logs (macOS fallback, if used)
 find ~/.local/share/opencode/log/ -name "*.log" -mtime +30 -delete
 
 # Disable debug logging if not needed

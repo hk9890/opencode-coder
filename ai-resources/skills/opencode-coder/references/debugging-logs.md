@@ -67,14 +67,17 @@ export OPENCODE_CODER_DEBUG=1
 
 **Filtering plugin messages in logs:**
 
-When plugin debug logging is enabled, messages are tagged with the service name. Use grep to filter:
+When plugin debug logging is enabled, messages are tagged with the service name. Use grep to filter (matching `coder("logs")` / `getOpenCodeLogDirectoryCandidates()` resolution):
 
 ```bash
-# View only opencode-coder plugin messages
+# Linux
 grep "opencode-coder" ~/.local/share/opencode/log/*.log
 
-# View plugin messages with context (3 lines before/after)
-grep -C 3 "opencode-coder" ~/.local/share/opencode/log/*.log
+# macOS (canonical)
+grep "opencode-coder" ~/Library/Application\ Support/opencode/log/*.log
+
+# macOS fallback (older/alternate setups only)
+grep "opencode-coder" ~/.local/share/opencode/log/*.log
 ```
 
 See [Analyzing Log Files](#analyzing-log-files) for more log analysis techniques.
@@ -112,7 +115,8 @@ OpenCode log locations vary by operating system:
 
 **macOS:**
 ```
-~/Library/Logs/opencode/
+~/Library/Application Support/opencode/log/
+~/.local/share/opencode/log/ (fallback)
 ```
 
 **Windows:**
@@ -128,8 +132,11 @@ To locate your log directory:
 # Linux
 ls -la ~/.local/share/opencode/log/
 
-# macOS
-ls -la ~/Library/Logs/opencode/
+# macOS (canonical)
+ls -la ~/Library/Application\ Support/opencode/log/
+
+# macOS fallback (older/alternate setups)
+ls -la ~/.local/share/opencode/log/
 
 # Windows (PowerShell)
 dir $env:LOCALAPPDATA\opencode\log\
@@ -147,23 +154,44 @@ Log files are named by date and session. Look for:
 ### Useful Log Analysis Commands
 
 ```bash
-# Find most recent log file (Linux/macOS)
+# Linux
 ls -lt ~/.local/share/opencode/log/ | head -5
 
-# Search for errors in recent logs
+# Linux
 grep -i "error" ~/.local/share/opencode/log/*.log
 
-# View last 100 lines of most recent log
+# Linux
 tail -100 $(ls -t ~/.local/share/opencode/log/*.log | head -1)
 
-# Search for opencode-coder plugin messages (when OPENCODE_CODER_DEBUG=1)
+# macOS (canonical)
+ls -lt ~/Library/Application\ Support/opencode/log/ | head -5
+
+# macOS (canonical)
+grep -i "error" ~/Library/Application\ Support/opencode/log/*.log
+
+# macOS (canonical)
+tail -100 $(ls -t ~/Library/Application\ Support/opencode/log/*.log | head -1)
+
+# macOS fallback (older/alternate setups only)
+ls -lt ~/.local/share/opencode/log/ | head -5
+
+# Search for opencode-coder plugin messages (Linux)
 grep "opencode-coder" ~/.local/share/opencode/log/*.log
 
-# Search for plugin messages with context
+# Search for opencode-coder plugin messages (macOS canonical)
+grep "opencode-coder" ~/Library/Application\ Support/opencode/log/*.log
+
+# Search for plugin messages with context (Linux)
 grep -C 3 "opencode-coder" ~/.local/share/opencode/log/*.log
 
-# Search for any coder-related messages
+# Search for plugin messages with context (macOS canonical)
+grep -C 3 "opencode-coder" ~/Library/Application\ Support/opencode/log/*.log
+
+# Search for any coder-related messages (Linux)
 grep -i "coder" ~/.local/share/opencode/log/*.log
+
+# Search for any coder-related messages (macOS canonical)
+grep -i "coder" ~/Library/Application\ Support/opencode/log/*.log
 ```
 
 ### What to Look For
