@@ -1,0 +1,85 @@
+{
+  "expectations": [
+    {
+      "text": "Classifies topics as doc-backed, skill-only, or neither",
+      "passed": true,
+      "evidence": "Phase 1 explicitly defines three classification labels: 'doc-backed \u2014 a local doc exists', 'skill-only \u2014 no local doc, but an installed skill covers it', 'neither \u2014 no local doc, no skill'. The practical walk-through also repeats 'classify doc-backed / skill-only / neither' as step 4."
+    },
+    {
+      "text": "Mentions mode-aware paths or project-structure rules for team versus stealth",
+      "passed": true,
+      "evidence": "Phase 0 contains a table explicitly mapping team mode to AGENTS.md/docs/ and stealth mode to .coder/AGENTS.md/.coder/docs/, with the note 'If you write to the wrong path in stealth mode, you contaminate the team's shared files.'"
+    },
+    {
+      "text": "States that skill-only topics should route through a skill instead of creating hollow docs",
+      "passed": true,
+      "evidence": "The routing question table states: 'Nothing \u2014 the skill covers it completely \u2192 Delete the local doc (or don't create one), route AGENTS to the skill.' Step 6 of the walk-through also says 'verify AGENTS routes to it, not to a hollow local doc' for skill-only topics."
+    },
+    {
+      "text": "Includes a verify or report phase that checks paths, links, or stale references",
+      "passed": true,
+      "evidence": "Phase 7 is explicitly a verify phase: 'Every audit ends with a link-walk' checking that every path AGENTS references exists and every skill reference is installed. The report artifact is described as calling out which topics route through skills vs local docs."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Topics are classified as doc-backed, skill-only, or neither during Phase 1 inspection",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Directly stated in Phase 1 with exact label definitions and repeated in the practical walk-through step 4."
+    },
+    {
+      "claim": "Mode-aware paths differ between team and stealth modes",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Phase 0 table maps team\u2192AGENTS.md/docs/ and stealth\u2192.coder/AGENTS.md/.coder/docs/ sourced from .coder/opencode-coder.yaml."
+    },
+    {
+      "claim": "Skill-only topics should route to the skill rather than creating hollow local docs",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Routing question table and step 6 of walk-through both state AGENTS should point to the skill, not a hollow local doc, when no project-specific content exists."
+    },
+    {
+      "claim": "A verify phase checks every path and skill reference AGENTS uses",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Phase 7 explicitly describes a link-walk checking file existence and skill installation, with a final report as accountability artifact."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "workarounds": [],
+    "needs_review": []
+  },
+  "eval_feedback": {
+    "overall": "All four expectations are met with strong, specific evidence. The response is unusually complete: it names all three classification labels explicitly, provides a mode-path table for team vs stealth, gives a concrete routing decision table for skill-only topics, and dedicates a named phase (Phase 7) to path/link verification with a report artifact. No gaps detected.",
+    "suggestions": []
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 3,
+      "Glob": 1
+    },
+    "total_tool_calls": 4,
+    "total_steps": 5,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 5810,
+    "transcript_chars": 6671
+  },
+  "timing": {
+    "total_tokens": 33720,
+    "duration_ms": 48015,
+    "total_duration_seconds": 48.015,
+    "executor_duration_seconds": 48.015
+  }
+}

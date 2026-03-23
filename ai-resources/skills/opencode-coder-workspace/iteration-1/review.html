@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "opencode-coder", "runs": [{"id": "eval-0-a-beads-aware-planning-response-with-executable-ta-with_skill-run-1", "prompt": "I want a structured beads plan for a docs-lifecycle improvement project. Break it into an epic, execution tasks, and an acceptance review task, and tell me how to handle any tasks that still need discussion before a tasker should touch them.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Here is the full structured plan using the skill's conventions.\n\n---\n\n## Docs-Lifecycle Improvement \u2014 Beads Plan\n\n### 1. Create the Epic\n\n```bash\ncat << 'EOF' | bd create --title=\"Docs Lifecycle Improvement\" --type=epic --priority=2 --body-file -\n## Description\nAudit, repair, and improve project documentation across its full lifecycle:\ncreate, update, audit/repair, slim/split, and incident-driven improve.\n\n## Goals\n- All project docs are accurate, current, and correctly scoped\n- No orphaned, stale, or duplicated doc files\n- Lifecycle workflows are tested and repeatable\n\n## Success Criteria\n- [ ] All child tasks closed\n- [ ] Acceptance review task passed\n- [ ] No docs flagged during /opencode-coder/doctor run\nEOF\n```\n\n---\n\n### 2. Create Execution Tasks\n\nRun these in parallel (independent of each other):\n\n```bash\n# Task 1 \u2014 Audit existing docs\ncat << 'EOF' | bd create --title=\"Audit all project docs for staleness and scope drift\" --type=task --priority=2 --body-file -\n## Description\nWalk every doc in the project and flag files that are stale, out-of-scope,\norphaned, or duplicated. This is the discovery pass before repair begins.\n\n## Instructions\n1. Run `bd doctor` and capture output\n2. List every markdown file under docs/ and ai-resources/\n3. For each file, record: path, last-modified date, and status\n   (current | stale | orphaned | duplicate | too-large)\n4. Write findings to a scratch note (bd remember or inline notes)\n\n## Acceptance Criteria\n- [ ] Every doc file reviewed and tagged with a status\n- [ ] List of files needing repair is documented in task notes\n- [ ] bd doctor shows no sync errors\n- [ ] No new files created \u2014 audit only\nEOF\n\n# Task 2 \u2014 Repair stale or incorrect docs\ncat << 'EOF' | bd create --title=\"Repair stale and incorrect project docs\" --type=task --priority=2 --body-file -\n## Description\nApply fixes found in the audit task. Update content that is wrong or outdated.\nDo not restructure or split files in this task (see slim/split task).\n\n## Instructions\n1. Retrieve findings from the audit task notes\n2. For each stale/incorrect file:\n   a. Read the current file\n   b. Identify specific wrong sections\n   c. Rewrite only the incorrect sections with accurate content\n3. Commit after each file to keep diffs small\n\n## Files to Modify\n- Determined by audit findings (update this task's notes after audit closes)\n\n## Acceptance Criteria\n- [ ] No doc contains factually incorrect information\n- [ ] All changes committed\n- [ ] Tests pass (if any doc references test commands, verify they still work)\nEOF\n\n# Task 3 \u2014 Slim or split oversized docs\ncat << 'EOF' | bd create --title=\"Slim or split oversized and over-scoped doc files\" --type=task --priority=3 --body-file -\n## Description\nFiles flagged as too-large or containing mixed scope should be split or trimmed.\nEach resulting file must have a single clear responsibility.\n\n## Instructions\n1. Retrieve \"too-large\" and \"scope-mixed\" flags from audit notes\n2. For each candidate:\n   a. Read the file in full\n   b. Identify natural split boundaries\n   c. Split into new focused files OR trim non-essential content\n   d. Update any cross-references / links to the old file\n3. Delete original only after all references are updated\n\n## Acceptance Criteria\n- [ ] No doc file exceeds the project's line limit (check SKILL.md / project rules)\n- [ ] Each remaining file covers exactly one topic\n- [ ] No broken internal links\n- [ ] All changes committed\nEOF\n```\n\n---\n\n### 3. Create the Acceptance Review Task\n\n```bash\ncat << 'EOF' | bd create --title=\"Acceptance Review: Docs Lifecycle Improvement\" --type=task --priority=1 --body-file -\n## Description\nGate check before the epic is closed. Verify that the docs lifecycle improvement\nachieved its stated goals with no regressions.\n\n## Instructions\n1. Run `bd list --parent <epic-id>` \u2014 confirm all tasks are closed\n2. Run `/opencode-coder/doctor` \u2014 confirm clean output\n3. Spot-check 3\u20135 repaired docs against the audit notes to confirm accuracy\n4. Confirm no orphaned files remain\n5. If issues found: create new bug/task issues (do NOT reopen closed tasks)\n\n## Acceptance Criteria\n- [ ] All implementation tasks closed\n- [ ] bd doctor reports no errors\n- [ ] Spot-check passes (0 factual errors in sampled docs)\n- [ ] No orphaned doc files\n- [ ] If clean: close this task and then close the epic\nEOF\n```\n\nThen link the acceptance review task as a blocker on the epic:\n\n```bash\nbd dep add <epic-id> <acceptance-review-task-id>\n```\n\n---\n\n### 4. Set Task Dependencies\n\nRepair and slim/split depend on the audit finishing first:\n\n```bash\nbd dep add <repair-task-id>    <audit-task-id>\nbd dep add <slim-task-id>      <audit-task-id>\nbd dep add <acceptance-review-task-id> <repair-task-id>\nbd dep add <acceptance-review-task-id> <slim-task-id>\n```\n\n---\n\n### 5. Tasks That Need Discussion First\n\nIf any task cannot be fully scoped yet \u2014 for example, the approach to splitting docs hasn't been decided \u2014 use this pattern at creation time:\n\n```bash\ncat << 'EOF' | bd create --title=\"Decide split strategy for AGENTS.md vs CLAUDE.md\" --type=task --priority=2 --labels=needs:discussion --body-file -\n## Description\nThere is overlap between AGENTS.md and CLAUDE.md content. A decision is needed\nbefore the slim/split task can cover these files.\n\n## Open Questions\n- [ ] Should AGENTS.md and CLAUDE.md remain separate files or be merged?\n- [ ] What is the canonical home for agent-routing rules?\n- [ ] Who owns the final structure decision?\n\n## Why This Needs Discussion\nA tasker who attempts this without a decision will guess and produce a\nresult that may be immediately reverted. Block it until resolved.\n\n## Instructions\n(blocked until open questions above are answered)\nEOF\n\n# Immediately block it \u2014 keeps it out of bd ready\nbd update <id> --status=blocked\n```\n\n**How to unblock it when discussion resolves:**\n\n```bash\nbd update <id> --status=open --remove-label needs:discussion\n# Then add the resolved decision as notes:\nbd update <id> --notes=\"Decision: keep files separate; AGENTS.md owns routing only.\"\n```\n\n---\n\n## Summary of the Pattern\n\n| Situation | Label | Status | Appears in `bd ready`? |\n|---|---|---|---|\n| Ready to execute | _(none)_ | `open` | Yes |\n| Minor open question, mostly ready | `has:open-questions` | `blocked` | No |\n| Needs design/scoping discussion first | `needs:discussion` | `blocked` | No |\n| Acceptance review gate | _(none, task type)_ | `open` after deps close | Yes |\n\nThe key rule from the skill: **if a tasker would have to guess, block it.** It is always cheaper to block-for-discussion than to redo work after an agent guesses wrong.\n"}], "grading": {"expectations": [{"text": "Uses an acceptance review task rather than a native gate issue", "passed": true, "evidence": "Section 3 creates a task titled 'Acceptance Review: Docs Lifecycle Improvement' with --type=task, explicitly described as a 'Gate check before the epic is closed.' It is linked via bd dep add as a blocker on the epic, functioning as a review gate without using any native gate-issue mechanism."}, {"text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low", "passed": true, "evidence": "All bd create calls use numeric priorities: --priority=2 (epic), --priority=2 (audit), --priority=2 (repair), --priority=3 (slim/split), --priority=1 (acceptance review), --priority=2 (needs:discussion example). No high/medium/low strings appear anywhere."}, {"text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status", "passed": true, "evidence": "Section 5 shows `--labels=needs:discussion` at creation time and immediately follows with `bd update <id> --status=blocked`. The summary table explicitly maps 'Needs design/scoping discussion first' \u2192 label: needs:discussion, status: blocked, not in bd ready."}, {"text": "Uses the bd create --body-file - pattern for structured issue bodies", "passed": true, "evidence": "Every bd create call (epic, audit, repair, slim/split, acceptance review, and needs:discussion example) uses the `cat << 'EOF' | bd create ... --body-file -` heredoc pipeline pattern for structured multi-section bodies."}, {"text": "Mentions showing bd ready and bd blocked before execution", "passed": false, "evidence": "The response jumps directly into issue creation commands. Neither `bd ready` nor `bd blocked` is mentioned at any point as a pre-execution check or orientation step."}], "summary": {"passed": 4, "failed": 1, "total": 5, "pass_rate": 0.8}, "claims": [{"claim": "Acceptance review is modeled as a task (--type=task), not a native gate issue", "type": "factual", "verified": true, "evidence": "bd create --title='Acceptance Review: Docs Lifecycle Improvement' --type=task --priority=1 ... in Section 3"}, {"claim": "All priorities are numeric (0-4 range)", "type": "factual", "verified": true, "evidence": "Priorities used: 1, 2, 3 across all six bd create calls; no text-based priority strings"}, {"claim": "needs:discussion label + blocked status is the prescribed pattern for undecided work", "type": "factual", "verified": true, "evidence": "--labels=needs:discussion at create, then bd update <id> --status=blocked immediately after"}, {"claim": "All issue bodies are created via --body-file - piped from heredoc", "type": "factual", "verified": true, "evidence": "cat << 'EOF' | bd create ... --body-file - used consistently for every issue"}, {"claim": "Response advises checking bd ready and bd blocked before starting execution", "type": "factual", "verified": false, "evidence": "Neither command appears anywhere in the response"}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": ["bd ready / bd blocked pre-execution orientation step is absent \u2014 the plan goes straight to issue creation without grounding the user in current project state"]}, "eval_feedback": {"overall": "Strong performance on four of five criteria. The response correctly uses an acceptance-review task as the gate, applies numeric priorities throughout, explains the needs:discussion + blocked pattern with a concrete example and summary table, and consistently uses the --body-file - heredoc pattern. The only miss is the pre-execution orientation: the skill expects the agent to surface bd ready and bd blocked before issuing any creation commands so the planner knows what already exists and what is currently blocked. Adding two lines at the top ('Run bd ready to see available work; run bd blocked to check existing blockers before creating new issues') would close this gap.", "suggestions": [{"assertion": "Mentions showing bd ready and bd blocked before execution", "reason": "The response could be improved by adding a brief 'Before creating issues' preamble that runs bd ready and bd blocked to ground the plan in current project state, as the skill prescribes this as a standard orientation step before any new work is created."}]}, "execution_metrics": {"tool_calls": {"Read": 2}, "total_tool_calls": 2, "total_steps": 3, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 6604, "transcript_chars": 7183}, "timing": {"total_tokens": 30487, "duration_ms": 50597, "total_duration_seconds": 50.597, "executor_duration_seconds": 50.597}}}, {"id": "eval-0-a-beads-aware-planning-response-with-executable-ta-without_skill-run-1", "prompt": "I want a structured beads plan for a docs-lifecycle improvement project. Break it into an epic, execution tasks, and an acceptance review task, and tell me how to handle any tasks that still need discussion before a tasker should touch them.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Let me review the current docs landscape first.\n\nHere is the structured plan. I'll describe the full shape, then explain the \"needs-discussion\" handling pattern at the end.\n\n---\n\n## Docs-Lifecycle Improvement \u2014 Beads Plan\n\n### Structure\n\n```\nEpic\n \u2514\u2500\u2500 Task: Audit current state\n \u2514\u2500\u2500 Task: Refresh command dispatchers\n \u2514\u2500\u2500 Task: Refresh skill reference (project-docs-lifecycle.md)\n \u2514\u2500\u2500 Task: Refresh and validate project docs (docs/)\n \u2514\u2500\u2500 Task: AGENTS routing pass\n \u2514\u2500\u2500 Task: [BLOCKED] Decide scope of slim/split for oversized docs   \u2190 needs discussion\n \u2514\u2500\u2500 Task: [BLOCKED] Decide if improve-doc should grow a dry-run mode \u2190 needs discussion\n \u2514\u2500\u2500 Task: Acceptance review (manual launcher + deterministic gates)\n```\n\nThe acceptance review task **depends on all execution tasks** except the two blocked ones \u2014 those are decoupled until the discussion resolves.\n\n---\n\n### Epic\n\n- **Title**: `Docs lifecycle: full audit and refresh pass`\n- **Type**: `feature`\n- **Description**: Bring commands, skill references, and project docs into consistent alignment. Cover inspect \u2192 refresh \u2192 audit \u2192 AGENTS \u2192 verify lifecycle phases. Acceptance is human-judged via manual launcher.\n- **Priority**: `2` (medium)\n\n---\n\n### Execution Tasks (7 phases mapped to issues)\n\n| # | Title | Type | Notes |\n|---|---|---|---|\n| 1 | `Docs lifecycle: audit current state and classify topics` | `task` | Phase 1 (Inspect). Output is a findings comment, not code. |\n| 2 | `Docs lifecycle: refresh command dispatchers (docs.md, improve-doc.md, init.md)` | `task` | Phase 3/4. Depends on audit findings. |\n| 3 | `Docs lifecycle: refresh project-docs-lifecycle.md skill reference` | `task` | Phase 3/4. Canonical source of truth \u2014 touch carefully. |\n| 4 | `Docs lifecycle: refresh project docs (TESTING.md, CODING.md, etc.)` | `task` | Phase 3. Use audit output to scope edits. |\n| 5 | `Docs lifecycle: AGENTS routing pass` | `task` | Phase 6. Depends on docs refresh being done. |\n| 6 | `Docs lifecycle: cross-reference and link verification` | `task` | Phase 7 prep. Can run after docs+AGENTS settle. |\n\nDependencies:\n```\n2 \u2192 depends on \u2192 1\n3 \u2192 depends on \u2192 1\n4 \u2192 depends on \u2192 1\n5 \u2192 depends on \u2192 4\n6 \u2192 depends on \u2192 5\n```\n\n---\n\n### Needs-Discussion Tasks\n\nCreate these as normal issues but **block them on a dedicated discussion issue**. The tasker sees the blocker and knows not to start.\n\n**Pattern:**\n```bash\n# Create the discussion issue first\nbd create --title=\"Discuss: scope of slim/split for oversized project docs\" \\\n  --description=\"Before a tasker touches docs size, we need to agree on size thresholds, which files qualify, and whether to split or just trim.\" \\\n  --type=task --priority=3\n\n# Then create the blocked execution task\nbd create --title=\"Docs lifecycle: slim oversized project docs\" \\\n  --description=\"Phase 5 (slim/split). Execute once thresholds and target files are agreed in the discussion issue.\" \\\n  --type=task --priority=3\n\n# Wire the dependency\nbd dep add <slim-task-id> <discussion-id>\n```\n\nThe same pattern applies to any other discussion-gated task. The `bd blocked` command will surface these clearly so no tasker picks them up by accident.\n\n---\n\n### Acceptance Review Task\n\nCreate this last, with dependencies on all execution tasks (not the blocked ones):\n\n```bash\nbd create --title=\"Docs lifecycle: acceptance review\" \\\n  --description=\"Human acceptance gate. Run deterministic checks (plugin.test.ts, e2e scenarios 1-4), then run /opencode-coder/docs and /opencode-coder/improve-doc in a manual launcher workspace and judge semantically per TESTING.md criteria.\" \\\n  --type=task --priority=2\n\nbd dep add <acceptance-id> <task-2-id>\nbd dep add <acceptance-id> <task-3-id>\nbd dep add <acceptance-id> <task-4-id>\nbd dep add <acceptance-id> <task-5-id>\nbd dep add <acceptance-id> <task-6-id>\n```\n\nThis makes the acceptance task invisible to `bd ready` until all its blockers are closed.\n\n---\n\n### Discussion-Gated Task Summary\n\n| Situation | What to do |\n|---|---|\n| Task needs a decision before work starts | Create a **discussion issue** + the **execution issue**, then `bd dep add <execution> <discussion>` |\n| Decision has been made | `bd close <discussion-id>` \u2014 the execution task immediately appears in `bd ready` |\n| Task is too vague even for a discussion | Leave it out of the plan; add it later when the question crystallizes |\n\nThe key principle: **never leave a task open and undecided with no blocker** \u2014 that's how a tasker silently picks it up and makes an undiscussed choice.\n\n---\n\nWant me to actually run the `bd create` commands to build this plan now?\n"}], "grading": {"expectations": [{"text": "Uses an acceptance review task rather than a native gate issue", "passed": true, "evidence": "The response creates 'Docs lifecycle: acceptance review' as an explicit task with bd create, framed as a human acceptance gate with manual launcher + deterministic checks, wired via bd dep add dependencies rather than any native gate mechanism."}, {"text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low", "passed": true, "evidence": "All bd create commands use --priority=2 or --priority=3. No high/medium/low strings appear anywhere in the plan."}, {"text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status", "passed": false, "evidence": "The response explains a discussion-gate pattern (create a discussion issue, then block the execution task on it via bd dep add), but never mentions a 'needs:discussion' label. It uses dependency blocking but omits the label entirely."}, {"text": "Uses the bd create --body-file - pattern for structured issue bodies", "passed": false, "evidence": "All bd create calls use inline --description= strings. The --body-file - pattern for piping structured multi-line bodies is never mentioned or demonstrated."}, {"text": "Mentions showing bd ready and bd blocked before execution", "passed": false, "evidence": "bd ready and bd blocked are referenced only to explain their passive behavior ('invisible to bd ready until blockers closed', 'bd blocked will surface these'). Neither is recommended as a pre-execution check step a tasker should run before starting work."}], "summary": {"passed": 2, "failed": 3, "total": 5, "pass_rate": 0.4}, "claims": [{"claim": "Acceptance review task is created as a dependent task, not a native gate", "type": "structural", "verified": true, "evidence": "bd create --title='Docs lifecycle: acceptance review' with explicit bd dep add wiring to all upstream tasks."}, {"claim": "Numeric priorities (2, 3) used throughout", "type": "convention", "verified": true, "evidence": "--priority=2 and --priority=3 appear in all bd create commands; no textual priority labels used."}, {"claim": "needs-discussion pattern explained via a dedicated discussion issue + bd dep add blocking", "type": "workflow", "verified": true, "evidence": "Response shows creating a 'Discuss:' issue then wiring bd dep add <execution> <discussion>."}, {"claim": "needs:discussion label is part of the pattern", "type": "convention", "verified": false, "evidence": "No label flag (--label or similar) is mentioned anywhere in the response."}, {"claim": "--body-file - pattern used for structured issue bodies", "type": "convention", "verified": false, "evidence": "All bd create calls use inline --description= strings only."}], "user_notes_summary": {"uncertainties": ["Whether bd create supports a --label flag for needs:discussion in this project's beads version"], "needs_review": ["needs:discussion label support \u2014 response omits it entirely; skill should clarify whether it is a first-class flag or a freeform tag", "bd create --body-file - pattern \u2014 not demonstrated despite the plan having multi-paragraph descriptions that would benefit from it"], "workarounds": ["Response substitutes inline --description= strings instead of --body-file -, which works but loses structured formatting for long bodies", "Response substitutes dependency-only blocking instead of label+blocked status for needs-discussion tasks"]}, "eval_feedback": {"overall": "2/5 expectations met. The response correctly avoids native gate issues (uses an explicit acceptance review task) and correctly uses numeric priorities. It fails on three skill-specific conventions: the needs:discussion label is entirely absent (only dependency blocking is used), the --body-file - pattern is never shown despite the plan having rich multi-paragraph descriptions, and bd ready / bd blocked are not framed as pre-execution checks a tasker should actively run. The without_skill run is behaving as expected \u2014 it invents a reasonable workflow but misses the exact prescribed patterns.", "suggestions": [{"assertion": "Explains that needs-discussion work should use a needs:discussion label plus blocked status", "reason": "The skill should clarify that both a label AND a blocked-dependency are required \u2014 the label makes the reason machine-readable and visible in bd list filters; dependency alone is not sufficient per the expected convention."}, {"assertion": "Uses the bd create --body-file - pattern for structured issue bodies", "reason": "The eval prompt asks for a structured plan; the skill should explicitly demonstrate --body-file - with a heredoc for at least the epic and acceptance review task, since those have complex multi-line bodies."}, {"assertion": "Mentions showing bd ready and bd blocked before execution", "reason": "The expectation is about active workflow advice (run these commands before you start), not just passive description of their behavior. The grading criterion should be tightened to require an explicit 'before starting, run...' instruction."}]}, "execution_metrics": {"tool_calls": {"Glob": 3, "Read": 5}, "total_tool_calls": 8, "total_steps": 9, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 4575, "transcript_chars": 5644}, "timing": {"total_tokens": 59700, "duration_ms": 54536, "total_duration_seconds": 54.536, "executor_duration_seconds": 54.536}}}, {"id": "eval-1-a-project-doc-lifecycle-response-that-uses-inspect-with_skill-run-1", "prompt": "Assume I'm in a team-mode repo where AGENTS.md and docs may be stale. Walk me through an /opencode-coder/docs style audit-and-refresh approach that decides what should stay in project docs versus what should route to reusable skills, and avoid creating hollow docs.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Here's the full audit-and-refresh walkthrough, grounded in the skill's lifecycle phases:\n\n---\n\n## Audit-and-Refresh: Docs vs. Skills Decision Framework\n\n### Step 0: Establish mode and paths\n\nBefore touching anything, detect the active mode:\n\n- Check `.coder/opencode-coder.yaml` first (primary source of truth)\n- Fall back to legacy signals: `.beads/`, `AGENTS.md` at root, `ai.package.yaml`\n- Mode determines all paths:\n  - **team** \u2192 `docs/`, `AGENTS.md`\n  - **stealth** \u2192 `.coder/docs/`, `.coder/AGENTS.md`\n\n**Why**: Writing to the wrong path is silent corruption \u2014 it creates phantom docs no one reads.\n\n---\n\n### Step 1 \u2014 Inspect (Phase 1)\n\nRun a structured discovery pass across the active docs path, root, and `.opencode/skills/`. For each standard topic (`CODING.md`, `TESTING.md`, `RELEASING.md`, `MONITORING.md`, `PULL-REQUESTS.md`), classify it:\n\n| Classification | What it means |\n|---|---|\n| **doc-backed** | A local project doc exists at the active path |\n| **skill-only** | No local doc, but a matching installed skill covers it |\n| **neither** | No doc, no skill \u2014 topic is uncovered |\n\nThis classification drives every decision downstream. Do not skip it \u2014 AGENTS.md staleness almost always traces back to a missing or wrong classification from the last time someone touched docs.\n\n---\n\n### Step 2 \u2014 The core \"stay vs. route\" decision\n\n**A topic doc should exist if and only if it has real project-specific content that a reusable skill cannot provide.**\n\nConcrete tests:\n\n| Signal | Decision |\n|---|---|\n| Content is generic \"how to write tests\" with no project commands/paths | Hollow doc \u2192 delete, route to skill |\n| Content duplicates what an installed skill says verbatim | Duplicate \u2192 consolidate; skill wins for the generic part |\n| Content includes actual commands (`pnpm test:unit`, `cargo clippy --fix`), project-specific paths, or team conventions | Keep as project doc |\n| A skill exists and the only local additions are 2\u20133 project-specific notes | Merge notes into skill params or a thin \"project overrides\" section, not a full doc |\n| No skill covers this topic at all | Project doc is appropriate even if thin |\n\nThe goal is **no hollow docs** \u2014 a file that exists only to say \"run the tests\" is worse than no file, because it creates a false sense of coverage.\n\n---\n\n### Step 3 \u2014 Audit AGENTS.md for staleness (Phase 4)\n\nAGENTS.md in a team-mode repo is the most likely stale artifact. Check these specifically:\n\n1. **Broken links**: Every `docs/FOO.md` reference must resolve to a real file. Dead links are common after docs refactors.\n2. **Routing to skill-only topics without an installed skill**: If `AGENTS.md` says \"Load the `observability` skill\" but that skill isn't in `.opencode/skills/`, the route is broken.\n3. **Duplicated guidance**: If AGENTS inline-explains something that a doc or skill already covers fully, the inline block is drift \u2014 it'll go stale and diverge.\n4. **Size check**: Target is 30\u201360 lines. If it's grown past that, it's accumulating content that belongs in docs files.\n5. **Custom sections**: Preserve non-template sections (team conventions, project-specific onboarding) unless they're clearly obsolete. Don't wipe them during a refresh.\n\n---\n\n### Step 4 \u2014 Avoid hollow docs (the key discipline)\n\nThe `/opencode-coder/docs` workflow has an explicit rule: **do not create a topic doc for a skill-only topic**. Instead, route AGENTS directly to the skill.\n\nPractical pattern for AGENTS.md routing when a doc *should not* exist:\n\n```markdown\n## Testing\n\nLoad the **jest-patterns** skill for test conventions and commands.\n```\n\nvs. the hollow-doc anti-pattern:\n\n```markdown\n## Testing\n\nRead `docs/TESTING.md` for test patterns.\n```\n\n...where `docs/TESTING.md` just says \"use Jest and run `npm test`.\"\n\nThe second form looks complete but provides no real value and will drift.\n\n---\n\n### Step 5 \u2014 Refresh or repair (Phase 3/4)\n\nOnce you have classifications and have audited AGENTS:\n\n- **For stale docs**: Update in-place. Preserve project-specific sections; replace generic content with skill routes.\n- **For hollow docs**: Delete the file, update AGENTS to route to the skill (or remove the section if there's no skill either).\n- **For missing docs with real content**: Create minimally \u2014 only the project-specific substance, no boilerplate padding.\n- **For AGENTS routing**: Rewrite broken links. Remove sections for deleted docs. Add skill routes for skill-only topics.\n\n---\n\n### Step 6 \u2014 Verify before calling it done (Phase 7)\n\nBefore marking complete:\n\n- Every path referenced in AGENTS actually exists\n- No skill is referenced that isn't installed\n- Skill-only topics are routed to skills, not implied to have a missing doc\n- No doc file is under ~10 substantive lines (that's hollow)\n- AGENTS is under 60 lines\n- Mode-path consistency: team docs aren't referenced from a stealth AGENTS\n\n---\n\n### The one-sentence rule for doc vs. skill\n\n> **If you removed everything project-specific from the doc and it still made sense, it belongs in a skill, not a doc.**\n\nThat test catches most hollow docs before they're written.\n"}], "grading": {"expectations": [{"text": "Classifies topics as doc-backed, skill-only, or neither", "passed": true, "evidence": "Step 1 explicitly defines a three-way classification table: 'doc-backed' (local doc exists), 'skill-only' (no local doc but matching skill covers it), and 'neither' (no doc, no skill). The response states this classification 'drives every decision downstream.'"}, {"text": "Mentions mode-aware paths or project-structure rules for team versus stealth", "passed": true, "evidence": "Step 0 explicitly covers mode detection and path differences: team \u2192 'docs/', 'AGENTS.md'; stealth \u2192 '.coder/docs/', '.coder/AGENTS.md'. Step 6 verify checklist includes 'Mode-path consistency: team docs aren't referenced from a stealth AGENTS.'"}, {"text": "States that skill-only topics should route through a skill instead of creating hollow docs", "passed": true, "evidence": "Step 4 states explicitly: 'do not create a topic doc for a skill-only topic. Instead, route AGENTS directly to the skill.' A concrete AGENTS.md routing pattern is shown vs. the hollow-doc anti-pattern. The one-sentence rule at the end also captures this."}, {"text": "Includes a verify or report phase that checks paths, links, or stale references", "passed": true, "evidence": "Step 6 'Verify before calling it done (Phase 7)' is a dedicated checklist covering: every path referenced in AGENTS exists, no skill referenced that isn't installed, skill-only topics routed to skills, no hollow docs under ~10 lines, AGENTS line count, and mode-path consistency."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1}, "claims": [{"claim": "Classification table uses exactly three categories: doc-backed, skill-only, neither", "type": "factual", "verified": true, "evidence": "Step 1 table explicitly lists all three with clear definitions."}, {"claim": "Team mode uses 'docs/' and 'AGENTS.md'; stealth uses '.coder/docs/' and '.coder/AGENTS.md'", "type": "factual", "verified": true, "evidence": "Step 0 bullet list and Step 6 verify checklist both confirm these paths."}, {"claim": "Skill-only topics should be routed in AGENTS.md directly to the skill, not given a hollow doc", "type": "factual", "verified": true, "evidence": "Step 4 states the rule explicitly and provides a code example contrast."}, {"claim": "A dedicated verify phase (Step 6) checks paths, skills, hollow docs, and mode-path consistency", "type": "factual", "verified": true, "evidence": "Step 6 'Verify before calling it done (Phase 7)' contains a six-item checklist covering all required dimensions."}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": []}, "eval_feedback": {"overall": "All four expectations are met clearly and substantively. The response is well-structured with explicit steps, a three-way classification, mode-aware path guidance, anti-hollow-doc rules, and a dedicated verify phase.", "suggestions": [{"assertion": "Includes a verify or report phase that checks paths, links, or stale references", "reason": "The verify phase (Step 6) is thorough but doesn't mention checking for *broken outbound links within doc files themselves* (only AGENTS links are checked). A stronger response would also scan docs for dead internal cross-references."}]}, "execution_metrics": {"tool_calls": {"Read": 4}, "total_tool_calls": 4, "total_steps": 5, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 5088, "transcript_chars": 5976}, "timing": {"total_tokens": 45658, "duration_ms": 47765, "total_duration_seconds": 47.765, "executor_duration_seconds": 47.765}}}, {"id": "eval-1-a-project-doc-lifecycle-response-that-uses-inspect-without_skill-run-1", "prompt": "Assume I'm in a team-mode repo where AGENTS.md and docs may be stale. Walk me through an /opencode-coder/docs style audit-and-refresh approach that decides what should stay in project docs versus what should route to reusable skills, and avoid creating hollow docs.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Let me look at the relevant files first.\n\nHere's the complete mental model for the audit-and-refresh approach:\n\n---\n\n## The Core Decision Framework\n\nThe entire approach is built on one rule: **a local doc must earn its existence**. If the only content it would have is generic workflow that a skill already covers, don't create it \u2014 route to the skill instead. A hollow doc is worse than no doc: it implies authoritative guidance exists, so agents read it, find nothing project-specific, and waste context.\n\n---\n\n## Phase 0: Resolve Mode and Paths First\n\nBefore touching anything, determine the active mode from `.coder/opencode-coder.yaml`:\n\n| Mode | AGENTS lives at | Docs live at |\n|---|---|---|\n| team | `AGENTS.md` | `docs/` |\n| stealth | `.coder/AGENTS.md` | `.coder/docs/` |\n\nThis is non-negotiable. If you write to the wrong path in stealth mode, you contaminate the team's shared files.\n\n---\n\n## Phase 1: Inspect (the only safe starting point)\n\nDiscover what actually exists before proposing anything:\n\n1. **Enumerate existing docs** at the active path\n2. **Enumerate installed skills** under `.opencode/skills/`\n3. **Classify every topic** in the standard set (`OVERVIEW`, `CODING`, `TESTING`, `RELEASING`, `MONITORING`, `PULL-REQUESTS`):\n   - `doc-backed` \u2014 a local doc exists\n   - `skill-only` \u2014 no local doc, but an installed skill covers it\n   - `neither` \u2014 no local doc, no skill\n\nThis classification drives every decision downstream. You can't audit what you haven't mapped.\n\n---\n\n## The Central Routing Question\n\nFor each topic, ask: **\"What would this local doc say that the skill doesn't already say?\"**\n\n| Answer | Action |\n|---|---|\n| Project-specific rules, paths, or constraints | Create/keep a local doc |\n| Nothing \u2014 the skill covers it completely | Delete the local doc (or don't create one), route AGENTS to the skill |\n| Some overlap but also real local content | Keep local doc, trim the generic parts, add a reference to the skill for the rest |\n\nThe stale AGENTS.md problem in team repos is almost always this: docs were created during bootstrap as placeholders, never filled in with real content, and then AGENTS kept routing to them as if they were authoritative.\n\n---\n\n## Phase 2-5: Choose the Right Phase\n\n| Repo state | Right phase |\n|---|---|\n| No AGENTS, no lifecycle-aligned docs | Bootstrap \u2014 create minimal structure |\n| Docs exist, links stale, skills installed but not routed | Audit/repair |\n| Docs exist and current, normal maintenance | Refresh |\n| Docs are oversized, inlining generic guidance | Slim |\n\n**In a team-mode repo with stale AGENTS.md**, you almost always need **Audit** first:\n1. Check every path AGENTS references \u2014 does it still exist?\n2. Check every skill-covered topic \u2014 does AGENTS route to skill or to a hollow local doc?\n3. Check for duplicated guidance between local docs and skill references\n\n---\n\n## Avoiding Hollow Docs: The Practical Test\n\nBefore creating or keeping any topic doc, apply this test:\n\n```\nIf I deleted this file, would an agent lose any project-specific knowledge?\n  YES \u2192 the doc has real content, keep it\n  NO  \u2192 it's hollow, delete it and route AGENTS to the skill\n```\n\nThe key phrase in `project-structure.md:90` is: **\"Route that topic from AGENTS to the skill/workflow instead.\"** AGENTS becomes the routing layer; skills become the knowledge layer; local docs are only for what can't live in either of those places.\n\n---\n\n## What Stays in Project Docs vs. Skills\n\n| Belongs in local docs | Belongs in skills |\n|---|---|\n| Project-specific commands (e.g., `./validate-before-release.sh`) | Generic workflow steps |\n| Repo-specific branch naming rules | Standard PR workflow |\n| Environment setup for this specific stack | Generic testing patterns |\n| \"For this repo, always X before Y\" rules | Reusable release checklists |\n| Known gotchas in this codebase | Standard troubleshooting flows |\n\nSkills are portable across projects. Docs are project-scoped. When something applies to more than one project, it's a skill.\n\n---\n\n## Phase 6: AGENTS as a Routing Table, Not a Handbook\n\nThe design constraint in `project-structure.md:99` is exact: **AGENTS is a routing table, not a handbook.** The only things that belong inline are:\n- Project overview (a few lines)\n- \"Landing the Plane\" / session-close block\n\nEverything else should be a pointer: `\u2192 docs/TESTING.md` or `\u2192 skill: github-releases`. If you find paragraphs of inline guidance in AGENTS, that's a slim candidate \u2014 either move it to a local doc (if project-specific) or delete it (if the skill already says it).\n\n---\n\n## Phase 7: Verify Before Closing\n\nEvery audit ends with a link-walk:\n- Every path AGENTS references \u2192 does the file exist at that exact path?\n- Every skill reference \u2192 is the skill actually installed?\n- No dead links, no stale topic names, no retired command references\n\nThe report explicitly calls out topics routed through skills instead of local docs \u2014 this is the paper trail that proves you avoided hollow docs deliberately rather than just forgetting to create them.\n\n---\n\n## Practical Walk-through for Your Stale Team Repo\n\n```\n1. Read .coder/opencode-coder.yaml \u2192 confirm team mode\n2. List docs/ \u2192 note what exists\n3. List .opencode/skills/ \u2192 note installed skills\n4. For each standard topic: classify doc-backed / skill-only / neither\n5. For each doc-backed topic: apply the \"delete test\" above\n6. For each skill-only topic: verify AGENTS routes to it, not to a hollow local doc\n7. Read AGENTS.md \u2192 check every file reference still resolves\n8. Trim/delete hollow docs, update AGENTS routing\n9. Verify all paths, write report\n```\n\nThe report is the accountability artifact \u2014 it says explicitly which topics route through skills, which local docs were kept and why, and which were removed because they had no project-specific content.\n"}], "grading": {"expectations": [{"text": "Classifies topics as doc-backed, skill-only, or neither", "passed": true, "evidence": "Phase 1 explicitly defines three classification labels: 'doc-backed \u2014 a local doc exists', 'skill-only \u2014 no local doc, but an installed skill covers it', 'neither \u2014 no local doc, no skill'. The practical walk-through also repeats 'classify doc-backed / skill-only / neither' as step 4."}, {"text": "Mentions mode-aware paths or project-structure rules for team versus stealth", "passed": true, "evidence": "Phase 0 contains a table explicitly mapping team mode to AGENTS.md/docs/ and stealth mode to .coder/AGENTS.md/.coder/docs/, with the note 'If you write to the wrong path in stealth mode, you contaminate the team's shared files.'"}, {"text": "States that skill-only topics should route through a skill instead of creating hollow docs", "passed": true, "evidence": "The routing question table states: 'Nothing \u2014 the skill covers it completely \u2192 Delete the local doc (or don't create one), route AGENTS to the skill.' Step 6 of the walk-through also says 'verify AGENTS routes to it, not to a hollow local doc' for skill-only topics."}, {"text": "Includes a verify or report phase that checks paths, links, or stale references", "passed": true, "evidence": "Phase 7 is explicitly a verify phase: 'Every audit ends with a link-walk' checking that every path AGENTS references exists and every skill reference is installed. The report artifact is described as calling out which topics route through skills vs local docs."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1}, "claims": [{"claim": "Topics are classified as doc-backed, skill-only, or neither during Phase 1 inspection", "type": "factual", "verified": true, "evidence": "Directly stated in Phase 1 with exact label definitions and repeated in the practical walk-through step 4."}, {"claim": "Mode-aware paths differ between team and stealth modes", "type": "factual", "verified": true, "evidence": "Phase 0 table maps team\u2192AGENTS.md/docs/ and stealth\u2192.coder/AGENTS.md/.coder/docs/ sourced from .coder/opencode-coder.yaml."}, {"claim": "Skill-only topics should route to the skill rather than creating hollow local docs", "type": "factual", "verified": true, "evidence": "Routing question table and step 6 of walk-through both state AGENTS should point to the skill, not a hollow local doc, when no project-specific content exists."}, {"claim": "A verify phase checks every path and skill reference AGENTS uses", "type": "factual", "verified": true, "evidence": "Phase 7 explicitly describes a link-walk checking file existence and skill installation, with a final report as accountability artifact."}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": []}, "eval_feedback": {"overall": "All four expectations are met with strong, specific evidence. The response is unusually complete: it names all three classification labels explicitly, provides a mode-path table for team vs stealth, gives a concrete routing decision table for skill-only topics, and dedicates a named phase (Phase 7) to path/link verification with a report artifact. No gaps detected.", "suggestions": []}, "execution_metrics": {"tool_calls": {"Read": 3, "Glob": 1}, "total_tool_calls": 4, "total_steps": 5, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 5810, "transcript_chars": 6671}, "timing": {"total_tokens": 33720, "duration_ms": 48015, "total_duration_seconds": 48.015, "executor_duration_seconds": 48.015}}}, {"id": "eval-2-a-simplify-workflow-response-centered-on-recent-ch-with_skill-run-1", "prompt": "I just finished a feature and want to run the opencode-coder simplify workflow with focus on duplication. Explain exactly how you would scope the review, what review passes you would run, what changes are safe to apply directly, and what bigger changes you would ask me about first.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Here is exactly how I would execute the simplify workflow for your session, with focus on duplication:\n\n---\n\n## Scope selection\n\nRun these two commands first:\n\n```bash\ngit diff --name-only --cached\ngit diff --name-only\n```\n\nCombine and deduplicate the results. From your git status I can already see the candidate set:\n\n- `ai-resources/commands/opencode-coder/*.md` (6 files)\n- `docs/TESTING.md`\n- `src/index.ts`\n- `src/templates/init-install-guide.ts`\n- `tests/unit/init-install-guide.test.ts`\n\nDeleted files are excluded. Untracked directories (`ai-resources/skills/opencode-coder-workspace/`, `ai-resources/skills/opencode-coder/evals/`) are out of scope \u2014 those are new additions, not recently changed code.\n\n---\n\n## Three parallel review passes\n\nI launch all three reviewers simultaneously against that file set.\n\n**Reviewer 1 \u2014 Reuse & Duplication** (your stated focus, weighted highest):\n- Look for repeated logic patterns across the 6 command `.md` files\n- Look for duplicated scaffolding or shared boilerplate in `src/index.ts` and the template file\n- Look for repeated test setup or assertion patterns in the test file\n\n**Reviewer 2 \u2014 Code Quality**:\n- Naming clarity, unnecessary complexity, weak structure in the touched `.ts` files\n\n**Reviewer 3 \u2014 Efficiency**:\n- Wasteful recomputation, unnecessary allocations, repeated parsing in `src/index.ts`\n\nEach reviewer returns only high-confidence findings with file references and a safe/ask-first flag.\n\n---\n\n## Aggregation\n\nAfter reviewers return, I merge duplicates, prefer fixes that address multiple dimensions at once, and discard speculative or low-confidence findings.\n\n---\n\n## What I apply directly (safe fixes)\n\n- Collapsing identical or near-identical blocks in the command `.md` files into shared phrasing\n- Removing duplicated logic within `src/index.ts` that is entirely local to the touched functions\n- Extracting a tiny helper if the same expression appears 3+ times within the changed area\n- Small naming or structure improvements inside the changed scope\n\n---\n\n## What I ask you about first\n\n- Any deduplication that requires changing how the command `.md` files are structured at a higher level (e.g. extracting a shared partial or template file) \u2014 that is a cross-file architectural decision\n- Moving or renaming exports in `src/index.ts` that affect the public API\n- Pulling shared logic out of `init-install-guide.ts` into a new utility module \u2014 new file creation warrants a question\n- Anything that would touch files outside the scoped set, even if the duplication clearly originates there\n\nIf a worthwhile opportunity is too large to apply as a safe fix, I describe it clearly and, if beads tracking is active, offer to create an issue for it.\n\n---\n\n## Validation\n\nAfter applying safe fixes, I run the narrowest relevant check \u2014 likely:\n\n```bash\nbun test tests/unit/init-install-guide.test.ts\n```\n\nor if a broader typecheck is warranted:\n\n```bash\nbun run typecheck\n```\n\nI state explicitly if nothing meaningful is available to validate.\n\n---\n\n**To actually run this now**: say `/simplify focus on duplication` and I will execute the scope detection, launch the parallel reviewers, and proceed.\n"}], "grading": {"expectations": [{"text": "Starts scope selection from recent git changes including staged or unstaged diffs", "passed": true, "evidence": "The response explicitly calls `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged), then combines and deduplicates results. It also leverages the existing git status to enumerate the candidate file set."}, {"text": "Calls for three review passes covering duplication, code quality, and efficiency", "passed": true, "evidence": "Explicit 'Three parallel review passes' section names Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), and Reviewer 3 (Efficiency), each with concrete focus areas against the scoped file set."}, {"text": "Distinguishes safe local simplifications from broader ask-first refactors", "passed": true, "evidence": "Dedicated sections 'What I apply directly (safe fixes)' and 'What I ask you about first' provide concrete examples of each category \u2014 e.g., local deduplication within touched functions is safe; extracting a new utility module or restructuring command .md files requires user confirmation."}, {"text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "passed": true, "evidence": "Scope (listed file set), focus (duplication weighted highest), applied (safe fixes section), deferred/ask-first (ask-first section), and validation (bun test / bun run typecheck) are all present. Follow-up is covered implicitly via the offer to create a beads issue and the CTA to invoke `/simplify`. Fields are distributed across sections rather than in a single closing summary block."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1}, "claims": [{"claim": "Scope is derived from staged and unstaged git diffs combined", "type": "procedural", "verified": true, "evidence": "Two explicit git diff commands shown; results combined and deduplicated into 10 candidate files."}, {"claim": "Three review passes run in parallel covering duplication, quality, and efficiency", "type": "procedural", "verified": true, "evidence": "'Three parallel review passes' section explicitly names all three reviewers with distinct focus areas."}, {"claim": "Safe fixes are limited to changes local to the touched scope", "type": "behavioral", "verified": true, "evidence": "Safe section restricts to collapsing blocks, removing local duplicated logic, extracting helpers within changed area. Ask-first triggers on cross-file or API-boundary changes."}, {"claim": "Validation step runs narrowest relevant test after applying changes", "type": "procedural", "verified": true, "evidence": "Validation section specifies `bun test tests/unit/init-install-guide.test.ts` or broader typecheck, and notes explicitly stating if nothing is available."}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": ["Closing summary fields are distributed across response sections rather than consolidated in a single terminal summary block \u2014 skill may intend a structured closing section."]}, "eval_feedback": {"overall": "All four expectations are met clearly and with concrete evidence. The response is well-structured and covers every required dimension.", "suggestions": [{"assertion": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "reason": "The fields are present but distributed throughout the response rather than gathered into a single closing summary section. If the skill spec requires a consolidated end-of-run summary block (e.g. a final table or bulleted recap), this response only partially satisfies that format requirement. Consider tightening the expectation wording or verifying what the skill reference defines as the required output structure."}]}, "execution_metrics": {"tool_calls": {"Read": 2}, "total_tool_calls": 2, "total_steps": 3, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 3175, "transcript_chars": 3795}, "timing": {"total_tokens": 27088, "duration_ms": 27475, "total_duration_seconds": 27.475, "executor_duration_seconds": 27.475}}}, {"id": "eval-2-a-simplify-workflow-response-centered-on-recent-ch-without_skill-run-1", "prompt": "I just finished a feature and want to run the opencode-coder simplify workflow with focus on duplication. Explain exactly how you would scope the review, what review passes you would run, what changes are safe to apply directly, and what bigger changes you would ask me about first.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Let me read the relevant context first.\n\nHere's exactly how I'd run it, grounded in the workflow definition at `ai-resources/skills/opencode-coder/references/simplify.md`:\n\n---\n\n## Scope\n\nFirst I'd resolve the file set from git state:\n\n```bash\ngit diff --name-only --cached   # staged\ngit diff --name-only            # unstaged\n```\n\nFrom the current status that gives:\n- `src/index.ts`\n- `src/templates/init-install-guide.ts`\n- `ai-resources/commands/opencode-coder/*.md` (7 files)\n- `docs/TESTING.md`\n- `tests/unit/init-install-guide.test.ts`\n\nBecause your focus is **duplication**, the review is weighted toward Reviewer 1 but all three passes still run.\n\n---\n\n## Review Passes (parallel)\n\n**Reviewer 1 \u2014 Reuse & Duplication** *(weighted by your focus)*\n- Duplicated logic across `src/index.ts` and the service files\n- Repeated string literals or branching patterns in `init-install-guide.ts`\n- Copy-pasted sections in the `.md` command files (they share structure \u2014 `docs.md`, `doctor.md`, etc.)\n- Any setup/teardown repetition between the test file and its subject\n\n**Reviewer 2 \u2014 Code Quality**\n- Naming clarity in the changed functions\n- Unnecessary complexity or dead branches\n- Readability problems introduced by the feature\n\n**Reviewer 3 \u2014 Efficiency**\n- Wasteful recomputation in `src/index.ts` entry paths\n- Repeated parsing in the template generation\n\n---\n\n## What I'd apply directly (no confirmation needed)\n\nThese are local, behavior-preserving, clearly safe:\n- Extracting a duplicated string literal into a named constant within the touched file\n- Collapsing two near-identical branches into one when the delta is trivial\n- Pulling a repeated 2\u20133 line block into a small private helper **used only within the changed area**\n- Deduplicating any repeated markdown boilerplate in the command docs if it's identical copy-paste\n- Removing dead assignments or redundant conditionals introduced by the feature\n\n---\n\n## What I'd ask you about first\n\nThese cross module boundaries, touch public API, or require architectural judgment:\n- Extracting a shared helper into a new file (even if obvious \u2014 it changes the public surface of the module)\n- Merging overlapping logic between two service files (e.g. `beads-service.ts` and another service)\n- Changing the template generation contract in `init-install-guide.ts` if the duplication is in the signature/shape rather than implementation\n- Any refactor that would touch files outside the scoped set (e.g. pulling something into `src/core/index.ts`)\n- If the best fix is a cross-module abstraction, I'd explain the opportunity and create a beads issue rather than applying it unilaterally\n\n---\n\n## Validation\n\nAfter applying safe fixes, I'd run the narrowest available validation \u2014 given `tests/unit/init-install-guide.test.ts` is in scope:\n\n```bash\nbun test tests/unit/init-install-guide.test.ts\n```\n\nPlus a typecheck if the changed files are TypeScript:\n\n```bash\nbun tsc --noEmit\n```\n\n---\n\n## How to invoke it\n\nJust say `/simplify focus on duplication` (or \"run simplify with focus on duplication\") and I'll execute this plan: resolve scope from git, run the three reviewers in parallel, apply safe deduplication fixes directly, surface any bigger opportunities for your decision, validate, and end with the summary format from the workflow.\n"}], "grading": {"expectations": [{"text": "Starts scope selection from recent git changes including staged or unstaged diffs", "passed": true, "evidence": "Response explicitly runs `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged) to resolve the file set, then lists the resulting files from current git status."}, {"text": "Calls for three review passes covering duplication, code quality, and efficiency", "passed": true, "evidence": "Response defines three named reviewers in parallel: Reviewer 1 \u2014 Reuse & Duplication, Reviewer 2 \u2014 Code Quality, Reviewer 3 \u2014 Efficiency, each with concrete focus areas."}, {"text": "Distinguishes safe local simplifications from broader ask-first refactors", "passed": true, "evidence": "Response has explicit sections 'What I'd apply directly (no confirmation needed)' and 'What I'd ask you about first', with concrete criteria: local/behavior-preserving vs cross-module-boundary or public-API changes."}, {"text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "passed": false, "evidence": "The response covers scope, focus, applied, ask-first, and validation as prose sections, but does not present them as a structured closing summary with labeled fields. The 'follow-up' field is absent or only vaguely implied ('create a beads issue'). No post-run summary template or example output is shown."}], "summary": {"passed": 3, "failed": 1, "total": 4, "pass_rate": 0.75}, "claims": [{"claim": "Scope is derived from git diff --cached and git diff to capture staged and unstaged changes", "type": "factual", "verified": true, "evidence": "Transcript explicitly shows both git diff commands and enumerates the resulting file set."}, {"claim": "Three review passes run in parallel: duplication, code quality, efficiency", "type": "factual", "verified": true, "evidence": "Three reviewer blocks defined with distinct focus areas."}, {"claim": "Safe changes are applied directly; cross-module or API-touching refactors require confirmation", "type": "factual", "verified": true, "evidence": "Two explicit sections with concrete examples in each category."}, {"claim": "Response demonstrates the expected closing summary format with labeled fields", "type": "factual", "verified": false, "evidence": "No structured end-of-run summary block with fields like scope/focus/applied/deferred/validation/follow-up is shown. Fields exist as prose sections but not as a closing summary."}], "user_notes_summary": {"uncertainties": ["Whether the simplify skill file was actually found and read \u2014 tool calls for it returned no content shown in transcript, so the response may be reconstructed from general knowledge rather than the actual skill definition"], "needs_review": ["The closing summary format: the skill likely specifies a structured output block; the response does not demonstrate this format"], "workarounds": []}, "eval_feedback": {"overall": "Strong performance on scope resolution, three-pass review structure, and safe-vs-ask-first distinction. The main gap is the closing summary: the skill expects a structured end-of-run summary with labeled fields (scope, focus, applied, deferred/ask-first, validation, follow-up) but the response only covers these as loose prose sections. A correct response should show what that summary block actually looks like when the workflow completes.", "suggestions": [{"assertion": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "reason": "Response should explicitly model the closing summary as a structured block with labeled fields, not just cover the topics in separate sections. Even a brief example of what the end-of-run output looks like would satisfy this expectation."}]}, "execution_metrics": {"tool_calls": {"Read": 3, "Glob": 4}, "total_tool_calls": 7, "total_steps": 8, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 3297, "transcript_chars": 4216}, "timing": {"total_tokens": 40329, "duration_ms": 37832, "total_duration_seconds": 37.832, "executor_duration_seconds": 37.832}}}, {"id": "eval-3-a-troubleshooting-and-bug-report-response-that-use-with_skill-run-1", "prompt": "In my opencode-coder setup, bd ready is failing with database errors. Give me a troubleshooting path, tell me what logging or environment variables to collect, and if this really looks like a plugin issue tell me what evidence to put into a GitHub bug report.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "This is a debugging + potential bug report task. I need `debugging-logs.md`, `troubleshooting-patterns.md`, and `bug-reporting.md`.\n\nHere's the complete troubleshooting path for `bd ready` failing with database errors.\n\n---\n\n## Step 1: Run built-in diagnostics first\n\n```bash\nbd doctor\nbd doctor --fix\n```\n\n`bd doctor` is the authoritative first step \u2014 it understands the Dolt-backed store and can identify broken local setup, stale runtime state, or incomplete migration. Use `--fix` to let it repair common problems automatically.\n\nIf `bd doctor` reports uncommitted Dolt changes, inspect them before doing anything else:\n\n```bash\nbd vc status\n```\n\nIf doctor + fix doesn't resolve it, try bootstrap (safe for fresh-clone or recovery paths):\n\n```bash\nbd bootstrap\n```\n\n---\n\n## Step 2: Collect logs and environment variables\n\nEnable both log levels before reproducing the error:\n\n```bash\nexport OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\"\nexport OPENCODE_CODER_DEBUG=1\n```\n\nThen reproduce `bd ready` and collect from your log directory (Linux):\n\n```bash\nls -lt ~/.local/share/opencode/log/ | head -5\ntail -200 $(ls -t ~/.local/share/opencode/log/*.log | head -1)\ngrep -C 3 \"opencode-coder\" ~/.local/share/opencode/log/*.log\ngrep -i \"error\\|database\\|dolt\\|beads\" ~/.local/share/opencode/log/*.log\n```\n\nKey environment variables to record:\n\n| Variable | Command |\n|---|---|\n| Plugin disabled? | `echo $OPENCODE_CODER_DISABLED` |\n| bd version | `bd --version` |\n| Node version | `node --version` |\n| Shell | `echo $SHELL` |\n| Plugin install | `npm list opencode-coder` |\n\n---\n\n## Step 3: Determine if it's a plugin issue\n\n**It's a plugin issue** (worth a GitHub report) if any of these are true:\n\n- `bd doctor` passes clean but `bd ready` still throws a DB error\n- `bd bootstrap` completes without errors but `bd ready` still fails\n- The error message references internals (Dolt, WAL, schema migration, lock files) with no clear user action to fix\n- The error is reproducible on a fresh `.beads/` that was just initialized\n- `bd list --status=open` works but `bd ready` doesn't (narrowed to the `ready` command specifically)\n\n**It's likely a local setup issue** (not a plugin bug) if:\n\n- `bd doctor` reports a fixable problem\n- `.beads/` is missing or was deleted by `git clean -fdx`\n- The error goes away after `bd doctor --fix` or `bd bootstrap`\n\n---\n\n## Step 4: If it is a plugin issue \u2014 what to put in the bug report\n\nRun the automated system info collector:\n\n```bash\nbash ai-resources/skills/opencode-coder/scripts/collect-system-info.sh\n```\n\nThen file at `https://github.com/dynatrace-oss/opencode-coder/issues/new` with title `[bd ready] Database error on ready command`.\n\n**Required sections:**\n\n1. **Problem** \u2014 exact error message and full output of `bd ready`\n2. **Steps to reproduce** \u2014 minimal sequence (e.g. \"fresh clone \u2192 bd init \u2192 bd create \u2192 bd ready\")\n3. **Environment** \u2014 paste the output of `collect-system-info.sh` plus `node --version`, `bd --version`, `npm list opencode-coder`\n4. **bd doctor output** \u2014 full output of `bd doctor` (even if it shows \"no issues\")\n5. **Logs** \u2014 filtered log excerpt:\n   ```bash\n   grep -i \"error\\|database\\|dolt\" ~/.local/share/opencode/log/*.log\n   ```\n6. **What you already tried** \u2014 list which of doctor/fix/bootstrap you ran and their output\n\n**Optional but valuable for hard-to-reproduce errors:** run the diagnostics bundle collector and attach `manifest.json` + `README.md`:\n\n```bash\nbun run diagnostics:collect\n```\n\n> Do not manually delete `.beads/` or Dolt internals as a workaround before capturing this evidence \u2014 once deleted, the diagnostic state is gone.\n"}], "grading": {"expectations": [{"text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes", "passed": true, "evidence": "Step 1 explicitly runs `bd doctor`, `bd doctor --fix`, and `bd bootstrap` as the first actions. The final note warns: 'Do not manually delete `.beads/` or Dolt internals as a workaround before capturing this evidence \u2014 once deleted, the diagnostic state is gone.'"}, {"text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1", "passed": true, "evidence": "Step 2 explicitly shows: `export OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\"` and `export OPENCODE_CODER_DEBUG=1` as the two env vars to set before reproducing the error."}, {"text": "Distinguishes when to use a session export versus a diagnostics bundle", "passed": false, "evidence": "The response mentions `bun run diagnostics:collect` for a diagnostics bundle (framed as optional for hard-to-reproduce errors), and standard log grep as the default. However, the term 'session export' never appears and no distinction between a session export artifact and a diagnostics bundle is made. The two concepts are not contrasted."}, {"text": "Helps classify whether the issue is a plugin issue versus a project issue", "passed": true, "evidence": "Step 3 is entirely dedicated to this classification with two explicit lists: specific conditions that indicate a plugin issue (e.g., `bd doctor` passes clean but `bd ready` still fails) versus conditions that indicate a local setup issue (e.g., doctor reports a fixable problem, `.beads/` was deleted)."}], "summary": {"passed": 3, "failed": 1, "total": 4, "pass_rate": 0.75}, "claims": [{"claim": "bd doctor is the authoritative first step and understands the Dolt-backed store", "type": "factual", "verified": true, "evidence": "Consistent with the skill context that bd doctor is the primary diagnostic tool for beads/Dolt issues."}, {"claim": "bun run diagnostics:collect produces manifest.json and README.md", "type": "factual", "verified": false, "evidence": "This specific output file claim is stated but cannot be verified from the transcript alone \u2014 the response reads from bug-reporting.md and debugging-logs.md but the exact command output filenames are not confirmed in visible tool results."}, {"claim": "Log files are at ~/.local/share/opencode/log/ on Linux", "type": "factual", "verified": true, "evidence": "Platform is Linux per environment context and this is consistent with XDG data directory conventions for opencode."}], "user_notes_summary": {"uncertainties": ["Whether 'session export' is a distinct concept documented in the skill references that the response missed"], "needs_review": ["The claim that diagnostics:collect produces manifest.json + README.md \u2014 verify against bug-reporting.md source"], "workarounds": []}, "eval_feedback": {"overall": "Strong response covering 3 of 4 expectations well. The main gap is the session export vs diagnostics bundle distinction, which the response collapses into a single 'diagnostics bundle' concept without acknowledging session exports as a separate artifact type or explaining when one is preferable over the other.", "suggestions": [{"assertion": "Distinguishes when to use a session export versus a diagnostics bundle", "reason": "The response only mentions the diagnostics bundle (bun run diagnostics:collect) and standard log grep. It never uses the term 'session export' or explains the scenario where a session export is the right tool (e.g., capturing a live AI session's context vs a static system snapshot). The skill likely documents these as separate artifacts with different use cases. The expected behavior would be something like: 'use a session export when you need to capture the conversation/tool call context around the failure; use a diagnostics bundle when you need system state, DB internals, and environment info for a cold reproduction.'"}]}, "execution_metrics": {"tool_calls": {"Read": 4}, "total_tool_calls": 4, "total_steps": 5, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 3622, "transcript_chars": 4498}, "timing": {"total_tokens": 40060, "duration_ms": 32570, "total_duration_seconds": 32.57, "executor_duration_seconds": 32.57}}}, {"id": "eval-3-a-troubleshooting-and-bug-report-response-that-use-without_skill-run-1", "prompt": "In my opencode-coder setup, bd ready is failing with database errors. Give me a troubleshooting path, tell me what logging or environment variables to collect, and if this really looks like a plugin issue tell me what evidence to put into a GitHub bug report.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Let me look at the project structure to understand the beads setup here.\n\nI can see the root cause in the logs. Let me check a few more files before giving you the full picture.\n\nNow I have the full picture. The root cause is clearly visible.\n\n---\n\n## Diagnosis: Database Name Mismatch\n\n**Root cause** (confirmed from your logs):\n\n- `metadata.json` says `\"dolt_database\": \"opencode_coder\"` \u2014 the correct database name\n- `dolt-server.log` line 13-14 shows beads connecting with `database=beads` \u2014 **wrong name**\n- The actual dolt database directory is `.beads/dolt/opencode_coder/`\n- Beads is ignoring `metadata.json` and hardcoding `beads` as the database name\n\nThis is **almost certainly a beads bug** introduced between Dec 2025 (your last successful daemon.log) and Mar 2026 (when dolt-server.log was written).\n\n---\n\n## Troubleshooting Path\n\n**Step 1 \u2014 Confirm the immediate state**\n```bash\nbd doctor\ncat .beads/dolt-server.pid       # is a pid there?\ncat .beads/dolt-server.port      # should be 43257\nps aux | grep dolt               # is the server actually running?\n```\n\n**Step 2 \u2014 Verify the database name mismatch directly**\n```bash\nmysql -h 127.0.0.1 -P 43257 -u root --execute \"SHOW DATABASES;\"\n# You'll see 'opencode_coder', NOT 'beads'\n```\n\n**Step 3 \u2014 Kill everything and try a clean restart**\n```bash\nbd doctor   # check sync state first\npkill -f \"dolt sql-server\"\npkill -f \"bd daemon\"\nrm -f .beads/dolt-server.pid .beads/dolt-server.lock\nrm -f .beads/daemon.pid .beads/daemon.lock\nbd ready    # triggers auto-restart\n```\n\n**Step 4 \u2014 If still broken, fall back to no-db mode** (reads directly from JSONL, bypasses the whole SQLite/Dolt stack):\n```bash\nBD_NO_DB=1 bd ready\n# or add to .beads/config.yaml: no-db: true\n```\n\n**Step 5 \u2014 Check bd version and whether an update is available**\n```bash\nbd version\nbd update   # or however you installed beads\n```\n\n---\n\n## Environment Variables / Logs to Collect\n\n```bash\n# Version info\nbd version 2>&1\n\n# Full daemon log (tail for recent errors)\ntail -100 .beads/daemon.log\n\n# Full dolt-server log\ncat .beads/dolt-server.log\n\n# Metadata\ncat .beads/metadata.json\n\n# Dolt database listing\nmysql -h 127.0.0.1 -P 43257 -u root --execute \"SHOW DATABASES;\" 2>&1\n\n# Environment\necho \"BD_NO_DB=$BD_NO_DB\"\necho \"BEADS_DB=$BEADS_DB\"\nenv | grep -E \"BD_|BEADS_\"\n\n# Lock file state\nls -la .beads/*.lock .beads/*.pid 2>/dev/null\n```\n\n---\n\n## GitHub Bug Report Evidence\n\nYes, this looks like a beads bug. Here's what to include:\n\n**Title**: `dolt backend: beads connects with hardcoded database name \"beads\" instead of reading dolt_database from metadata.json`\n\n**Key evidence**:\n\n1. **`.beads/metadata.json`** \u2014 shows `\"dolt_database\": \"opencode_coder\"`\n2. **`.beads/dolt-server.log` lines 13-14** \u2014 the smoking gun:\n   ```\n   level=error msg=\"unable to process ComInitDB: database not found: beads\" database=beads\n   level=error msg=\"failed to set the database client 4 (127.0.0.1:33232): database not found: beads (errno 1049) (sqlstate HY000)\"\n   ```\n3. **Directory listing of `.beads/dolt/`** \u2014 shows `opencode_coder/` subdirectory exists, no `beads/` subdirectory\n4. **Last known-good daemon.log timestamp**: Dec 29, 2025 (when the project prefix was first established)\n5. **bd version output**\n6. **`mysql SHOW DATABASES` output** confirming only `opencode_coder` is served\n\nThe hypothesis to state in the report: *\"After a beads update or daemon restart, the dolt connection code reverted to using a hardcoded database name `beads` rather than reading `dolt_database` from `.beads/metadata.json`. Projects initialized with a non-default prefix (like `opencode_coder`) are broken on reconnect.\"*\n"}], "grading": {"expectations": [{"text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes", "passed": false, "evidence": "The response mentions 'bd doctor' in Step 1 and Step 3, but immediately follows with manual deletion commands (rm -f .beads/dolt-server.pid, etc.) without ever suggesting 'bd doctor --fix' or 'bd bootstrap' as alternatives to manual cleanup. The --fix flag and bootstrap command are entirely absent."}, {"text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1", "passed": false, "evidence": "The environment variables section only covers BD_NO_DB, BEADS_DB, and 'env | grep -E \"BD_|BEADS_\"'. OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned anywhere in the response."}, {"text": "Distinguishes when to use a session export versus a diagnostics bundle", "passed": false, "evidence": "No mention of session export or diagnostics bundle anywhere in the response. The response only covers log file collection and MySQL queries for a bug report."}, {"text": "Helps classify whether the issue is a plugin issue versus a project issue", "passed": true, "evidence": "The response clearly classifies this as a beads plugin bug ('almost certainly a beads bug introduced between Dec 2025 and Mar 2026'), identifies the specific beads component at fault (dolt connection code using hardcoded database name instead of reading metadata.json), and frames the GitHub report hypothesis as a beads-level regression. The distinction between plugin and project is made explicit."}], "summary": {"passed": 1, "failed": 3, "total": 4, "pass_rate": 0.25}, "claims": [{"claim": "bd doctor is recommended before manual fixes", "type": "partial_coverage", "verified": false, "evidence": "bd doctor is mentioned but bd doctor --fix and bd bootstrap are absent; manual deletion is the primary suggested remedy"}, {"claim": "Relevant environment variables for opencode-coder debugging are covered", "type": "omission", "verified": false, "evidence": "Response covers BD_/BEADS_ env vars only; OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned"}, {"claim": "Session export vs diagnostics bundle distinction is addressed", "type": "omission", "verified": false, "evidence": "Neither term appears in the response"}, {"claim": "Issue is classified as a plugin (beads) bug rather than a project-level issue", "type": "classification", "verified": true, "evidence": "Response explicitly attributes the bug to beads' dolt connection code ignoring metadata.json, frames GitHub report accordingly"}], "user_notes_summary": {"uncertainties": ["Whether bd doctor --fix and bd bootstrap are standard beads commands in this version"], "needs_review": ["The manual deletion steps (rm -f .beads/*.pid) recommended without first trying bd doctor --fix may be premature"], "workarounds": ["BD_NO_DB=1 suggested as fallback to bypass dolt stack"]}, "eval_feedback": {"overall": "The response is strong on diagnosis and bug classification (expectation 4 passes clearly) but misses three skill-specific capabilities: it omits bd doctor --fix / bd bootstrap as safer alternatives to manual deletion, does not surface OPENCODE_DEFAULT_OPTIONS or OPENCODE_CODER_DEBUG=1 as logging levers, and never distinguishes session export from a diagnostics bundle. The without_skill baseline shows these gaps are structural, not incidental.", "suggestions": [{"assertion": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes", "reason": "Response correctly starts with 'bd doctor' but immediately escalates to raw file deletion without mentioning the --fix flag or bd bootstrap. A skill-aware response should position bd doctor --fix / bd bootstrap as the first-line repair step and treat manual deletion as a last resort."}, {"assertion": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1", "reason": "These are the primary debug levers for the opencode-coder plugin layer. The response collects beads-level logs but ignores the opencode-coder-specific env vars entirely. Any troubleshooting guide for this stack should surface them."}, {"assertion": "Distinguishes when to use a session export versus a diagnostics bundle", "reason": "For a GitHub bug report, knowing which artifact to attach (dump-session output vs a full diagnostics bundle) is actionable guidance. The response skips this distinction entirely."}]}, "execution_metrics": {"tool_calls": {"Glob": 2, "Read": 9}, "total_tool_calls": 11, "total_steps": 12, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 3642, "transcript_chars": 5056}, "timing": {"total_tokens": 78930, "duration_ms": 66503, "total_duration_seconds": 66.503, "executor_duration_seconds": 66.503}}}, {"id": "eval-4-an-installation-setup-response-that-covers-explici-with_skill-run-1", "prompt": "I'm onboarding a fresh repo to opencode-coder and need to decide between stealth and team mode. Explain the explicit enablement model, what /opencode-coder/init should do, and the practical file-path or git-visibility differences that matter when choosing.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "The task spans installation/init and mode selection. I need both references.\n\nAlso pulling the project-structure reference since it covers file paths in detail.\n\nHere is a complete answer drawn directly from the skill references.\n\n---\n\n## Explicit Enablement Model\n\nopencode-coder does **nothing automatically** on a fresh repo. Until you run `/opencode-coder/init`, startup exposes only that one command and creates no files.\n\nThere are three persisted states, written to `.coder/opencode-coder.yaml`:\n\n| State | Behaviour |\n|---|---|\n| *(file absent)* | Not yet enabled \u2014 no startup work, only `/opencode-coder/init` available |\n| `mode: disabled` | Saved disabled \u2014 startup stays inactive, but `/opencode-coder/init` is still available to re-enable |\n| `mode: stealth` | Active, local-only |\n| `mode: team` | Active, shared |\n\nThese are distinct from the **hard override** `OPENCODE_CODER_DISABLED=true`, which cuts off the plugin entirely \u2014 no commands, no init.\n\n---\n\n## What `/opencode-coder/init` Does\n\nIt is idempotent (safe to re-run) and handles every enablement lifecycle transition:\n\n- Enable a fresh project in `stealth` or `team`\n- Keep a project in saved `disabled`\n- Refresh an already-active `stealth` or `team` setup\n- Switch between `stealth` and `team`\n- Switch an active project back to saved `disabled`\n- Migrate legacy projects that pre-date the explicit model (infers active state from `.git/info/exclude`, legacy `.coder/project.yaml`, or presence of `.beads/` / `AGENTS.md` / `ai.package.yaml`, then writes the saved mode file)\n- Optionally run a docs setup/refresh step\n\n---\n\n## File-Path and Git-Visibility Differences\n\nThis is the crux of the stealth vs team choice:\n\n| Concern | Team mode | Stealth mode |\n|---|---|---|\n| Saved mode file | `.coder/opencode-coder.yaml` | `.coder/opencode-coder.yaml` |\n| AGENTS file | `AGENTS.md` (repo root) | `.coder/AGENTS.md` |\n| Standard docs | `docs/` | `.coder/docs/` |\n| Beads data | `.beads/` | `.beads/` |\n| Plugin resources | `.opencode/` | `.opencode/` |\n| AI manifest | `ai.package.yaml` | `ai.package.yaml` |\n\n### Team mode git visibility\nCommit: `.beads/` (minus runtime/credential files), `.opencode/`, `ai.package.yaml`, `AGENTS.md`, `docs/`  \nIgnore: `.coder/` (add to `.gitignore`)\n\n### Stealth mode git visibility\nAll opencode-coder artifacts are kept **out of git** via `.git/info/exclude` \u2014 that file is local-only and never shared, so collaborators never see the exclusion block. The block covers:\n\n```\n.beads/\n.opencode/\n.coder/\nai.package.yaml\n```\n\n---\n\n## Practical Decision Rule\n\n| Situation | Choose |\n|---|---|\n| Solo work, experimentation, private AI context | **Stealth** |\n| Team wants shared docs, shared AGENTS, shared beads state | **Team** |\n\n**Switching later is supported but has a cost:** stealth \u2192 team is straightforward. Team \u2192 stealth creates a visible commit that removes shared artifacts \u2014 coordinate with collaborators first.\n"}], "grading": {"expectations": [{"text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes", "passed": true, "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as where states are written, and lists all four states: file absent, `mode: disabled`, `mode: stealth`, `mode: team` in a table."}, {"text": "Explains that fresh projects are not yet enabled until explicit init or enablement", "passed": true, "evidence": "'opencode-coder does nothing automatically on a fresh repo. Until you run /opencode-coder/init, startup exposes only that one command and creates no files.' The table also shows '*(file absent)* \u2014 Not yet enabled'."}, {"text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run", "passed": true, "evidence": "'It is idempotent (safe to re-run) and handles every enablement lifecycle transition' \u2014 the response lists all lifecycle cases init handles and frames it as the central enablement mechanism."}, {"text": "Explains at least one concrete team-versus-stealth path or git visibility rule", "passed": true, "evidence": "Detailed table shows path differences (e.g., AGENTS.md at repo root vs .coder/AGENTS.md; docs/ vs .coder/docs/). Git visibility section specifies team commits artifacts while stealth uses .git/info/exclude to keep everything local."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1}, "claims": [{"claim": "Fresh repos have no activity until /opencode-coder/init is run", "type": "factual", "verified": true, "evidence": "Stated explicitly: 'opencode-coder does nothing automatically on a fresh repo.'"}, {"claim": "Mode is persisted to .coder/opencode-coder.yaml", "type": "factual", "verified": true, "evidence": "Table heading and prose both reference '.coder/opencode-coder.yaml' as the saved-state file."}, {"claim": "/opencode-coder/init is idempotent", "type": "factual", "verified": true, "evidence": "'It is idempotent (safe to re-run)' stated directly in the response."}, {"claim": "Stealth mode uses .git/info/exclude for local-only git exclusions", "type": "factual", "verified": true, "evidence": "Stealth git visibility section: 'kept out of git via .git/info/exclude \u2014 that file is local-only and never shared'."}, {"claim": "Team mode commits AGENTS.md at repo root; stealth places it at .coder/AGENTS.md", "type": "factual", "verified": true, "evidence": "Comparison table row: AGENTS file \u2014 Team: 'AGENTS.md (repo root)', Stealth: '.coder/AGENTS.md'."}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": []}, "eval_feedback": {"overall": "All four expectations are clearly and substantively met. The response is well-structured, accurate, and goes beyond minimum coverage by including a full file-path comparison table, lifecycle transition list, and a practical decision guide.", "suggestions": [{"assertion": "Explains at least one concrete team-versus-stealth path or git visibility rule", "reason": "The assertion passes easily, but consider strengthening it to require coverage of BOTH path differences AND git mechanism differences (commit vs exclude), since both are pedagogically important for onboarding decisions."}]}, "execution_metrics": {"tool_calls": {"Read": 4}, "total_tool_calls": 4, "total_steps": 5, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 2934, "transcript_chars": 3806}, "timing": {"total_tokens": 44282, "duration_ms": 30865, "total_duration_seconds": 30.865, "executor_duration_seconds": 30.865}}}, {"id": "eval-4-an-installation-setup-response-that-covers-explici-without_skill-run-1", "prompt": "I'm onboarding a fresh repo to opencode-coder and need to decide between stealth and team mode. Explain the explicit enablement model, what /opencode-coder/init should do, and the practical file-path or git-visibility differences that matter when choosing.", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "Here's a complete picture based on the actual source:\n\n---\n\n## Explicit Enablement Model\n\nNothing is auto-created for a fresh repo. The plugin starts in **not-yet-enabled** state and stays there until you explicitly choose a mode. The single source of truth is `.coder/opencode-coder.yaml`.\n\n**Four resolved states** (`plugin-mode-service.ts:8`):\n\n| State | Meaning |\n|---|---|\n| `not-enabled` | No saved mode file, no legacy markers \u2014 fresh project |\n| `disabled` | Saved `mode: disabled` \u2014 inactive but `/opencode-coder/init` still works |\n| `stealth` | Active, local-only |\n| `team` | Active, shared |\n| `hard-disabled` | `OPENCODE_CODER_DISABLED=true` env var \u2014 plugin fully absent, no commands exposed |\n\nThe key distinction: saved `disabled` \u2260 `OPENCODE_CODER_DISABLED`. The env var kills even `/opencode-coder/init`. Saved disabled just suppresses startup generation while keeping the command available.\n\n---\n\n## What `/opencode-coder/init` Does\n\nIt's the only setup entry point. On each run it:\n\n1. **Detects state** \u2014 reads `.coder/opencode-coder.yaml`, falls back to legacy heuristics if missing, migrates legacy state to the explicit file immediately\n2. **Asks what to do** \u2014 never proceeds autonomously past this checkpoint (question for fresh/disabled, or refresh/switch/disable for active)\n3. **Writes `.coder/opencode-coder.yaml`** before creating any other files\n4. **Runs mode-specific setup** \u2014 beads init, git exclusion setup, AGENTS.md generation\n5. **Optionally runs docs setup** \u2014 asks separately; skippable\n\nIt's safe to re-run. Re-runs refresh rather than reinstall.\n\n---\n\n## File-Path and Git-Visibility Differences\n\n| Concern | Stealth | Team |\n|---|---|---|\n| Saved mode | `.coder/opencode-coder.yaml` | `.coder/opencode-coder.yaml` |\n| AGENTS file | `.coder/AGENTS.md` | `AGENTS.md` (repo root) |\n| Docs | `.coder/docs/` | `docs/` |\n| Beads data | `.beads/` | `.beads/` |\n| AI manifest | `ai.package.yaml` | `ai.package.yaml` |\n\n**Git visibility:**\n\n- **Stealth**: all opencode-coder artifacts (`.beads/`, `.opencode/`, `.coder/`, `ai.package.yaml`) go into `.git/info/exclude` \u2014 machine-local, never committed, invisible to teammates\n- **Team**: `.coder/` goes into `.gitignore`; everything else (`.beads/`, `.opencode/`, `AGENTS.md`, `docs/`, `ai.package.yaml`) is committed and shared\n\n---\n\n## Choosing\n\n**Pick stealth when:**\n- you're using opencode-coder on a repo owned by others or a team that hasn't adopted it\n- you don't want AI tooling artifacts appearing in PRs or team history\n- you need per-developer personal setup\n\n**Pick team when:**\n- the whole team uses opencode-coder\n- you want `AGENTS.md`, docs, and issue tracking shared via git\n- you want `bd ready` / shared beads state for collaboration\n\nThe mode is easily switchable later via `/opencode-coder/init` \u2192 \"Switch modes\". The transition reference (`mode-transition.md`) covers the cleanup steps between modes.\n"}], "grading": {"expectations": [{"text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes", "passed": true, "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as the single source of truth and lists all four states in a table: not-enabled, disabled, stealth, team, and hard-disabled."}, {"text": "Explains that fresh projects are not yet enabled until explicit init or enablement", "passed": true, "evidence": "'Nothing is auto-created for a fresh repo. The plugin starts in not-yet-enabled state and stays there until you explicitly choose a mode.' Table entry: `not-enabled` = 'No saved mode file, no legacy markers \u2014 fresh project'."}, {"text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run", "passed": true, "evidence": "Response calls it 'the only setup entry point', enumerates five concrete steps it performs, and explicitly states 'It's safe to re-run. Re-runs refresh rather than reinstall.'"}, {"text": "Explains at least one concrete team-versus-stealth path or git visibility rule", "passed": true, "evidence": "Full comparison table covers AGENTS file location (.coder/AGENTS.md vs repo-root AGENTS.md), docs path (.coder/docs/ vs docs/), and git visibility (stealth uses .git/info/exclude; team commits to .gitignore and shared git history)."}], "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1}, "claims": [{"claim": ".coder/opencode-coder.yaml is the single source of truth for plugin mode", "type": "factual", "verified": true, "evidence": "Confirmed by tool call reading plugin-mode-service.ts and init.md; response cites plugin-mode-service.ts:8."}, {"claim": "OPENCODE_CODER_DISABLED env var suppresses even /opencode-coder/init", "type": "factual", "verified": true, "evidence": "Sourced from plugin-mode-service.ts read in the transcript; response labels this 'hard-disabled' and distinguishes it from saved disabled."}, {"claim": "Stealth mode uses .git/info/exclude; team mode uses .gitignore for .coder/", "type": "factual", "verified": true, "evidence": "Drawn from init.md and project-structure.md reads in the transcript; clearly stated in the Git visibility section."}, {"claim": "AGENTS.md goes to repo root in team mode, .coder/AGENTS.md in stealth", "type": "factual", "verified": true, "evidence": "Sourced from init.md read; presented in the file-path comparison table."}], "user_notes_summary": {"uncertainties": [], "workarounds": [], "needs_review": []}, "eval_feedback": {"overall": "All four expectations are clearly and substantively met. The response goes beyond the minimum: it distinguishes saved-disabled from hard-disabled (an important nuance), provides a complete file-path table, and covers the git-visibility mechanism precisely. No gaps detected.", "suggestions": []}, "execution_metrics": {"tool_calls": {"Read": 4, "Glob": 2}, "total_tool_calls": 6, "total_steps": 7, "files_created": ["response.md"], "errors_encountered": 0, "output_chars": 2910, "transcript_chars": 3973}, "timing": {"total_tokens": 53863, "duration_ms": 32724, "total_duration_seconds": 32.724, "executor_duration_seconds": 32.724}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "opencode-coder", "skill_path": "/home/hans/dev/github/opencode-coder/ai-resources/skills/opencode-coder", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-03-23T15:19:02Z", "evals_run": [0, 1, 2, 3, 4], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5, "time_seconds": 50.597, "tokens": 6604, "tool_calls": 2, "errors": 0}, "expectations": [{"text": "Uses an acceptance review task rather than a native gate issue", "passed": true, "evidence": "Section 3 creates a task titled 'Acceptance Review: Docs Lifecycle Improvement' with --type=task, explicitly described as a 'Gate check before the epic is closed.' It is linked via bd dep add as a blocker on the epic, functioning as a review gate without using any native gate-issue mechanism."}, {"text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low", "passed": true, "evidence": "All bd create calls use numeric priorities: --priority=2 (epic), --priority=2 (audit), --priority=2 (repair), --priority=3 (slim/split), --priority=1 (acceptance review), --priority=2 (needs:discussion example). No high/medium/low strings appear anywhere."}, {"text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status", "passed": true, "evidence": "Section 5 shows `--labels=needs:discussion` at creation time and immediately follows with `bd update <id> --status=blocked`. The summary table explicitly maps 'Needs design/scoping discussion first' \u2192 label: needs:discussion, status: blocked, not in bd ready."}, {"text": "Uses the bd create --body-file - pattern for structured issue bodies", "passed": true, "evidence": "Every bd create call (epic, audit, repair, slim/split, acceptance review, and needs:discussion example) uses the `cat << 'EOF' | bd create ... --body-file -` heredoc pipeline pattern for structured multi-section bodies."}, {"text": "Mentions showing bd ready and bd blocked before execution", "passed": false, "evidence": "The response jumps directly into issue creation commands. Neither `bd ready` nor `bd blocked` is mentioned at any point as a pre-execution check or orientation step."}], "notes": ["bd ready / bd blocked pre-execution orientation step is absent \u2014 the plan goes straight to issue creation without grounding the user in current project state"]}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1, "passed": 4, "failed": 0, "total": 4, "time_seconds": 47.765, "tokens": 5088, "tool_calls": 4, "errors": 0}, "expectations": [{"text": "Classifies topics as doc-backed, skill-only, or neither", "passed": true, "evidence": "Step 1 explicitly defines a three-way classification table: 'doc-backed' (local doc exists), 'skill-only' (no local doc but matching skill covers it), and 'neither' (no doc, no skill). The response states this classification 'drives every decision downstream.'"}, {"text": "Mentions mode-aware paths or project-structure rules for team versus stealth", "passed": true, "evidence": "Step 0 explicitly covers mode detection and path differences: team \u2192 'docs/', 'AGENTS.md'; stealth \u2192 '.coder/docs/', '.coder/AGENTS.md'. Step 6 verify checklist includes 'Mode-path consistency: team docs aren't referenced from a stealth AGENTS.'"}, {"text": "States that skill-only topics should route through a skill instead of creating hollow docs", "passed": true, "evidence": "Step 4 states explicitly: 'do not create a topic doc for a skill-only topic. Instead, route AGENTS directly to the skill.' A concrete AGENTS.md routing pattern is shown vs. the hollow-doc anti-pattern. The one-sentence rule at the end also captures this."}, {"text": "Includes a verify or report phase that checks paths, links, or stale references", "passed": true, "evidence": "Step 6 'Verify before calling it done (Phase 7)' is a dedicated checklist covering: every path referenced in AGENTS exists, no skill referenced that isn't installed, skill-only topics routed to skills, no hollow docs under ~10 lines, AGENTS line count, and mode-path consistency."}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1, "passed": 4, "failed": 0, "total": 4, "time_seconds": 27.475, "tokens": 3175, "tool_calls": 2, "errors": 0}, "expectations": [{"text": "Starts scope selection from recent git changes including staged or unstaged diffs", "passed": true, "evidence": "The response explicitly calls `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged), then combines and deduplicates results. It also leverages the existing git status to enumerate the candidate file set."}, {"text": "Calls for three review passes covering duplication, code quality, and efficiency", "passed": true, "evidence": "Explicit 'Three parallel review passes' section names Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), and Reviewer 3 (Efficiency), each with concrete focus areas against the scoped file set."}, {"text": "Distinguishes safe local simplifications from broader ask-first refactors", "passed": true, "evidence": "Dedicated sections 'What I apply directly (safe fixes)' and 'What I ask you about first' provide concrete examples of each category \u2014 e.g., local deduplication within touched functions is safe; extracting a new utility module or restructuring command .md files requires user confirmation."}, {"text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "passed": true, "evidence": "Scope (listed file set), focus (duplication weighted highest), applied (safe fixes section), deferred/ask-first (ask-first section), and validation (bun test / bun run typecheck) are all present. Follow-up is covered implicitly via the offer to create a beads issue and the CTA to invoke `/simplify`. Fields are distributed across sections rather than in a single closing summary block."}], "notes": ["Closing summary fields are distributed across response sections rather than consolidated in a single terminal summary block \u2014 skill may intend a structured closing section."]}, {"eval_id": 3, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "time_seconds": 32.57, "tokens": 3622, "tool_calls": 4, "errors": 0}, "expectations": [{"text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes", "passed": true, "evidence": "Step 1 explicitly runs `bd doctor`, `bd doctor --fix`, and `bd bootstrap` as the first actions. The final note warns: 'Do not manually delete `.beads/` or Dolt internals as a workaround before capturing this evidence \u2014 once deleted, the diagnostic state is gone.'"}, {"text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1", "passed": true, "evidence": "Step 2 explicitly shows: `export OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\"` and `export OPENCODE_CODER_DEBUG=1` as the two env vars to set before reproducing the error."}, {"text": "Distinguishes when to use a session export versus a diagnostics bundle", "passed": false, "evidence": "The response mentions `bun run diagnostics:collect` for a diagnostics bundle (framed as optional for hard-to-reproduce errors), and standard log grep as the default. However, the term 'session export' never appears and no distinction between a session export artifact and a diagnostics bundle is made. The two concepts are not contrasted."}, {"text": "Helps classify whether the issue is a plugin issue versus a project issue", "passed": true, "evidence": "Step 3 is entirely dedicated to this classification with two explicit lists: specific conditions that indicate a plugin issue (e.g., `bd doctor` passes clean but `bd ready` still fails) versus conditions that indicate a local setup issue (e.g., doctor reports a fixable problem, `.beads/` was deleted)."}], "notes": ["Whether 'session export' is a distinct concept documented in the skill references that the response missed", "The claim that diagnostics:collect produces manifest.json + README.md \u2014 verify against bug-reporting.md source"]}, {"eval_id": 4, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1, "passed": 4, "failed": 0, "total": 4, "time_seconds": 30.865, "tokens": 2934, "tool_calls": 4, "errors": 0}, "expectations": [{"text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes", "passed": true, "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as where states are written, and lists all four states: file absent, `mode: disabled`, `mode: stealth`, `mode: team` in a table."}, {"text": "Explains that fresh projects are not yet enabled until explicit init or enablement", "passed": true, "evidence": "'opencode-coder does nothing automatically on a fresh repo. Until you run /opencode-coder/init, startup exposes only that one command and creates no files.' The table also shows '*(file absent)* \u2014 Not yet enabled'."}, {"text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run", "passed": true, "evidence": "'It is idempotent (safe to re-run) and handles every enablement lifecycle transition' \u2014 the response lists all lifecycle cases init handles and frames it as the central enablement mechanism."}, {"text": "Explains at least one concrete team-versus-stealth path or git visibility rule", "passed": true, "evidence": "Detailed table shows path differences (e.g., AGENTS.md at repo root vs .coder/AGENTS.md; docs/ vs .coder/docs/). Git visibility section specifies team commits artifacts while stealth uses .git/info/exclude to keep everything local."}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.4, "passed": 2, "failed": 3, "total": 5, "time_seconds": 54.536, "tokens": 4575, "tool_calls": 8, "errors": 0}, "expectations": [{"text": "Uses an acceptance review task rather than a native gate issue", "passed": true, "evidence": "The response creates 'Docs lifecycle: acceptance review' as an explicit task with bd create, framed as a human acceptance gate with manual launcher + deterministic checks, wired via bd dep add dependencies rather than any native gate mechanism."}, {"text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low", "passed": true, "evidence": "All bd create commands use --priority=2 or --priority=3. No high/medium/low strings appear anywhere in the plan."}, {"text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status", "passed": false, "evidence": "The response explains a discussion-gate pattern (create a discussion issue, then block the execution task on it via bd dep add), but never mentions a 'needs:discussion' label. It uses dependency blocking but omits the label entirely."}, {"text": "Uses the bd create --body-file - pattern for structured issue bodies", "passed": false, "evidence": "All bd create calls use inline --description= strings. The --body-file - pattern for piping structured multi-line bodies is never mentioned or demonstrated."}, {"text": "Mentions showing bd ready and bd blocked before execution", "passed": false, "evidence": "bd ready and bd blocked are referenced only to explain their passive behavior ('invisible to bd ready until blockers closed', 'bd blocked will surface these'). Neither is recommended as a pre-execution check step a tasker should run before starting work."}], "notes": ["Whether bd create supports a --label flag for needs:discussion in this project's beads version", "needs:discussion label support \u2014 response omits it entirely; skill should clarify whether it is a first-class flag or a freeform tag", "bd create --body-file - pattern \u2014 not demonstrated despite the plan having multi-paragraph descriptions that would benefit from it", "Response substitutes inline --description= strings instead of --body-file -, which works but loses structured formatting for long bodies", "Response substitutes dependency-only blocking instead of label+blocked status for needs-discussion tasks"]}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1, "passed": 4, "failed": 0, "total": 4, "time_seconds": 48.015, "tokens": 5810, "tool_calls": 4, "errors": 0}, "expectations": [{"text": "Classifies topics as doc-backed, skill-only, or neither", "passed": true, "evidence": "Phase 1 explicitly defines three classification labels: 'doc-backed \u2014 a local doc exists', 'skill-only \u2014 no local doc, but an installed skill covers it', 'neither \u2014 no local doc, no skill'. The practical walk-through also repeats 'classify doc-backed / skill-only / neither' as step 4."}, {"text": "Mentions mode-aware paths or project-structure rules for team versus stealth", "passed": true, "evidence": "Phase 0 contains a table explicitly mapping team mode to AGENTS.md/docs/ and stealth mode to .coder/AGENTS.md/.coder/docs/, with the note 'If you write to the wrong path in stealth mode, you contaminate the team's shared files.'"}, {"text": "States that skill-only topics should route through a skill instead of creating hollow docs", "passed": true, "evidence": "The routing question table states: 'Nothing \u2014 the skill covers it completely \u2192 Delete the local doc (or don't create one), route AGENTS to the skill.' Step 6 of the walk-through also says 'verify AGENTS routes to it, not to a hollow local doc' for skill-only topics."}, {"text": "Includes a verify or report phase that checks paths, links, or stale references", "passed": true, "evidence": "Phase 7 is explicitly a verify phase: 'Every audit ends with a link-walk' checking that every path AGENTS references exists and every skill reference is installed. The report artifact is described as calling out which topics route through skills vs local docs."}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "time_seconds": 37.832, "tokens": 3297, "tool_calls": 7, "errors": 0}, "expectations": [{"text": "Starts scope selection from recent git changes including staged or unstaged diffs", "passed": true, "evidence": "Response explicitly runs `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged) to resolve the file set, then lists the resulting files from current git status."}, {"text": "Calls for three review passes covering duplication, code quality, and efficiency", "passed": true, "evidence": "Response defines three named reviewers in parallel: Reviewer 1 \u2014 Reuse & Duplication, Reviewer 2 \u2014 Code Quality, Reviewer 3 \u2014 Efficiency, each with concrete focus areas."}, {"text": "Distinguishes safe local simplifications from broader ask-first refactors", "passed": true, "evidence": "Response has explicit sections 'What I'd apply directly (no confirmation needed)' and 'What I'd ask you about first', with concrete criteria: local/behavior-preserving vs cross-module-boundary or public-API changes."}, {"text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up", "passed": false, "evidence": "The response covers scope, focus, applied, ask-first, and validation as prose sections, but does not present them as a structured closing summary with labeled fields. The 'follow-up' field is absent or only vaguely implied ('create a beads issue'). No post-run summary template or example output is shown."}], "notes": ["Whether the simplify skill file was actually found and read \u2014 tool calls for it returned no content shown in transcript, so the response may be reconstructed from general knowledge rather than the actual skill definition", "The closing summary format: the skill likely specifies a structured output block; the response does not demonstrate this format"]}, {"eval_id": 3, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.25, "passed": 1, "failed": 3, "total": 4, "time_seconds": 66.503, "tokens": 3642, "tool_calls": 11, "errors": 0}, "expectations": [{"text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes", "passed": false, "evidence": "The response mentions 'bd doctor' in Step 1 and Step 3, but immediately follows with manual deletion commands (rm -f .beads/dolt-server.pid, etc.) without ever suggesting 'bd doctor --fix' or 'bd bootstrap' as alternatives to manual cleanup. The --fix flag and bootstrap command are entirely absent."}, {"text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1", "passed": false, "evidence": "The environment variables section only covers BD_NO_DB, BEADS_DB, and 'env | grep -E \"BD_|BEADS_\"'. OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned anywhere in the response."}, {"text": "Distinguishes when to use a session export versus a diagnostics bundle", "passed": false, "evidence": "No mention of session export or diagnostics bundle anywhere in the response. The response only covers log file collection and MySQL queries for a bug report."}, {"text": "Helps classify whether the issue is a plugin issue versus a project issue", "passed": true, "evidence": "The response clearly classifies this as a beads plugin bug ('almost certainly a beads bug introduced between Dec 2025 and Mar 2026'), identifies the specific beads component at fault (dolt connection code using hardcoded database name instead of reading metadata.json), and frames the GitHub report hypothesis as a beads-level regression. The distinction between plugin and project is made explicit."}], "notes": ["Whether bd doctor --fix and bd bootstrap are standard beads commands in this version", "The manual deletion steps (rm -f .beads/*.pid) recommended without first trying bd doctor --fix may be premature", "BD_NO_DB=1 suggested as fallback to bypass dolt stack"]}, {"eval_id": 4, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1, "passed": 4, "failed": 0, "total": 4, "time_seconds": 32.724, "tokens": 2910, "tool_calls": 6, "errors": 0}, "expectations": [{"text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes", "passed": true, "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as the single source of truth and lists all four states in a table: not-enabled, disabled, stealth, team, and hard-disabled."}, {"text": "Explains that fresh projects are not yet enabled until explicit init or enablement", "passed": true, "evidence": "'Nothing is auto-created for a fresh repo. The plugin starts in not-yet-enabled state and stays there until you explicitly choose a mode.' Table entry: `not-enabled` = 'No saved mode file, no legacy markers \u2014 fresh project'."}, {"text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run", "passed": true, "evidence": "Response calls it 'the only setup entry point', enumerates five concrete steps it performs, and explicitly states 'It's safe to re-run. Re-runs refresh rather than reinstall.'"}, {"text": "Explains at least one concrete team-versus-stealth path or git visibility rule", "passed": true, "evidence": "Full comparison table covers AGENTS file location (.coder/AGENTS.md vs repo-root AGENTS.md), docs path (.coder/docs/ vs docs/), and git visibility (stealth uses .git/info/exclude; team commits to .gitignore and shared git history)."}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 0.91, "stddev": 0.1245, "min": 0.75, "max": 1}, "time_seconds": {"mean": 37.8544, "stddev": 10.5487, "min": 27.475, "max": 50.597}, "tokens": {"mean": 4284.6, "stddev": 1542.6794, "min": 2934, "max": 6604}}, "without_skill": {"pass_rate": {"mean": 0.68, "stddev": 0.3439, "min": 0.25, "max": 1}, "time_seconds": {"mean": 47.922, "stddev": 13.4331, "min": 32.724, "max": 66.503}, "tokens": {"mean": 4046.8, "stddev": 1162.5669, "min": 2910, "max": 5810}}, "delta": {"pass_rate": "+0.23", "time_seconds": "-10.1", "tokens": "+238"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

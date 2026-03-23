@@ -1,0 +1,89 @@
+{
+  "expectations": [
+    {
+      "text": "Classifies topics as doc-backed, skill-only, or neither",
+      "passed": true,
+      "evidence": "Step 1 explicitly defines a three-way classification table: 'doc-backed' (local doc exists), 'skill-only' (no local doc but matching skill covers it), and 'neither' (no doc, no skill). The response states this classification 'drives every decision downstream.'"
+    },
+    {
+      "text": "Mentions mode-aware paths or project-structure rules for team versus stealth",
+      "passed": true,
+      "evidence": "Step 0 explicitly covers mode detection and path differences: team \u2192 'docs/', 'AGENTS.md'; stealth \u2192 '.coder/docs/', '.coder/AGENTS.md'. Step 6 verify checklist includes 'Mode-path consistency: team docs aren't referenced from a stealth AGENTS.'"
+    },
+    {
+      "text": "States that skill-only topics should route through a skill instead of creating hollow docs",
+      "passed": true,
+      "evidence": "Step 4 states explicitly: 'do not create a topic doc for a skill-only topic. Instead, route AGENTS directly to the skill.' A concrete AGENTS.md routing pattern is shown vs. the hollow-doc anti-pattern. The one-sentence rule at the end also captures this."
+    },
+    {
+      "text": "Includes a verify or report phase that checks paths, links, or stale references",
+      "passed": true,
+      "evidence": "Step 6 'Verify before calling it done (Phase 7)' is a dedicated checklist covering: every path referenced in AGENTS exists, no skill referenced that isn't installed, skill-only topics routed to skills, no hollow docs under ~10 lines, AGENTS line count, and mode-path consistency."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Classification table uses exactly three categories: doc-backed, skill-only, neither",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 1 table explicitly lists all three with clear definitions."
+    },
+    {
+      "claim": "Team mode uses 'docs/' and 'AGENTS.md'; stealth uses '.coder/docs/' and '.coder/AGENTS.md'",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 0 bullet list and Step 6 verify checklist both confirm these paths."
+    },
+    {
+      "claim": "Skill-only topics should be routed in AGENTS.md directly to the skill, not given a hollow doc",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 4 states the rule explicitly and provides a code example contrast."
+    },
+    {
+      "claim": "A dedicated verify phase (Step 6) checks paths, skills, hollow docs, and mode-path consistency",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 6 'Verify before calling it done (Phase 7)' contains a six-item checklist covering all required dimensions."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "workarounds": [],
+    "needs_review": []
+  },
+  "eval_feedback": {
+    "overall": "All four expectations are met clearly and substantively. The response is well-structured with explicit steps, a three-way classification, mode-aware path guidance, anti-hollow-doc rules, and a dedicated verify phase.",
+    "suggestions": [
+      {
+        "assertion": "Includes a verify or report phase that checks paths, links, or stale references",
+        "reason": "The verify phase (Step 6) is thorough but doesn't mention checking for *broken outbound links within doc files themselves* (only AGENTS links are checked). A stronger response would also scan docs for dead internal cross-references."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 4
+    },
+    "total_tool_calls": 4,
+    "total_steps": 5,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 5088,
+    "transcript_chars": 5976
+  },
+  "timing": {
+    "total_tokens": 45658,
+    "duration_ms": 47765,
+    "total_duration_seconds": 47.765,
+    "executor_duration_seconds": 47.765
+  }
+}

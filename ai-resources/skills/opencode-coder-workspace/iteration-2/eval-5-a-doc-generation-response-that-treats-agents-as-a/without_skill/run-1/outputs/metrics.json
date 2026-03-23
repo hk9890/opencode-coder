@@ -1,0 +1,14 @@
+{
+  "tool_calls": {
+    "Glob": 5,
+    "Read": 6
+  },
+  "total_tool_calls": 11,
+  "total_steps": 12,
+  "files_created": [
+    "response.md"
+  ],
+  "errors_encountered": 0,
+  "output_chars": 2842,
+  "transcript_chars": 4304
+}

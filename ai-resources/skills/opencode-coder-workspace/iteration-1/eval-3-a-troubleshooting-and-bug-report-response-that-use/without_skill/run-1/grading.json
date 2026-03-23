@@ -1,0 +1,104 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes",
+      "passed": false,
+      "evidence": "The response mentions 'bd doctor' in Step 1 and Step 3, but immediately follows with manual deletion commands (rm -f .beads/dolt-server.pid, etc.) without ever suggesting 'bd doctor --fix' or 'bd bootstrap' as alternatives to manual cleanup. The --fix flag and bootstrap command are entirely absent."
+    },
+    {
+      "text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1",
+      "passed": false,
+      "evidence": "The environment variables section only covers BD_NO_DB, BEADS_DB, and 'env | grep -E \"BD_|BEADS_\"'. OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned anywhere in the response."
+    },
+    {
+      "text": "Distinguishes when to use a session export versus a diagnostics bundle",
+      "passed": false,
+      "evidence": "No mention of session export or diagnostics bundle anywhere in the response. The response only covers log file collection and MySQL queries for a bug report."
+    },
+    {
+      "text": "Helps classify whether the issue is a plugin issue versus a project issue",
+      "passed": true,
+      "evidence": "The response clearly classifies this as a beads plugin bug ('almost certainly a beads bug introduced between Dec 2025 and Mar 2026'), identifies the specific beads component at fault (dolt connection code using hardcoded database name instead of reading metadata.json), and frames the GitHub report hypothesis as a beads-level regression. The distinction between plugin and project is made explicit."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 3,
+    "total": 4,
+    "pass_rate": 0.25
+  },
+  "claims": [
+    {
+      "claim": "bd doctor is recommended before manual fixes",
+      "type": "partial_coverage",
+      "verified": false,
+      "evidence": "bd doctor is mentioned but bd doctor --fix and bd bootstrap are absent; manual deletion is the primary suggested remedy"
+    },
+    {
+      "claim": "Relevant environment variables for opencode-coder debugging are covered",
+      "type": "omission",
+      "verified": false,
+      "evidence": "Response covers BD_/BEADS_ env vars only; OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned"
+    },
+    {
+      "claim": "Session export vs diagnostics bundle distinction is addressed",
+      "type": "omission",
+      "verified": false,
+      "evidence": "Neither term appears in the response"
+    },
+    {
+      "claim": "Issue is classified as a plugin (beads) bug rather than a project-level issue",
+      "type": "classification",
+      "verified": true,
+      "evidence": "Response explicitly attributes the bug to beads' dolt connection code ignoring metadata.json, frames GitHub report accordingly"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Whether bd doctor --fix and bd bootstrap are standard beads commands in this version"
+    ],
+    "needs_review": [
+      "The manual deletion steps (rm -f .beads/*.pid) recommended without first trying bd doctor --fix may be premature"
+    ],
+    "workarounds": [
+      "BD_NO_DB=1 suggested as fallback to bypass dolt stack"
+    ]
+  },
+  "eval_feedback": {
+    "overall": "The response is strong on diagnosis and bug classification (expectation 4 passes clearly) but misses three skill-specific capabilities: it omits bd doctor --fix / bd bootstrap as safer alternatives to manual deletion, does not surface OPENCODE_DEFAULT_OPTIONS or OPENCODE_CODER_DEBUG=1 as logging levers, and never distinguishes session export from a diagnostics bundle. The without_skill baseline shows these gaps are structural, not incidental.",
+    "suggestions": [
+      {
+        "assertion": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes",
+        "reason": "Response correctly starts with 'bd doctor' but immediately escalates to raw file deletion without mentioning the --fix flag or bd bootstrap. A skill-aware response should position bd doctor --fix / bd bootstrap as the first-line repair step and treat manual deletion as a last resort."
+      },
+      {
+        "assertion": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1",
+        "reason": "These are the primary debug levers for the opencode-coder plugin layer. The response collects beads-level logs but ignores the opencode-coder-specific env vars entirely. Any troubleshooting guide for this stack should surface them."
+      },
+      {
+        "assertion": "Distinguishes when to use a session export versus a diagnostics bundle",
+        "reason": "For a GitHub bug report, knowing which artifact to attach (dump-session output vs a full diagnostics bundle) is actionable guidance. The response skips this distinction entirely."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Glob": 2,
+      "Read": 9
+    },
+    "total_tool_calls": 11,
+    "total_steps": 12,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 3642,
+    "transcript_chars": 5056
+  },
+  "timing": {
+    "total_tokens": 78930,
+    "duration_ms": 66503,
+    "total_duration_seconds": 66.503,
+    "executor_duration_seconds": 66.503
+  }
+}

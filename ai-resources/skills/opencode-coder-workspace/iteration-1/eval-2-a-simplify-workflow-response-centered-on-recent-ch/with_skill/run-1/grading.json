@@ -1,0 +1,91 @@
+{
+  "expectations": [
+    {
+      "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+      "passed": true,
+      "evidence": "The response explicitly calls `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged), then combines and deduplicates results. It also leverages the existing git status to enumerate the candidate file set."
+    },
+    {
+      "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+      "passed": true,
+      "evidence": "Explicit 'Three parallel review passes' section names Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), and Reviewer 3 (Efficiency), each with concrete focus areas against the scoped file set."
+    },
+    {
+      "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+      "passed": true,
+      "evidence": "Dedicated sections 'What I apply directly (safe fixes)' and 'What I ask you about first' provide concrete examples of each category \u2014 e.g., local deduplication within touched functions is safe; extracting a new utility module or restructuring command .md files requires user confirmation."
+    },
+    {
+      "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+      "passed": true,
+      "evidence": "Scope (listed file set), focus (duplication weighted highest), applied (safe fixes section), deferred/ask-first (ask-first section), and validation (bun test / bun run typecheck) are all present. Follow-up is covered implicitly via the offer to create a beads issue and the CTA to invoke `/simplify`. Fields are distributed across sections rather than in a single closing summary block."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Scope is derived from staged and unstaged git diffs combined",
+      "type": "procedural",
+      "verified": true,
+      "evidence": "Two explicit git diff commands shown; results combined and deduplicated into 10 candidate files."
+    },
+    {
+      "claim": "Three review passes run in parallel covering duplication, quality, and efficiency",
+      "type": "procedural",
+      "verified": true,
+      "evidence": "'Three parallel review passes' section explicitly names all three reviewers with distinct focus areas."
+    },
+    {
+      "claim": "Safe fixes are limited to changes local to the touched scope",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "Safe section restricts to collapsing blocks, removing local duplicated logic, extracting helpers within changed area. Ask-first triggers on cross-file or API-boundary changes."
+    },
+    {
+      "claim": "Validation step runs narrowest relevant test after applying changes",
+      "type": "procedural",
+      "verified": true,
+      "evidence": "Validation section specifies `bun test tests/unit/init-install-guide.test.ts` or broader typecheck, and notes explicitly stating if nothing is available."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "workarounds": [],
+    "needs_review": [
+      "Closing summary fields are distributed across response sections rather than consolidated in a single terminal summary block \u2014 skill may intend a structured closing section."
+    ]
+  },
+  "eval_feedback": {
+    "overall": "All four expectations are met clearly and with concrete evidence. The response is well-structured and covers every required dimension.",
+    "suggestions": [
+      {
+        "assertion": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+        "reason": "The fields are present but distributed throughout the response rather than gathered into a single closing summary section. If the skill spec requires a consolidated end-of-run summary block (e.g. a final table or bulleted recap), this response only partially satisfies that format requirement. Consider tightening the expectation wording or verifying what the skill reference defines as the required output structure."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 2
+    },
+    "total_tool_calls": 2,
+    "total_steps": 3,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 3175,
+    "transcript_chars": 3795
+  },
+  "timing": {
+    "total_tokens": 27088,
+    "duration_ms": 27475,
+    "total_duration_seconds": 27.475,
+    "executor_duration_seconds": 27.475
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "skill_name": "opencode-coder",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I need to build a search endpoint for my webshop. I have a markdown file at docs/search-spec.md that summarizes the details: it needs full-text search over products, faceted filtering by category and price range, and pagination. Please create an epic and tasks for this work, and if anything still needs discussion before a developer can start, handle that properly.",
+      "expected_output": "A beads plan with epic, child tasks, acceptance review task, numeric priorities, and proper handling of ambiguous items via needs:discussion.",
+      "files": [],
+      "expectations": [
+        "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+        "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
+        "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+        "Uses the bd create --body-file - pattern for structured issue bodies",
+        "Mentions showing bd ready and bd blocked before execution begins"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "A customer reported that the checkout flow crashes when the cart has more than 50 items. They sent a screenshot and a rough repro. Please capture this properly as a bug in beads with the right labels and linked follow-up work.",
+      "expected_output": "A beads bug with source:external label, concrete repro details, expected versus actual, and a linked post-mortem task.",
+      "files": [],
+      "expectations": [
+        "Creates a bug rather than a generic task",
+        "Uses the source:external label for the customer-reported bug",
+        "Captures steps to reproduce plus expected and actual behavior clearly",
+        "Adds a linked post-mortem task because this is an external bug",
+        "Keeps the issue body concrete and executable instead of vague"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a project where someone previously ran /opencode-coder/init and chose disabled. Now I want to actually enable it. What is the difference between my project which has mode: disabled in .coder/opencode-coder.yaml versus a completely fresh project that has never seen opencode-coder at all? And how do I go from disabled to active?",
+      "expected_output": "A response that distinguishes saved disabled mode from not-yet-enabled state and explains how to re-enable from disabled.",
+      "files": [],
+      "expectations": [
+        "Distinguishes saved disabled in .coder/opencode-coder.yaml from a fresh project with no yaml at all",
+        "Explains that saved disabled still has /opencode-coder/init available while a hard-disabled env var blocks all commands",
+        "Explains that fresh not-yet-enabled projects have no .coder directory at all",
+        "Describes how to re-enable from disabled by running /opencode-coder/init and choosing stealth or team",
+        "Mentions OPENCODE_CODER_DISABLED env var as a separate hard-disable mechanism"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I ran /opencode-coder/init on my project and it is now asking me about project docs. My repo already has a docs/ folder with some existing markdown files but they are not in the standard opencode-coder format. What should happen next?",
+      "expected_output": "An init docs follow-through response that inspects existing docs first, recognizes the migration scenario, and asks the right plain-language question.",
+      "files": [],
+      "expectations": [
+        "Starts with inspect-first behavior before proposing what to do",
+        "Recognizes this as a migration scenario with existing non-standard docs",
+        "Asks the user a clear plain-language question about how to proceed rather than using internal jargon",
+        "Explains that hollow docs should not be created for topics already covered by installed skills",
+        "Mentions what happens if the user skips the docs step"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have had opencode-coder running in my project for a while but there is no .coder/opencode-coder.yaml file. I see .beads/ and AGENTS.md in the root and a stealth marker in .git/info/exclude. I just re-ran /opencode-coder/init. What should it do?",
+      "expected_output": "A legacy-detection and re-run response that infers saved mode from markers, materializes the mode file, and continues as a refresh instead of fresh bootstrap.",
+      "files": [],
+      "expectations": [
+        "Uses the saved mode file as primary source of truth when it exists",
+        "Falls back to legacy detection when the saved mode file is missing",
+        "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+        "Treats this re-run as a refresh flow rather than fresh bootstrap",
+        "Addresses the ambiguity of having both team markers and stealth markers present"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My project is set up in team mode and I want opencode-coder to generate or update AGENTS.md and the standard topic docs. Some topics like releases are fully handled by an installed skill and I do not want hollow docs for those. Walk me through what should be created versus what should just route to skills.",
+      "expected_output": "A doc generation response that treats AGENTS as a routing table, creates docs only for project-specific content, and routes skill-only topics to skills.",
+      "files": [],
+      "expectations": [
+        "Treats AGENTS as a routing table rather than a handbook",
+        "Creates standard docs only when they contain real project-specific guidance",
+        "Routes skill-only topics to reusable skills instead of creating hollow docs",
+        "Uses team-mode file locations like docs/ and root AGENTS.md",
+        "Includes verification of links or paths or stale references before completion"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I ran /simplify on my last commit and one of the reviewers flagged that a utility function in src/utils/format.ts is almost identical to one in src/helpers/string.ts. Both are used by different modules. The simplify flow classified this as ask-first rather than safe. Why would it do that and what should I do next?",
+      "expected_output": "An explanation of the safe-versus-ask-first boundary in simplify, why cross-module deduplication is ask-first, and what the next step is.",
+      "files": [],
+      "expectations": [
+        "Explains the safe-versus-ask-first boundary: safe means local to scoped files while ask-first means cross-module or public API changes",
+        "Identifies cross-module deduplication as ask-first because it changes import paths and module boundaries for consumers",
+        "Recommends resolving the deduplication by choosing one canonical location and updating all consumers",
+        "Suggests creating a beads task or follow-up for the deduplication if it is too large to do inline",
+        "References the structured closing summary where deferred and ask-first items are listed"
+      ]
+    }
+  ]
+}

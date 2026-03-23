@@ -1,0 +1,97 @@
+{
+  "expectations": [
+    {
+      "text": "Explains that fresh projects are not yet enabled until the user explicitly chooses a mode",
+      "passed": true,
+      "evidence": "Step 1 explicitly states: 'Result: project classified as \"not yet enabled\".' Step 2 makes clear the user must pick a mode before anything happens."
+    },
+    {
+      "text": "Offers stealth versus team as the mode choice and explains the difference",
+      "passed": true,
+      "evidence": "Step 2 lists both options with descriptions: stealth keeps artifacts local via .git/info/exclude; team commits artifacts to the repo. A third 'remain inactive' option is also offered."
+    },
+    {
+      "text": "Explains that startup must not create .coder/ or other artifacts before explicit enablement",
+      "passed": true,
+      "evidence": "Step 1 explicitly states '**No files are created during detection.**' Step 2 adds 'Only after you choose an active mode does .coder/ get created and .coder/opencode-coder.yaml get written.'"
+    },
+    {
+      "text": "Mentions .coder/opencode-coder.yaml as where the saved mode lives",
+      "passed": true,
+      "evidence": "Step 1 mentions checking .coder/opencode-coder.yaml first. Step 3 shows both modes writing to it (e.g., 'echo \"mode: stealth\" > .coder/opencode-coder.yaml')."
+    },
+    {
+      "text": "Explains at least one concrete stealth-versus-team path or git-visibility difference",
+      "passed": true,
+      "evidence": "Step 3 shows a concrete divergence: stealth adds exclusions to .git/info/exclude (keeping artifacts off the repo entirely), while team appends .coder/ to .gitignore and commits beads/AGENTS.md. Step 2 also notes AGENTS.md lands at root vs .coder/AGENTS.md."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "No files are created during detection phase",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "Stated explicitly in Step 1 and consistent with the init.md source file read during the run."
+    },
+    {
+      "claim": "Stealth mode uses .git/info/exclude to hide artifacts",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 2 and Step 3 both reference .git/info/exclude for stealth, contrasting with team mode's .gitignore approach."
+    },
+    {
+      "claim": "AGENTS.md goes to root in team mode, .coder/AGENTS.md in stealth",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Stated in Step 3: 'team \u2192 root AGENTS.md, stealth \u2192 .coder/AGENTS.md'."
+    },
+    {
+      "claim": "bd CLI install command is npm install -g beads",
+      "type": "factual",
+      "verified": false,
+      "evidence": "This detail was not confirmed from the read reference files in the transcript; could be fabricated or outdated. Minor risk."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "The npm install -g beads prerequisite command was asserted without clear sourcing from the read files."
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "overall": "All five expectations are clearly and substantively met. The response accurately covers the not-yet-enabled state, the stealth/team mode choice with meaningful distinction, the no-artifacts-before-enablement constraint, the .coder/opencode-coder.yaml save location, and concrete path/visibility differences between modes. One minor unverified claim (npm install command) is low risk and outside the graded scope.",
+    "suggestions": [
+      {
+        "assertion": "Explains at least one concrete stealth-versus-team path or git-visibility difference",
+        "reason": "The response is strong here, but future evals could tighten this to require mention of the specific exclusion mechanism (.git/info/exclude vs .gitignore) rather than accepting any path difference, since that is the most meaningful behavioral distinction."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Glob": 11,
+      "Read": 3
+    },
+    "total_tool_calls": 14,
+    "total_steps": 15,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 2437,
+    "transcript_chars": 4172
+  },
+  "timing": {
+    "total_tokens": 259863,
+    "duration_ms": 47393,
+    "total_duration_seconds": 47.393,
+    "executor_duration_seconds": 47.393
+  }
+}

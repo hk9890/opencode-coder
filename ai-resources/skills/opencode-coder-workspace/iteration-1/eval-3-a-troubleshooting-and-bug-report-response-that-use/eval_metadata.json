@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "a-troubleshooting-and-bug-report-response-that-use",
+  "prompt": "In my opencode-coder setup, bd ready is failing with database errors. Give me a troubleshooting path, tell me what logging or environment variables to collect, and if this really looks like a plugin issue tell me what evidence to put into a GitHub bug report.",
+  "assertions": [
+    "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes",
+    "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1",
+    "Distinguishes when to use a session export versus a diagnostics bundle",
+    "Helps classify whether the issue is a plugin issue versus a project issue"
+  ]
+}

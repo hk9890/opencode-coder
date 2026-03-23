@@ -1,0 +1,84 @@
+{
+  "expectations": [
+    {
+      "text": "Explains that fresh projects are not yet enabled until the user explicitly chooses a mode",
+      "passed": true,
+      "evidence": "Response states: 'the plugin sees this as not yet enabled and prompts you to choose a mode' and 'it will not create any files until you explicitly choose. That's the explicit enablement model. Nothing is activated by just opening the project.'"
+    },
+    {
+      "text": "Offers stealth versus team as the mode choice and explains the difference",
+      "passed": true,
+      "evidence": "Response includes a table comparing stealth ('kept local via .git/info/exclude, never committed') and team ('Files go to standard repo paths... and are committed'), plus plain-language guidance: 'Choose stealth if you want opencode-coder for yourself without affecting the repo for others. Choose team if the whole team will use it.'"
+    },
+    {
+      "text": "Explains that startup must not create .coder/ or other artifacts before explicit enablement",
+      "passed": true,
+      "evidence": "'it will not create any files until you explicitly choose. That's the explicit enablement model. Nothing is activated by just opening the project.' \u2014 clearly states no artifacts are created pre-enablement."
+    },
+    {
+      "text": "Mentions .coder/opencode-coder.yaml as where the saved mode lives",
+      "passed": true,
+      "evidence": "Response mentions .coder/opencode-coder.yaml multiple times: as the file written by each mode ('echo mode: stealth > .coder/opencode-coder.yaml') and in the verify step ('.coder/opencode-coder.yaml exists with the correct mode')."
+    },
+    {
+      "text": "Explains at least one concrete stealth-versus-team path or git-visibility difference",
+      "passed": true,
+      "evidence": "Stealth uses '.git/info/exclude' to keep files local and never committed; team places AGENTS.md and docs/ at repo root and commits them. Verify step also says 'Git visibility matches your chosen mode (stealth = excluded, team = committed)'."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Fresh repos are not yet enabled and init prompts for mode before creating any files",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "Explicitly stated in closing summary and in Step 2 description."
+    },
+    {
+      "claim": "Stealth mode uses .git/info/exclude so files are never committed",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Table and Step 3 both describe .git/info/exclude covering .beads/ .opencode/ .coder/ ai.package.yaml."
+    },
+    {
+      "claim": ".coder/opencode-coder.yaml stores the chosen mode",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Shown in both the mode-selection step code blocks and the verify step."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "All five expectations are clearly and substantively met. The response explains explicit enablement, the stealth/team choice with differences, no pre-enablement artifact creation, the .coder/opencode-coder.yaml config file, and concrete path/git-visibility differences between modes. No gaps detected."
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 4,
+      "Glob": 1
+    },
+    "total_tool_calls": 5,
+    "total_steps": 6,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 2611,
+    "transcript_chars": 3554
+  },
+  "timing": {
+    "total_tokens": 60528,
+    "duration_ms": 34079,
+    "total_duration_seconds": 34.079,
+    "executor_duration_seconds": 34.079
+  }
+}

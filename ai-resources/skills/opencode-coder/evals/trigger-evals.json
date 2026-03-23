@@ -1,0 +1,82 @@
+[
+  {
+    "query": "I need to build a search endpoint for my webshop, I have a spec in docs/search-spec.md with the requirements. Can you create an epic with tasks in beads for this? Some parts probably need discussion first before anyone starts coding.",
+    "should_trigger": true
+  },
+  {
+    "query": "A customer reported that checkout crashes when the cart has more than 50 items, they sent a screenshot. Please capture this as a proper bug in beads with repro steps and any linked follow-up that should exist for an external report.",
+    "should_trigger": true
+  },
+  {
+    "query": "I just cloned my project and want to set up opencode-coder for the first time. Can you run /opencode-coder/init and walk me through stealth vs team mode and what happens?",
+    "should_trigger": true
+  },
+  {
+    "query": "I ran init on my repo and now it is asking about project docs. I already have some markdown files in docs/ but they are not in the standard format. What should happen next and what should I tell it?",
+    "should_trigger": true
+  },
+  {
+    "query": "My project has been using opencode-coder for months but there is no .coder/opencode-coder.yaml, just legacy markers. I re-ran /opencode-coder/init and want to know how it should handle the upgrade without treating this as a fresh install.",
+    "should_trigger": true
+  },
+  {
+    "query": "I want opencode-coder to generate AGENTS.md and the standard topic docs for my project, but some topics like releases are fully covered by an installed skill and I don't want empty placeholder docs for those.",
+    "should_trigger": true
+  },
+  {
+    "query": "My project is in stealth mode and there is already a committed root AGENTS.md from the team. When opencode-coder refreshes docs, what should it write where so it doesn't overwrite the shared files?",
+    "should_trigger": true
+  },
+  {
+    "query": "I just finished a batch of changes across a few files and want to run /simplify focused on duplication before I open a PR. How does it decide what to clean up?",
+    "should_trigger": true
+  },
+  {
+    "query": "I want to switch my project from stealth mode to team mode. What changes in terms of file paths, git visibility, and what gets committed?",
+    "should_trigger": true
+  },
+  {
+    "query": "We need to add three new API endpoints to our backend. Can you plan that as beads work with proper tasks, priorities, and an acceptance review before we close it out?",
+    "should_trigger": true
+  },
+  {
+    "query": "I found two typos in docs/TESTING.md and only want a tiny editorial cleanup, no lifecycle or workflow changes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Please create a GitHub release for v0.36.0 and make sure the changelog is correct.",
+    "should_trigger": false
+  },
+  {
+    "query": "Sync our local beads issues with GitHub issues and tell me which ones changed on each side.",
+    "should_trigger": false
+  },
+  {
+    "query": "Look at these production logs and triage the top failing endpoints into actionable bugs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a TypeScript helper that normalizes config keys and include unit tests for it.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review this pull request diff and tell me if the database migration looks safe to run.",
+    "should_trigger": false
+  },
+  {
+    "query": "I need a Jira import flow so our sprint tickets can sync into beads.",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you explain git worktrees and show me how to compare two branches side by side?",
+    "should_trigger": false
+  },
+  {
+    "query": "My bun test snapshots changed after a dependency update, can you figure out why?",
+    "should_trigger": false
+  },
+  {
+    "query": "Please make me a one-off markdown TODO list for this refactor so I can keep notes locally.",
+    "should_trigger": false
+  }
+]

@@ -1,0 +1,85 @@
+{
+  "expectations": [
+    {
+      "text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes",
+      "passed": true,
+      "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as the single source of truth and lists all four states in a table: not-enabled, disabled, stealth, team, and hard-disabled."
+    },
+    {
+      "text": "Explains that fresh projects are not yet enabled until explicit init or enablement",
+      "passed": true,
+      "evidence": "'Nothing is auto-created for a fresh repo. The plugin starts in not-yet-enabled state and stays there until you explicitly choose a mode.' Table entry: `not-enabled` = 'No saved mode file, no legacy markers \u2014 fresh project'."
+    },
+    {
+      "text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run",
+      "passed": true,
+      "evidence": "Response calls it 'the only setup entry point', enumerates five concrete steps it performs, and explicitly states 'It's safe to re-run. Re-runs refresh rather than reinstall.'"
+    },
+    {
+      "text": "Explains at least one concrete team-versus-stealth path or git visibility rule",
+      "passed": true,
+      "evidence": "Full comparison table covers AGENTS file location (.coder/AGENTS.md vs repo-root AGENTS.md), docs path (.coder/docs/ vs docs/), and git visibility (stealth uses .git/info/exclude; team commits to .gitignore and shared git history)."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": ".coder/opencode-coder.yaml is the single source of truth for plugin mode",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Confirmed by tool call reading plugin-mode-service.ts and init.md; response cites plugin-mode-service.ts:8."
+    },
+    {
+      "claim": "OPENCODE_CODER_DISABLED env var suppresses even /opencode-coder/init",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Sourced from plugin-mode-service.ts read in the transcript; response labels this 'hard-disabled' and distinguishes it from saved disabled."
+    },
+    {
+      "claim": "Stealth mode uses .git/info/exclude; team mode uses .gitignore for .coder/",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Drawn from init.md and project-structure.md reads in the transcript; clearly stated in the Git visibility section."
+    },
+    {
+      "claim": "AGENTS.md goes to repo root in team mode, .coder/AGENTS.md in stealth",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Sourced from init.md read; presented in the file-path comparison table."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "workarounds": [],
+    "needs_review": []
+  },
+  "eval_feedback": {
+    "overall": "All four expectations are clearly and substantively met. The response goes beyond the minimum: it distinguishes saved-disabled from hard-disabled (an important nuance), provides a complete file-path table, and covers the git-visibility mechanism precisely. No gaps detected.",
+    "suggestions": []
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 4,
+      "Glob": 2
+    },
+    "total_tool_calls": 6,
+    "total_steps": 7,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 2910,
+    "transcript_chars": 3973
+  },
+  "timing": {
+    "total_tokens": 53863,
+    "duration_ms": 32724,
+    "total_duration_seconds": 32.724,
+    "executor_duration_seconds": 32.724
+  }
+}

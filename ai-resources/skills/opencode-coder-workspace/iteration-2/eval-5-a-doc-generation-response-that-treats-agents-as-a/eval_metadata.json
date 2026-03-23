@@ -1,0 +1,12 @@
+{
+  "eval_id": 5,
+  "eval_name": "a-doc-generation-response-that-treats-agents-as-a",
+  "prompt": "My project is set up in team mode and I want opencode-coder to generate or update AGENTS.md and the standard topic docs. Some topics like releases are fully handled by an installed skill and I do not want hollow docs for those. Walk me through what should be created versus what should just route to skills.",
+  "assertions": [
+    "Treats AGENTS as a routing table rather than a handbook",
+    "Creates standard docs only when they contain real project-specific guidance",
+    "Routes skill-only topics to reusable skills instead of creating hollow docs",
+    "Uses team-mode file locations like docs/ and root AGENTS.md",
+    "Includes verification of links or paths or stale references before completion"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "a-project-doc-lifecycle-response-that-uses-inspect",
+  "prompt": "Assume I'm in a team-mode repo where AGENTS.md and docs may be stale. Walk me through an /opencode-coder/docs style audit-and-refresh approach that decides what should stay in project docs versus what should route to reusable skills, and avoid creating hollow docs.",
+  "assertions": [
+    "Classifies topics as doc-backed, skill-only, or neither",
+    "Mentions mode-aware paths or project-structure rules for team versus stealth",
+    "States that skill-only topics should route through a skill instead of creating hollow docs",
+    "Includes a verify or report phase that checks paths, links, or stale references"
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "expectations": [
+    {
+      "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+      "passed": true,
+      "evidence": "Response explicitly states: 'It runs git diff --name-only --cached and git diff --name-only, deduplicates the results, and drops any deleted files.' Both staged and unstaged diffs are named."
+    },
+    {
+      "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+      "passed": true,
+      "evidence": "Response describes three parallel reviewer agents: Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), Reviewer 3 (Efficiency), with specific sub-concerns listed for each."
+    },
+    {
+      "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+      "passed": true,
+      "evidence": "Response explicitly separates 'Safe fixes go directly' (obvious duplication, within scoped files) from 'Ask-first' (anything touching public APIs, other modules, or requiring architectural discussion), and notes the safe-to-apply vs ask-first flag per finding."
+    },
+    {
+      "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+      "passed": true,
+      "evidence": "Response states: 'Ends with a structured output: Scope / Focus / Applied / Deferred / Validation / Follow-up.' All six expected fields are listed verbatim."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Scope is derived from git diff --name-only --cached and git diff --name-only with deduplication and deleted-file filtering",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Directly stated in the Scope detection section of the response."
+    },
+    {
+      "claim": "Three parallel reviewer agents cover duplication, code quality, and efficiency",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 2 of the response enumerates all three reviewers with their respective focus areas."
+    },
+    {
+      "claim": "Each reviewer returns a safe-to-apply vs ask-first flag per finding",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Stated at the end of step 2: 'Each returns only high-confidence findings with file references and a safe-to-apply vs ask-first flag.'"
+    },
+    {
+      "claim": "Summary output includes Scope, Focus, Applied, Deferred, Validation, Follow-up fields",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Step 6 lists all fields explicitly."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [],
+    "overall": "All four expectations are met with clear, specific evidence. The response is precise about git commands for scope detection, names all three reviewer domains explicitly, clearly distinguishes safe vs ask-first changes, and lists every required summary field verbatim. No gaps detected."
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Glob": 1,
+      "Grep": 1,
+      "Read": 2
+    },
+    "total_tool_calls": 4,
+    "total_steps": 5,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1966,
+    "transcript_chars": 2606
+  },
+  "timing": {
+    "total_tokens": 34374,
+    "duration_ms": 20243,
+    "total_duration_seconds": 20.243,
+    "executor_duration_seconds": 20.243
+  }
+}

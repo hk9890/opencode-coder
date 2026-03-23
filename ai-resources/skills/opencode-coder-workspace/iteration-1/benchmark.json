@@ -1,0 +1,477 @@
+{
+  "metadata": {
+    "skill_name": "opencode-coder",
+    "skill_path": "/home/hans/dev/github/opencode-coder/ai-resources/skills/opencode-coder",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-03-23T15:19:02Z",
+    "evals_run": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 50.597,
+        "tokens": 6604,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses an acceptance review task rather than a native gate issue",
+          "passed": true,
+          "evidence": "Section 3 creates a task titled 'Acceptance Review: Docs Lifecycle Improvement' with --type=task, explicitly described as a 'Gate check before the epic is closed.' It is linked via bd dep add as a blocker on the epic, functioning as a review gate without using any native gate-issue mechanism."
+        },
+        {
+          "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low",
+          "passed": true,
+          "evidence": "All bd create calls use numeric priorities: --priority=2 (epic), --priority=2 (audit), --priority=2 (repair), --priority=3 (slim/split), --priority=1 (acceptance review), --priority=2 (needs:discussion example). No high/medium/low strings appear anywhere."
+        },
+        {
+          "text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status",
+          "passed": true,
+          "evidence": "Section 5 shows `--labels=needs:discussion` at creation time and immediately follows with `bd update <id> --status=blocked`. The summary table explicitly maps 'Needs design/scoping discussion first' \u2192 label: needs:discussion, status: blocked, not in bd ready."
+        },
+        {
+          "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+          "passed": true,
+          "evidence": "Every bd create call (epic, audit, repair, slim/split, acceptance review, and needs:discussion example) uses the `cat << 'EOF' | bd create ... --body-file -` heredoc pipeline pattern for structured multi-section bodies."
+        },
+        {
+          "text": "Mentions showing bd ready and bd blocked before execution",
+          "passed": false,
+          "evidence": "The response jumps directly into issue creation commands. Neither `bd ready` nor `bd blocked` is mentioned at any point as a pre-execution check or orientation step."
+        }
+      ],
+      "notes": [
+        "bd ready / bd blocked pre-execution orientation step is absent \u2014 the plan goes straight to issue creation without grounding the user in current project state"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 47.765,
+        "tokens": 5088,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Classifies topics as doc-backed, skill-only, or neither",
+          "passed": true,
+          "evidence": "Step 1 explicitly defines a three-way classification table: 'doc-backed' (local doc exists), 'skill-only' (no local doc but matching skill covers it), and 'neither' (no doc, no skill). The response states this classification 'drives every decision downstream.'"
+        },
+        {
+          "text": "Mentions mode-aware paths or project-structure rules for team versus stealth",
+          "passed": true,
+          "evidence": "Step 0 explicitly covers mode detection and path differences: team \u2192 'docs/', 'AGENTS.md'; stealth \u2192 '.coder/docs/', '.coder/AGENTS.md'. Step 6 verify checklist includes 'Mode-path consistency: team docs aren't referenced from a stealth AGENTS.'"
+        },
+        {
+          "text": "States that skill-only topics should route through a skill instead of creating hollow docs",
+          "passed": true,
+          "evidence": "Step 4 states explicitly: 'do not create a topic doc for a skill-only topic. Instead, route AGENTS directly to the skill.' A concrete AGENTS.md routing pattern is shown vs. the hollow-doc anti-pattern. The one-sentence rule at the end also captures this."
+        },
+        {
+          "text": "Includes a verify or report phase that checks paths, links, or stale references",
+          "passed": true,
+          "evidence": "Step 6 'Verify before calling it done (Phase 7)' is a dedicated checklist covering: every path referenced in AGENTS exists, no skill referenced that isn't installed, skill-only topics routed to skills, no hollow docs under ~10 lines, AGENTS line count, and mode-path consistency."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 27.475,
+        "tokens": 3175,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+          "passed": true,
+          "evidence": "The response explicitly calls `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged), then combines and deduplicates results. It also leverages the existing git status to enumerate the candidate file set."
+        },
+        {
+          "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+          "passed": true,
+          "evidence": "Explicit 'Three parallel review passes' section names Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), and Reviewer 3 (Efficiency), each with concrete focus areas against the scoped file set."
+        },
+        {
+          "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+          "passed": true,
+          "evidence": "Dedicated sections 'What I apply directly (safe fixes)' and 'What I ask you about first' provide concrete examples of each category \u2014 e.g., local deduplication within touched functions is safe; extracting a new utility module or restructuring command .md files requires user confirmation."
+        },
+        {
+          "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+          "passed": true,
+          "evidence": "Scope (listed file set), focus (duplication weighted highest), applied (safe fixes section), deferred/ask-first (ask-first section), and validation (bun test / bun run typecheck) are all present. Follow-up is covered implicitly via the offer to create a beads issue and the CTA to invoke `/simplify`. Fields are distributed across sections rather than in a single closing summary block."
+        }
+      ],
+      "notes": [
+        "Closing summary fields are distributed across response sections rather than consolidated in a single terminal summary block \u2014 skill may intend a structured closing section."
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 32.57,
+        "tokens": 3622,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes",
+          "passed": true,
+          "evidence": "Step 1 explicitly runs `bd doctor`, `bd doctor --fix`, and `bd bootstrap` as the first actions. The final note warns: 'Do not manually delete `.beads/` or Dolt internals as a workaround before capturing this evidence \u2014 once deleted, the diagnostic state is gone.'"
+        },
+        {
+          "text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1",
+          "passed": true,
+          "evidence": "Step 2 explicitly shows: `export OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\"` and `export OPENCODE_CODER_DEBUG=1` as the two env vars to set before reproducing the error."
+        },
+        {
+          "text": "Distinguishes when to use a session export versus a diagnostics bundle",
+          "passed": false,
+          "evidence": "The response mentions `bun run diagnostics:collect` for a diagnostics bundle (framed as optional for hard-to-reproduce errors), and standard log grep as the default. However, the term 'session export' never appears and no distinction between a session export artifact and a diagnostics bundle is made. The two concepts are not contrasted."
+        },
+        {
+          "text": "Helps classify whether the issue is a plugin issue versus a project issue",
+          "passed": true,
+          "evidence": "Step 3 is entirely dedicated to this classification with two explicit lists: specific conditions that indicate a plugin issue (e.g., `bd doctor` passes clean but `bd ready` still fails) versus conditions that indicate a local setup issue (e.g., doctor reports a fixable problem, `.beads/` was deleted)."
+        }
+      ],
+      "notes": [
+        "Whether 'session export' is a distinct concept documented in the skill references that the response missed",
+        "The claim that diagnostics:collect produces manifest.json + README.md \u2014 verify against bug-reporting.md source"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 30.865,
+        "tokens": 2934,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes",
+          "passed": true,
+          "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as where states are written, and lists all four states: file absent, `mode: disabled`, `mode: stealth`, `mode: team` in a table."
+        },
+        {
+          "text": "Explains that fresh projects are not yet enabled until explicit init or enablement",
+          "passed": true,
+          "evidence": "'opencode-coder does nothing automatically on a fresh repo. Until you run /opencode-coder/init, startup exposes only that one command and creates no files.' The table also shows '*(file absent)* \u2014 Not yet enabled'."
+        },
+        {
+          "text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run",
+          "passed": true,
+          "evidence": "'It is idempotent (safe to re-run) and handles every enablement lifecycle transition' \u2014 the response lists all lifecycle cases init handles and frames it as the central enablement mechanism."
+        },
+        {
+          "text": "Explains at least one concrete team-versus-stealth path or git visibility rule",
+          "passed": true,
+          "evidence": "Detailed table shows path differences (e.g., AGENTS.md at repo root vs .coder/AGENTS.md; docs/ vs .coder/docs/). Git visibility section specifies team commits artifacts while stealth uses .git/info/exclude to keep everything local."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.4,
+        "passed": 2,
+        "failed": 3,
+        "total": 5,
+        "time_seconds": 54.536,
+        "tokens": 4575,
+        "tool_calls": 8,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses an acceptance review task rather than a native gate issue",
+          "passed": true,
+          "evidence": "The response creates 'Docs lifecycle: acceptance review' as an explicit task with bd create, framed as a human acceptance gate with manual launcher + deterministic checks, wired via bd dep add dependencies rather than any native gate mechanism."
+        },
+        {
+          "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high/medium/low",
+          "passed": true,
+          "evidence": "All bd create commands use --priority=2 or --priority=3. No high/medium/low strings appear anywhere in the plan."
+        },
+        {
+          "text": "Explains that needs-discussion work should use a needs:discussion label plus blocked status",
+          "passed": false,
+          "evidence": "The response explains a discussion-gate pattern (create a discussion issue, then block the execution task on it via bd dep add), but never mentions a 'needs:discussion' label. It uses dependency blocking but omits the label entirely."
+        },
+        {
+          "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+          "passed": false,
+          "evidence": "All bd create calls use inline --description= strings. The --body-file - pattern for piping structured multi-line bodies is never mentioned or demonstrated."
+        },
+        {
+          "text": "Mentions showing bd ready and bd blocked before execution",
+          "passed": false,
+          "evidence": "bd ready and bd blocked are referenced only to explain their passive behavior ('invisible to bd ready until blockers closed', 'bd blocked will surface these'). Neither is recommended as a pre-execution check step a tasker should run before starting work."
+        }
+      ],
+      "notes": [
+        "Whether bd create supports a --label flag for needs:discussion in this project's beads version",
+        "needs:discussion label support \u2014 response omits it entirely; skill should clarify whether it is a first-class flag or a freeform tag",
+        "bd create --body-file - pattern \u2014 not demonstrated despite the plan having multi-paragraph descriptions that would benefit from it",
+        "Response substitutes inline --description= strings instead of --body-file -, which works but loses structured formatting for long bodies",
+        "Response substitutes dependency-only blocking instead of label+blocked status for needs-discussion tasks"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 48.015,
+        "tokens": 5810,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Classifies topics as doc-backed, skill-only, or neither",
+          "passed": true,
+          "evidence": "Phase 1 explicitly defines three classification labels: 'doc-backed \u2014 a local doc exists', 'skill-only \u2014 no local doc, but an installed skill covers it', 'neither \u2014 no local doc, no skill'. The practical walk-through also repeats 'classify doc-backed / skill-only / neither' as step 4."
+        },
+        {
+          "text": "Mentions mode-aware paths or project-structure rules for team versus stealth",
+          "passed": true,
+          "evidence": "Phase 0 contains a table explicitly mapping team mode to AGENTS.md/docs/ and stealth mode to .coder/AGENTS.md/.coder/docs/, with the note 'If you write to the wrong path in stealth mode, you contaminate the team's shared files.'"
+        },
+        {
+          "text": "States that skill-only topics should route through a skill instead of creating hollow docs",
+          "passed": true,
+          "evidence": "The routing question table states: 'Nothing \u2014 the skill covers it completely \u2192 Delete the local doc (or don't create one), route AGENTS to the skill.' Step 6 of the walk-through also says 'verify AGENTS routes to it, not to a hollow local doc' for skill-only topics."
+        },
+        {
+          "text": "Includes a verify or report phase that checks paths, links, or stale references",
+          "passed": true,
+          "evidence": "Phase 7 is explicitly a verify phase: 'Every audit ends with a link-walk' checking that every path AGENTS references exists and every skill reference is installed. The report artifact is described as calling out which topics route through skills vs local docs."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "failed": 1,
+        "total": 4,
+        "time_seconds": 37.832,
+        "tokens": 3297,
+        "tool_calls": 7,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+          "passed": true,
+          "evidence": "Response explicitly runs `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged) to resolve the file set, then lists the resulting files from current git status."
+        },
+        {
+          "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+          "passed": true,
+          "evidence": "Response defines three named reviewers in parallel: Reviewer 1 \u2014 Reuse & Duplication, Reviewer 2 \u2014 Code Quality, Reviewer 3 \u2014 Efficiency, each with concrete focus areas."
+        },
+        {
+          "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+          "passed": true,
+          "evidence": "Response has explicit sections 'What I'd apply directly (no confirmation needed)' and 'What I'd ask you about first', with concrete criteria: local/behavior-preserving vs cross-module-boundary or public-API changes."
+        },
+        {
+          "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+          "passed": false,
+          "evidence": "The response covers scope, focus, applied, ask-first, and validation as prose sections, but does not present them as a structured closing summary with labeled fields. The 'follow-up' field is absent or only vaguely implied ('create a beads issue'). No post-run summary template or example output is shown."
+        }
+      ],
+      "notes": [
+        "Whether the simplify skill file was actually found and read \u2014 tool calls for it returned no content shown in transcript, so the response may be reconstructed from general knowledge rather than the actual skill definition",
+        "The closing summary format: the skill likely specifies a structured output block; the response does not demonstrate this format"
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.25,
+        "passed": 1,
+        "failed": 3,
+        "total": 4,
+        "time_seconds": 66.503,
+        "tokens": 3642,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends bd doctor and bd doctor --fix or bd bootstrap before manual deletion-style fixes",
+          "passed": false,
+          "evidence": "The response mentions 'bd doctor' in Step 1 and Step 3, but immediately follows with manual deletion commands (rm -f .beads/dolt-server.pid, etc.) without ever suggesting 'bd doctor --fix' or 'bd bootstrap' as alternatives to manual cleanup. The --fix flag and bootstrap command are entirely absent."
+        },
+        {
+          "text": "Mentions OPENCODE_DEFAULT_OPTIONS=\"--log-level DEBUG\" and OPENCODE_CODER_DEBUG=1",
+          "passed": false,
+          "evidence": "The environment variables section only covers BD_NO_DB, BEADS_DB, and 'env | grep -E \"BD_|BEADS_\"'. OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG=1 are never mentioned anywhere in the response."
+        },
+        {
+          "text": "Distinguishes when to use a session export versus a diagnostics bundle",
+          "passed": false,
+          "evidence": "No mention of session export or diagnostics bundle anywhere in the response. The response only covers log file collection and MySQL queries for a bug report."
+        },
+        {
+          "text": "Helps classify whether the issue is a plugin issue versus a project issue",
+          "passed": true,
+          "evidence": "The response clearly classifies this as a beads plugin bug ('almost certainly a beads bug introduced between Dec 2025 and Mar 2026'), identifies the specific beads component at fault (dolt connection code using hardcoded database name instead of reading metadata.json), and frames the GitHub report hypothesis as a beads-level regression. The distinction between plugin and project is made explicit."
+        }
+      ],
+      "notes": [
+        "Whether bd doctor --fix and bd bootstrap are standard beads commands in this version",
+        "The manual deletion steps (rm -f .beads/*.pid) recommended without first trying bd doctor --fix may be premature",
+        "BD_NO_DB=1 suggested as fallback to bypass dolt stack"
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 32.724,
+        "tokens": 2910,
+        "tool_calls": 6,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Mentions the saved mode file .coder/opencode-coder.yaml and the disabled, stealth, or team modes",
+          "passed": true,
+          "evidence": "Response explicitly names `.coder/opencode-coder.yaml` as the single source of truth and lists all four states in a table: not-enabled, disabled, stealth, team, and hard-disabled."
+        },
+        {
+          "text": "Explains that fresh projects are not yet enabled until explicit init or enablement",
+          "passed": true,
+          "evidence": "'Nothing is auto-created for a fresh repo. The plugin starts in not-yet-enabled state and stays there until you explicitly choose a mode.' Table entry: `not-enabled` = 'No saved mode file, no legacy markers \u2014 fresh project'."
+        },
+        {
+          "text": "Treats /opencode-coder/init as the preferred safe path and notes it can be re-run",
+          "passed": true,
+          "evidence": "Response calls it 'the only setup entry point', enumerates five concrete steps it performs, and explicitly states 'It's safe to re-run. Re-runs refresh rather than reinstall.'"
+        },
+        {
+          "text": "Explains at least one concrete team-versus-stealth path or git visibility rule",
+          "passed": true,
+          "evidence": "Full comparison table covers AGENTS file location (.coder/AGENTS.md vs repo-root AGENTS.md), docs path (.coder/docs/ vs docs/), and git visibility (stealth uses .git/info/exclude; team commits to .gitignore and shared git history)."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.91,
+        "stddev": 0.1245,
+        "min": 0.75,
+        "max": 1
+      },
+      "time_seconds": {
+        "mean": 37.8544,
+        "stddev": 10.5487,
+        "min": 27.475,
+        "max": 50.597
+      },
+      "tokens": {
+        "mean": 4284.6,
+        "stddev": 1542.6794,
+        "min": 2934,
+        "max": 6604
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.68,
+        "stddev": 0.3439,
+        "min": 0.25,
+        "max": 1
+      },
+      "time_seconds": {
+        "mean": 47.922,
+        "stddev": 13.4331,
+        "min": 32.724,
+        "max": 66.503
+      },
+      "tokens": {
+        "mean": 4046.8,
+        "stddev": 1162.5669,
+        "min": 2910,
+        "max": 5810
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.23",
+      "time_seconds": "-10.1",
+      "tokens": "+238"
+    }
+  },
+  "notes": []
+}

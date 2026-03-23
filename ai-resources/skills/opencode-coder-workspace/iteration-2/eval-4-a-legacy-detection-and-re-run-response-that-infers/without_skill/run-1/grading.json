@@ -1,0 +1,103 @@
+{
+  "expectations": [
+    {
+      "text": "Uses the saved mode file as primary source of truth when it exists",
+      "passed": true,
+      "evidence": "Agent found .coder/opencode-coder.yaml with mode: team and explicitly states 'This is an active team project \u2014 no legacy migration needed' and 'init should not act on it since the explicit yaml wins.' The yaml file is treated as authoritative."
+    },
+    {
+      "text": "Falls back to legacy detection when the saved mode file is missing",
+      "passed": false,
+      "evidence": "The user explicitly stated 'there is no .coder/opencode-coder.yaml file' but the agent found the file and redirected entirely to the yaml-exists scenario. The fallback behavior for when the file is missing was never explained."
+    },
+    {
+      "text": "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+      "passed": false,
+      "evidence": "The agent did not address the user's actual scenario (no yaml file, but .beads/ and AGENTS.md present as legacy markers). There is no mention of materializing a yaml file from inferred legacy state. The agent pivoted to a different scenario entirely."
+    },
+    {
+      "text": "Treats this re-run as a refresh flow rather than fresh bootstrap",
+      "passed": false,
+      "evidence": "While the agent describes a refresh flow for the yaml-exists case, it did not address the user's actual scenario (no yaml, legacy markers present). For the scenario asked, the agent never explained that init should recognize this as a re-run and treat it as refresh rather than fresh bootstrap."
+    },
+    {
+      "text": "Addresses the ambiguity of having both team markers and stealth markers present",
+      "passed": true,
+      "evidence": "Agent explicitly notes: 'your project has a stealth marker in .git/info/exclude but is saved as mode: team. That's not necessarily a problem (the stealth marker may be a leftover from a previous mode), but init should not act on it since the explicit yaml wins.' This directly addresses the coexistence ambiguity."
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 3,
+    "total": 5,
+    "pass_rate": 0.4
+  },
+  "claims": [
+    {
+      "claim": "The .coder/opencode-coder.yaml file actually exists with mode: team",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Tool call #3 (Read on .coder/opencode-coder.yaml) succeeded, contradicting the user's premise that the file doesn't exist."
+    },
+    {
+      "claim": "Stealth marker in .git/info/exclude is a leftover and should be ignored since yaml wins",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "The agent correctly reasons that explicit yaml config overrides stale stealth markers."
+    },
+    {
+      "claim": "Init should ask via question() with three options rather than assuming refresh",
+      "type": "behavioral",
+      "verified": false,
+      "evidence": "The agent asserts this but it cannot be verified against init.md content since the response doesn't quote the actual init command logic."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Agent cannot distinguish between user's stated scenario (no yaml) and discovered scenario (yaml exists) without clarifying",
+      "Whether the init command actually presents three-option question() cannot be verified from transcript"
+    ],
+    "needs_review": [
+      "Agent answered a different scenario than asked \u2014 user said no yaml, but agent found one; the entire response addresses the wrong case",
+      "Legacy detection and yaml materialization path was completely skipped"
+    ],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "overall": "The agent correctly handled the yaml-exists case and addressed the stealth/team marker ambiguity, but fundamentally failed to answer the user's actual question. The user explicitly said there is no .coder/opencode-coder.yaml, which is the scenario that tests expectations 2, 3, and 4. The agent found the file and pivoted entirely, leaving the legacy-detection path, yaml materialization behavior, and legacy-re-run-as-refresh flow completely unaddressed. A correct response should have answered both paths: (1) what init does when no yaml exists with legacy markers present (the asked scenario), and (2) noted that in this environment the file was actually found.",
+    "suggestions": [
+      {
+        "assertion": "Falls back to legacy detection when the saved mode file is missing",
+        "reason": "The eval should check whether the agent explains the full detection chain: no yaml \u2192 look for legacy markers (.beads/, AGENTS.md, .git/info/exclude stealth entry) \u2192 infer active state \u2192 branch to materialization"
+      },
+      {
+        "assertion": "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+        "reason": "The eval should require the agent to describe the materialization step explicitly: which mode gets written, what triggers it, and why it must happen before continuing to the refresh/prompt flow"
+      },
+      {
+        "assertion": "Treats this re-run as a refresh flow rather than fresh bootstrap",
+        "reason": "Should specifically test that for the no-yaml legacy case, the agent explains init detects existing setup (not a blank project) and routes to refresh rather than running full bootstrap steps"
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Glob": 3,
+      "Read": 2
+    },
+    "total_tool_calls": 5,
+    "total_steps": 6,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1478,
+    "transcript_chars": 2305
+  },
+  "timing": {
+    "total_tokens": 59929,
+    "duration_ms": 29820,
+    "total_duration_seconds": 29.82,
+    "executor_duration_seconds": 29.82
+  }
+}

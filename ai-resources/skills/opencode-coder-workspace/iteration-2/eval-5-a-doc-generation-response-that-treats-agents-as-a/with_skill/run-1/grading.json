@@ -1,0 +1,99 @@
+{
+  "expectations": [
+    {
+      "text": "Treats AGENTS as a routing table rather than a handbook",
+      "passed": true,
+      "evidence": "Response explicitly states 'Everything else \u2014 conditional, pointers only, no inlined content' and the decision matrix shows AGENTS.md either routes to docs/ files or directly to skills. The phrase 'AGENTS.md routes directly to the skill' is used verbatim."
+    },
+    {
+      "text": "Creates standard docs only when they contain real project-specific guidance",
+      "passed": true,
+      "evidence": "Decision matrix row: 'Topic has project-specific content (commands, conventions, project paths, etc.) \u2192 Create docs/TOPIC.md'. The workflow description states 'only create files where real local content exists.' The negative cases (skill-only, neither) explicitly produce no doc."
+    },
+    {
+      "text": "Routes skill-only topics to reusable skills instead of creating hollow docs",
+      "passed": true,
+      "evidence": "Concrete Releases example shows the AGENTS.md entry routes to the skill with no docs/RELEASING.md created. Quotes skill guidance: 'do not create a hollow topic doc.' Decision matrix row for skill-only: 'No doc. AGENTS.md routes directly to the skill.'"
+    },
+    {
+      "text": "Uses team-mode file locations like docs/ and root AGENTS.md",
+      "passed": true,
+      "evidence": "Response consistently uses docs/TOPIC.md paths (e.g. docs/RELEASING.md) and references AGENTS.md at the root level throughout the decision matrix and examples. Team-mode conventions are implicit in the file paths used, though 'team mode' is not mentioned by name."
+    },
+    {
+      "text": "Includes verification of links or paths or stale references before completion",
+      "passed": false,
+      "evidence": "No mention of verifying links, checking for stale references, or validating paths appears anywhere in the response or tool calls. The three file reads are for skill content, not verification. The workflow described (/opencode-coder/docs) does not mention a verification step."
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  },
+  "claims": [
+    {
+      "claim": "AGENTS.md should route to skills for skill-only topics rather than having inline content",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Directly supported by the skill template quote in the response and the decision matrix."
+    },
+    {
+      "claim": "Step 4 of agents-md-template.md says not to create hollow topic docs",
+      "type": "factual",
+      "verified": true,
+      "evidence": "The agents-md-template.md was read in tool call 2, and the quoted text is consistent with the skill's stated guidance."
+    },
+    {
+      "claim": "The /opencode-coder/docs command classifies topics as doc-backed / skill-only / neither",
+      "type": "factual",
+      "verified": false,
+      "evidence": "This specific classification terminology and command behavior is asserted but not directly confirmed by the tool calls in the transcript. The transcript reads SKILL.md and reference files but does not verify this command exists or behaves as described."
+    },
+    {
+      "claim": "Project Overview and Landing the Plane are always inline in AGENTS.md",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Asserted in the response but no tool call result is shown to confirm this is in the skill template. Plausible but unverified from transcript evidence."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "The /opencode-coder/docs command behavior (doc-backed/skill-only/neither classification) is asserted without transcript evidence confirming it",
+      "Team-mode is not named explicitly; docs/ paths are used correctly but the connection to team mode is implicit"
+    ],
+    "needs_review": [
+      "Verification of links, paths, and stale references is entirely absent from the response \u2014 this is a gap"
+    ],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Includes verification of links or paths or stale references before completion",
+        "reason": "The response never mentions checking for broken references, stale skill paths, or validating that referenced skill names actually exist in the installed skills. A complete answer should include at least a step to verify that skill names in AGENTS.md match actually-installed skills, and that docs/ paths referenced are real."
+      }
+    ],
+    "overall": "The response correctly captures the core routing-table vs handbook distinction, the hollow-doc avoidance rule, and uses team-mode file paths throughout. The decision matrix is clear and actionable. The one significant gap is the complete absence of any verification step for links, paths, or stale references \u2014 the fifth expectation is unmet. A minor concern is asserting command behavior (/opencode-coder/docs classification logic) without transcript evidence to back it up."
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 3
+    },
+    "total_tool_calls": 3,
+    "total_steps": 4,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1983,
+    "transcript_chars": 2778
+  },
+  "timing": {
+    "total_tokens": 32231,
+    "duration_ms": 23676,
+    "total_duration_seconds": 23.676,
+    "executor_duration_seconds": 23.676
+  }
+}

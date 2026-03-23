@@ -1,0 +1,12 @@
+{
+  "eval_id": 4,
+  "eval_name": "a-legacy-detection-and-re-run-response-that-infers",
+  "prompt": "I have had opencode-coder running in my project for a while but there is no .coder/opencode-coder.yaml file. I see .beads/ and AGENTS.md in the root and a stealth marker in .git/info/exclude. I just re-ran /opencode-coder/init. What should it do?",
+  "assertions": [
+    "Uses the saved mode file as primary source of truth when it exists",
+    "Falls back to legacy detection when the saved mode file is missing",
+    "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+    "Treats this re-run as a refresh flow rather than fresh bootstrap",
+    "Addresses the ambiguity of having both team markers and stealth markers present"
+  ]
+}

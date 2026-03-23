@@ -1,0 +1,12 @@
+{
+  "eval_id": 2,
+  "eval_name": "an-init-walkthrough-for-a-fresh-repo-covering-mode",
+  "prompt": "I just cloned my project and want to set up opencode-coder for the first time. Run /opencode-coder/init and walk me through what should happen. This is a fresh repo with no prior opencode-coder setup.",
+  "assertions": [
+    "Explains that fresh projects are not yet enabled until the user explicitly chooses a mode",
+    "Offers stealth versus team as the mode choice and explains the difference",
+    "Explains that startup must not create .coder/ or other artifacts before explicit enablement",
+    "Mentions .coder/opencode-coder.yaml as where the saved mode lives",
+    "Explains at least one concrete stealth-versus-team path or git-visibility difference"
+  ]
+}

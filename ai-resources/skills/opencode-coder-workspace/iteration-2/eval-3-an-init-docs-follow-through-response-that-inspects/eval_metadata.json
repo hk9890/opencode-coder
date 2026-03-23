@@ -1,0 +1,12 @@
+{
+  "eval_id": 3,
+  "eval_name": "an-init-docs-follow-through-response-that-inspects",
+  "prompt": "I ran /opencode-coder/init on my project and it is now asking me about project docs. My repo already has a docs/ folder with some existing markdown files but they are not in the standard opencode-coder format. What should happen next?",
+  "assertions": [
+    "Starts with inspect-first behavior before proposing what to do",
+    "Recognizes this as a migration scenario with existing non-standard docs",
+    "Asks the user a clear plain-language question about how to proceed rather than using internal jargon",
+    "Explains that hollow docs should not be created for topics already covered by installed skills",
+    "Mentions what happens if the user skips the docs step"
+  ]
+}

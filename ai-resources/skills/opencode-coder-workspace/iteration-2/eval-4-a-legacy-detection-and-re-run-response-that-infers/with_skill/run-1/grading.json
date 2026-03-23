@@ -1,0 +1,98 @@
+{
+  "expectations": [
+    {
+      "text": "Uses the saved mode file as primary source of truth when it exists",
+      "passed": true,
+      "evidence": "The response states 'future startups use explicit saved state instead of re-inferring from heuristics' and frames the whole scenario around the absence of `.coder/opencode-coder.yaml` as the root cause of ambiguity. This implies the file is primary when present, though it's indirect since the scenario is about when it doesn't exist."
+    },
+    {
+      "text": "Falls back to legacy detection when the saved mode file is missing",
+      "passed": true,
+      "evidence": "Step 1 explicitly: 'Detect legacy active state from the existing markers rather than treating this as a fresh project.' The response describes checking `.beads/`, `AGENTS.md`, and `.git/info/exclude` as the legacy detection mechanism."
+    },
+    {
+      "text": "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+      "passed": true,
+      "evidence": "Step 3 states 'Write `.coder/opencode-coder.yaml` with the chosen mode, so future startups use explicit saved state.' The 'key outcome' section reinforces: 'After init completes, `.coder/opencode-coder.yaml` should exist.' Also flags absence of the file after init as a bug."
+    },
+    {
+      "text": "Treats this re-run as a refresh flow rather than fresh bootstrap",
+      "passed": true,
+      "evidence": "Response labels it 'legacy upgrade scenario', step 1 explicitly says 'rather than treating this as a fresh project', and step 4 says 'Refresh the active AGENTS file for the chosen mode' \u2014 all signaling a refresh/upgrade path."
+    },
+    {
+      "text": "Addresses the ambiguity of having both team markers and stealth markers present",
+      "passed": true,
+      "evidence": "Directly called out: 'signals are ambiguous (stealth marker + team artifacts coexist)' and 'Prompt you to pick a mode \u2014 stealth, team, or disabled \u2014 since the signals are ambiguous.' The detection section names both sets of markers and explains the conflict."
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "No .coder/opencode-coder.yaml means the plugin has never written explicit saved state",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistent with the scenario description and the expected behavior of init writing this file on first successful completion."
+    },
+    {
+      "claim": ".beads/ and AGENTS.md in root are team-mode markers",
+      "type": "factual",
+      "verified": true,
+      "evidence": "These are shared, committed files consistent with team mode artifacts as described in installation-setup references."
+    },
+    {
+      "claim": "Stealth marker in .git/info/exclude suggests stealth mode was set up originally",
+      "type": "factual",
+      "verified": true,
+      "evidence": ".git/info/exclude is a local-only gitignore used by stealth mode to keep markers out of the committed tree."
+    },
+    {
+      "claim": "Init should always write the config file when completing successfully in an active mode",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "Correct and expected behavior \u2014 materializing the saved state file is the primary purpose of the init re-run in legacy upgrade scenarios."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Response doesn't explicitly state the saved file is checked first before any detection logic runs \u2014 the primary-source-of-truth point is implied rather than stated directly."
+    ],
+    "needs_review": [],
+    "workarounds": [
+      "Manual workaround provided for both stealth and team mode if init doesn't write the file."
+    ]
+  },
+  "eval_feedback": {
+    "overall": "All five expectations are clearly and substantively met. The response correctly identifies the legacy upgrade scenario, describes fallback detection, mandates materialization of the config file, frames the re-run as refresh not bootstrap, and explicitly handles the ambiguous mixed-marker state. Strong performance across all criteria.",
+    "suggestions": [
+      {
+        "assertion": "Uses the saved mode file as primary source of truth when it exists",
+        "reason": "The expectation tests whether the agent understands the file-first lookup order. The response only implies this by noting absence causes ambiguity. A stronger answer would explicitly state 'init checks for .coder/opencode-coder.yaml first; if found, it uses that mode and skips detection entirely.'"
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 2
+    },
+    "total_tool_calls": 2,
+    "total_steps": 3,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1616,
+    "transcript_chars": 2210
+  },
+  "timing": {
+    "total_tokens": 28364,
+    "duration_ms": 22306,
+    "total_duration_seconds": 22.306,
+    "executor_duration_seconds": 22.306
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "eval_name": "a-simplify-workflow-response-with-scope-from-recen",
+  "prompt": "I just finished implementing a batch of changes across three files and want to run /simplify with a focus on duplication before I open a PR. Walk me through what happens.",
+  "assertions": [
+    "Starts scope selection from recent git changes including staged or unstaged diffs",
+    "Calls for three review passes covering duplication, code quality, and efficiency",
+    "Distinguishes safe local simplifications from broader ask-first refactors",
+    "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up"
+  ]
+}

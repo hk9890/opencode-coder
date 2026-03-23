@@ -1,0 +1,100 @@
+{
+  "expectations": [
+    {
+      "text": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+      "passed": false,
+      "evidence": "The agent described what it would do ('create the epic + a needs:discussion planning/scoping task') but never actually ran any bd create commands. No epic, child tasks, or acceptance review task were created. It ended by asking 'Shall I go ahead and create the epic...?' \u2014 stopping short of execution entirely."
+    },
+    {
+      "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
+      "passed": false,
+      "evidence": "No bd create commands were executed at all, so no priorities were ever specified. The transcript contains zero bd tool invocations."
+    },
+    {
+      "text": "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+      "passed": true,
+      "evidence": "The agent explicitly stated: 'the correct beads pattern is to create the epic + a needs:discussion planning/scoping task that blocks everything else, so developers don't pick up work prematurely.' It correctly identified the ambiguities, named the label, and described the blocking relationship \u2014 even though it asked for confirmation before executing."
+    },
+    {
+      "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+      "passed": false,
+      "evidence": "No bd create commands were run. The --body-file pattern was never mentioned or demonstrated anywhere in the transcript."
+    },
+    {
+      "text": "Mentions showing bd ready and bd blocked before execution begins",
+      "passed": false,
+      "evidence": "The agent never mentioned bd ready or bd blocked. It went straight from reading files to explaining open questions and proposing a plan."
+    }
+  ],
+  "summary": {
+    "passed": 1,
+    "failed": 4,
+    "total": 5,
+    "pass_rate": 0.2
+  },
+  "claims": [
+    {
+      "claim": "The spec file docs/search-spec.md does not exist in the repository",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Tool call #3 attempted to read docs/search-spec.md and the agent reported it doesn't exist, consistent with a Read tool call that returned no content."
+    },
+    {
+      "claim": "The agent proposed creating an epic with a needs:discussion scoping task",
+      "type": "behavioral",
+      "verified": true,
+      "evidence": "Final response explicitly states: 'the correct beads pattern is to create the epic + a needs:discussion planning/scoping task that blocks everything else'"
+    },
+    {
+      "claim": "The agent actually created issues using bd create",
+      "type": "behavioral",
+      "verified": false,
+      "evidence": "The transcript shows only 3 Read tool calls. No bd commands of any kind were invoked."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Whether asking for confirmation before creating issues is acceptable behavior or a failure to complete the task"
+    ],
+    "needs_review": [
+      "The agent correctly identified the needs:discussion pattern but stopped to confirm \u2014 graders should decide if 'describe and ask' counts as demonstrating the skill"
+    ],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+        "reason": "The expectation should clarify whether the skill requires actually executing bd create commands or whether correctly describing the structure (epic + tasks + acceptance review) and proposing it is sufficient. The agent described part of the pattern but omitted the acceptance review task entirely \u2014 worth flagging separately."
+      },
+      {
+        "assertion": "Mentions showing bd ready and bd blocked before execution begins",
+        "reason": "The agent read skill/reference files first (appropriate context-loading) but never checked bd ready or bd blocked. This expectation tests a pre-execution ritual that was completely absent; it should be a hard requirement in the skill prompt."
+      },
+      {
+        "assertion": "Uses the bd create --body-file - pattern for structured issue bodies",
+        "reason": "Since no bd create was invoked, this cannot be evaluated at all. Consider a stricter eval prompt that requires the agent to actually create issues (e.g., 'go ahead and create the issues now') so this expectation is testable."
+      }
+    ],
+    "overall": "The agent demonstrated good reasoning about the needs:discussion pattern and correctly identified blocking ambiguities, but it failed to execute any beads commands, making 4 of 5 expectations untestable or clearly unmet. The eval prompt should either force execution ('create the issues now') or the expectations should account for a propose-and-confirm flow. The acceptance review task and bd ready/bd blocked pre-checks were entirely absent."
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 3
+    },
+    "total_tool_calls": 3,
+    "total_steps": 4,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1831,
+    "transcript_chars": 2623
+  },
+  "timing": {
+    "total_tokens": 42527,
+    "duration_ms": 21782,
+    "total_duration_seconds": 21.782,
+    "executor_duration_seconds": 21.782
+  }
+}

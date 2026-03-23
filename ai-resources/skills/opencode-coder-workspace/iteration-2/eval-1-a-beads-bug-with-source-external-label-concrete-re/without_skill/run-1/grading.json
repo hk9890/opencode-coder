@@ -1,0 +1,112 @@
+{
+  "expectations": [
+    {
+      "text": "Creates a bug rather than a generic task",
+      "passed": true,
+      "evidence": "The bd create command uses --type=bug explicitly for the main issue."
+    },
+    {
+      "text": "Uses the source:external label for the customer-reported bug",
+      "passed": false,
+      "evidence": "No --label or --tag flag is used anywhere in the commands. The description mentions 'Customer-reported' in prose but no source:external label is applied."
+    },
+    {
+      "text": "Captures steps to reproduce plus expected and actual behavior clearly",
+      "passed": true,
+      "evidence": "The bug description has distinct '## Steps to Reproduce', '## Expected Behavior', and '## Actual Behavior' sections with concrete content."
+    },
+    {
+      "text": "Adds a linked post-mortem task because this is an external bug",
+      "passed": false,
+      "evidence": "The agent adds a follow-up investigation/fix task (type=task), not a post-mortem. A post-mortem documents what went wrong and how to prevent recurrence; the linked task is purely a fix ticket."
+    },
+    {
+      "text": "Keeps the issue body concrete and executable instead of vague",
+      "passed": true,
+      "evidence": "The bug body lists specific root cause candidates (rendering limit, payload cap, pagination, memory), and the fix task has numbered action items and checkboxed acceptance criteria with measurable thresholds (200 items)."
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 2,
+    "total": 5,
+    "pass_rate": 0.6
+  },
+  "claims": [
+    {
+      "claim": "Agent created the issue with --type=bug",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Explicit --type=bug flag in the bd create command for the main issue."
+    },
+    {
+      "claim": "Agent applied source:external label",
+      "type": "factual",
+      "verified": false,
+      "evidence": "No --label, --tag, or any label flag appears in any bd create command in the transcript."
+    },
+    {
+      "claim": "Agent captured steps to reproduce, expected, and actual behavior",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Bug description contains ## Steps to Reproduce, ## Expected Behavior, and ## Actual Behavior sections."
+    },
+    {
+      "claim": "Agent added a post-mortem task",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The linked task is a fix/investigation task, not a post-mortem. The title and description focus on reproducing and fixing, not documenting incident learnings."
+    },
+    {
+      "claim": "Issue bodies are concrete and executable",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Bug body includes specific root cause candidates; fix task has numbered steps and measurable acceptance criteria."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Whether 'post-mortem task' means a separate retrospective document or just a linked follow-up is ambiguous in the expectation \u2014 the agent created a fix task, which is plausible but not a post-mortem."
+    ],
+    "needs_review": [
+      "source:external label requirement \u2014 the agent completely omitted it; this may indicate skill gap in label conventions"
+    ],
+    "workarounds": [
+      "Agent lacked shell access and provided commands for the user to run instead of executing them directly \u2014 acceptable workaround but means nothing was actually created."
+    ]
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Adds a linked post-mortem task because this is an external bug",
+        "reason": "The expectation should clarify that a post-mortem task is distinct from a fix task \u2014 it documents incident timeline, impact, and prevention measures. The agent created a fix task, which is useful but not equivalent."
+      },
+      {
+        "assertion": "Uses the source:external label for the customer-reported bug",
+        "reason": "The agent never mentioned or attempted to add any label. This is a clear gap. The eval prompt could hint at label conventions to test whether the skill guides the model, but even without a hint a well-trained model should apply it."
+      }
+    ],
+    "overall": "The agent produced a well-structured bug and fix task with clear reproduction steps and acceptance criteria, but missed both the source:external label and the distinction between a post-mortem task and a fix task. The 60% pass rate reflects solid structural quality but incomplete process adherence."
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Grep": 1,
+      "Glob": 1,
+      "Read": 2
+    },
+    "total_tool_calls": 4,
+    "total_steps": 5,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 2658,
+    "transcript_chars": 3389
+  },
+  "timing": {
+    "total_tokens": 52399,
+    "duration_ms": 45290,
+    "total_duration_seconds": 45.29,
+    "executor_duration_seconds": 45.29
+  }
+}

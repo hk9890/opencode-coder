@@ -1,0 +1,100 @@
+{
+  "expectations": [
+    {
+      "text": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+      "passed": false,
+      "evidence": "No issues were created at all. The agent stopped after failing to read the spec file and asked the user for direction rather than proceeding with epic/task creation."
+    },
+    {
+      "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
+      "passed": false,
+      "evidence": "No bd create commands were issued, so no priorities were assigned. Cannot pass without any issue creation."
+    },
+    {
+      "text": "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+      "passed": false,
+      "evidence": "The agent correctly identified open questions (search backend, API contract, facet behavior, pagination style, relevance tuning) but did NOT create any issue with a needs:discussion label or blocked status. It only listed the questions in plain text and deferred to the user."
+    },
+    {
+      "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+      "passed": false,
+      "evidence": "No bd commands of any kind were invoked in the transcript. The agent halted before any issue creation."
+    },
+    {
+      "text": "Mentions showing bd ready and bd blocked before execution begins",
+      "passed": false,
+      "evidence": "Neither bd ready nor bd blocked was mentioned or invoked anywhere in the response or tool calls."
+    }
+  ],
+  "summary": {
+    "passed": 0,
+    "failed": 5,
+    "total": 5,
+    "pass_rate": 0
+  },
+  "claims": [
+    {
+      "claim": "Agent read the spec file before creating issues",
+      "type": "procedure",
+      "verified": true,
+      "evidence": "Tool call #1 is Read on docs/search-spec.md \u2014 correct inspect-first behavior, though the file was missing."
+    },
+    {
+      "claim": "Agent identified open design questions that require discussion",
+      "type": "content",
+      "verified": true,
+      "evidence": "Response lists 5 specific open questions: search backend, API contract, facet behavior, pagination style, relevance tuning."
+    },
+    {
+      "claim": "Agent used beads workflow commands to create issues",
+      "type": "procedure",
+      "verified": false,
+      "evidence": "No bd commands appear anywhere in the tool calls or response."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Whether the missing spec file is the primary cause of the agent's failure to proceed, or whether the agent would have skipped the workflow steps anyway"
+    ],
+    "needs_review": [
+      "The agent offered to proceed with reasonable defaults and bd human flagging, but never actually did so \u2014 unclear if this reflects a skill gap or just excessive caution"
+    ],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "overall": "The agent scored 0/5. It correctly inspected the spec file first and identified real open questions, but then stalled completely \u2014 no epic, no tasks, no beads commands, no needs:discussion label, no bd ready/bd blocked check. The missing file was a recoverable situation (the agent itself offered to proceed with defaults), yet it chose to wait for user input instead of demonstrating the expected workflow. A skilled run should have: (1) run bd ready/bd blocked as orientation, (2) created an epic with child tasks using bd create --body-file -, (3) assigned numeric priorities, and (4) created a blocked issue with needs:discussion for the open design questions rather than just listing them in prose.",
+    "suggestions": [
+      {
+        "assertion": "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+        "reason": "The agent verbally identified the right open questions but stopped there. The expectation requires actually creating an issue with the label and status \u2014 prose enumeration does not satisfy it."
+      },
+      {
+        "assertion": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+        "reason": "The agent explicitly offered to create the epic and tasks with reasonable defaults, so the barrier was not capability but choice. A stronger agent would have proceeded after the file-not-found rather than blocking on user confirmation."
+      },
+      {
+        "assertion": "Mentions showing bd ready and bd blocked before execution begins",
+        "reason": "This is a simple orientation step that costs nothing and was entirely omitted \u2014 it should appear even in a partial or blocked run."
+      }
+    ]
+  },
+  "execution_metrics": {
+    "tool_calls": {
+      "Read": 1
+    },
+    "total_tool_calls": 1,
+    "total_steps": 2,
+    "files_created": [
+      "response.md"
+    ],
+    "errors_encountered": 0,
+    "output_chars": 1158,
+    "transcript_chars": 1715
+  },
+  "timing": {
+    "total_tokens": 15541,
+    "duration_ms": 11836,
+    "total_duration_seconds": 11.836,
+    "executor_duration_seconds": 11.836
+  }
+}

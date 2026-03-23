@@ -1,0 +1,696 @@
+{
+  "metadata": {
+    "skill_name": "opencode-coder",
+    "skill_path": "/home/hans/dev/github/opencode-coder/ai-resources/skills/opencode-coder",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-03-23T18:49:35Z",
+    "evals_run": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "failed": 4,
+        "total": 5,
+        "time_seconds": 21.782,
+        "tokens": 1831,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+          "passed": false,
+          "evidence": "The agent described what it would do ('create the epic + a needs:discussion planning/scoping task') but never actually ran any bd create commands. No epic, child tasks, or acceptance review task were created. It ended by asking 'Shall I go ahead and create the epic...?' \u2014 stopping short of execution entirely."
+        },
+        {
+          "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
+          "passed": false,
+          "evidence": "No bd create commands were executed at all, so no priorities were ever specified. The transcript contains zero bd tool invocations."
+        },
+        {
+          "text": "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+          "passed": true,
+          "evidence": "The agent explicitly stated: 'the correct beads pattern is to create the epic + a needs:discussion planning/scoping task that blocks everything else, so developers don't pick up work prematurely.' It correctly identified the ambiguities, named the label, and described the blocking relationship \u2014 even though it asked for confirmation before executing."
+        },
+        {
+          "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+          "passed": false,
+          "evidence": "No bd create commands were run. The --body-file pattern was never mentioned or demonstrated anywhere in the transcript."
+        },
+        {
+          "text": "Mentions showing bd ready and bd blocked before execution begins",
+          "passed": false,
+          "evidence": "The agent never mentioned bd ready or bd blocked. It went straight from reading files to explaining open questions and proposing a plan."
+        }
+      ],
+      "notes": [
+        "Whether asking for confirmation before creating issues is acceptable behavior or a failure to complete the task",
+        "The agent correctly identified the needs:discussion pattern but stopped to confirm \u2014 graders should decide if 'describe and ask' counts as demonstrating the skill"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 27.66,
+        "tokens": 2749,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Creates a bug rather than a generic task",
+          "passed": true,
+          "evidence": "Main issue created with `--type=bug` explicitly: `bd create --title=\"Checkout flow crashes when cart has more than 50 items\" --type=bug --priority=1`"
+        },
+        {
+          "text": "Uses the source:external label for the customer-reported bug",
+          "passed": true,
+          "evidence": "Bug creation command includes `--labels=source:external` and the summary table confirms the label is applied only to the bug, not the post-mortem."
+        },
+        {
+          "text": "Captures steps to reproduce plus expected and actual behavior clearly",
+          "passed": true,
+          "evidence": "Bug body contains dedicated sections: 'Steps to Reproduce' (3 numbered steps), 'Expected Behavior' (checkout completes regardless of cart size), and 'Actual Behavior' (crashes, with honest note that stack trace is not yet captured)."
+        },
+        {
+          "text": "Adds a linked post-mortem task because this is an external bug",
+          "passed": true,
+          "evidence": "Step 2 creates a `--type=task` post-mortem issue; Step 3 links it with `bd dep add <postmortem-id> <bug-id>`, and the rationale ('run after bug is fixed') is explained."
+        },
+        {
+          "text": "Keeps the issue body concrete and executable instead of vague",
+          "passed": true,
+          "evidence": "Repro steps are specific and numbered; open questions are actionable checkboxes; post-mortem includes numbered instructions for follow-through; no filler language like 'investigate the issue'."
+        }
+      ],
+      "notes": [
+        "Exact error and stack trace are not yet known \u2014 honestly flagged as an open question rather than fabricated"
+      ]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 34.079,
+        "tokens": 2611,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Explains that fresh projects are not yet enabled until the user explicitly chooses a mode",
+          "passed": true,
+          "evidence": "Response states: 'the plugin sees this as not yet enabled and prompts you to choose a mode' and 'it will not create any files until you explicitly choose. That's the explicit enablement model. Nothing is activated by just opening the project.'"
+        },
+        {
+          "text": "Offers stealth versus team as the mode choice and explains the difference",
+          "passed": true,
+          "evidence": "Response includes a table comparing stealth ('kept local via .git/info/exclude, never committed') and team ('Files go to standard repo paths... and are committed'), plus plain-language guidance: 'Choose stealth if you want opencode-coder for yourself without affecting the repo for others. Choose team if the whole team will use it.'"
+        },
+        {
+          "text": "Explains that startup must not create .coder/ or other artifacts before explicit enablement",
+          "passed": true,
+          "evidence": "'it will not create any files until you explicitly choose. That's the explicit enablement model. Nothing is activated by just opening the project.' \u2014 clearly states no artifacts are created pre-enablement."
+        },
+        {
+          "text": "Mentions .coder/opencode-coder.yaml as where the saved mode lives",
+          "passed": true,
+          "evidence": "Response mentions .coder/opencode-coder.yaml multiple times: as the file written by each mode ('echo mode: stealth > .coder/opencode-coder.yaml') and in the verify step ('.coder/opencode-coder.yaml exists with the correct mode')."
+        },
+        {
+          "text": "Explains at least one concrete stealth-versus-team path or git-visibility difference",
+          "passed": true,
+          "evidence": "Stealth uses '.git/info/exclude' to keep files local and never committed; team places AGENTS.md and docs/ at repo root and commits them. Verify step also says 'Git visibility matches your chosen mode (stealth = excluded, team = committed)'."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.4,
+        "passed": 2,
+        "failed": 3,
+        "total": 5,
+        "time_seconds": 23.021,
+        "tokens": 1843,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts with inspect-first behavior before proposing what to do",
+          "passed": true,
+          "evidence": "The transcript shows 4 Read tool calls inspecting skill and reference files before composing the response. The response explicitly names 'inspect-first, not recreate' as the correct behavior and lists 'Inspect' as step 1 of the init flow."
+        },
+        {
+          "text": "Recognizes this as a migration scenario with existing non-standard docs",
+          "passed": true,
+          "evidence": "The response explicitly addresses 'existing markdown files that aren't in the standard format' and frames the solution as mapping/incorporating existing docs rather than replacing them \u2014 a clear migration framing."
+        },
+        {
+          "text": "Asks the user a clear plain-language question about how to proceed rather than using internal jargon",
+          "passed": false,
+          "evidence": "The response never asks the user any question. The section 'What you should tell the prompt' gives instructions to the user but poses no question. The response is purely informational/advisory."
+        },
+        {
+          "text": "Explains that hollow docs should not be created for topics already covered by installed skills",
+          "passed": false,
+          "evidence": "The response correctly warns against hollow/empty stub files for topics already covered by existing docs, but this is framed around existing project docs, not installed skills. The only skills mention is a brief bullet in the classification list ('Redundant with a reusable skill'), without any explicit rule about not creating hollow docs for skill-covered topics."
+        },
+        {
+          "text": "Mentions what happens if the user skips the docs step",
+          "passed": false,
+          "evidence": "The response contains no mention of consequences for skipping the docs step. There is no warning, downstream effect, or fallback scenario described for opting out."
+        }
+      ],
+      "notes": [
+        "It is unclear whether the skill definition of 'hollow docs for installed skills' was intended to be distinct from 'hollow docs for existing project docs' \u2014 the response conflates them.",
+        "The skill may need clearer guidance distinguishing the installed-skills case from the existing-docs case so the agent handles both explicitly.",
+        "The init flow description should include a step or note about what happens when the user skips the docs stage entirely."
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 22.306,
+        "tokens": 1616,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses the saved mode file as primary source of truth when it exists",
+          "passed": true,
+          "evidence": "The response states 'future startups use explicit saved state instead of re-inferring from heuristics' and frames the whole scenario around the absence of `.coder/opencode-coder.yaml` as the root cause of ambiguity. This implies the file is primary when present, though it's indirect since the scenario is about when it doesn't exist."
+        },
+        {
+          "text": "Falls back to legacy detection when the saved mode file is missing",
+          "passed": true,
+          "evidence": "Step 1 explicitly: 'Detect legacy active state from the existing markers rather than treating this as a fresh project.' The response describes checking `.beads/`, `AGENTS.md`, and `.git/info/exclude` as the legacy detection mechanism."
+        },
+        {
+          "text": "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+          "passed": true,
+          "evidence": "Step 3 states 'Write `.coder/opencode-coder.yaml` with the chosen mode, so future startups use explicit saved state.' The 'key outcome' section reinforces: 'After init completes, `.coder/opencode-coder.yaml` should exist.' Also flags absence of the file after init as a bug."
+        },
+        {
+          "text": "Treats this re-run as a refresh flow rather than fresh bootstrap",
+          "passed": true,
+          "evidence": "Response labels it 'legacy upgrade scenario', step 1 explicitly says 'rather than treating this as a fresh project', and step 4 says 'Refresh the active AGENTS file for the chosen mode' \u2014 all signaling a refresh/upgrade path."
+        },
+        {
+          "text": "Addresses the ambiguity of having both team markers and stealth markers present",
+          "passed": true,
+          "evidence": "Directly called out: 'signals are ambiguous (stealth marker + team artifacts coexist)' and 'Prompt you to pick a mode \u2014 stealth, team, or disabled \u2014 since the signals are ambiguous.' The detection section names both sets of markers and explains the conflict."
+        }
+      ],
+      "notes": [
+        "Response doesn't explicitly state the saved file is checked first before any detection logic runs \u2014 the primary-source-of-truth point is implied rather than stated directly.",
+        "Manual workaround provided for both stealth and team mode if init doesn't write the file."
+      ]
+    },
+    {
+      "eval_id": 5,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 23.676,
+        "tokens": 1983,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Treats AGENTS as a routing table rather than a handbook",
+          "passed": true,
+          "evidence": "Response explicitly states 'Everything else \u2014 conditional, pointers only, no inlined content' and the decision matrix shows AGENTS.md either routes to docs/ files or directly to skills. The phrase 'AGENTS.md routes directly to the skill' is used verbatim."
+        },
+        {
+          "text": "Creates standard docs only when they contain real project-specific guidance",
+          "passed": true,
+          "evidence": "Decision matrix row: 'Topic has project-specific content (commands, conventions, project paths, etc.) \u2192 Create docs/TOPIC.md'. The workflow description states 'only create files where real local content exists.' The negative cases (skill-only, neither) explicitly produce no doc."
+        },
+        {
+          "text": "Routes skill-only topics to reusable skills instead of creating hollow docs",
+          "passed": true,
+          "evidence": "Concrete Releases example shows the AGENTS.md entry routes to the skill with no docs/RELEASING.md created. Quotes skill guidance: 'do not create a hollow topic doc.' Decision matrix row for skill-only: 'No doc. AGENTS.md routes directly to the skill.'"
+        },
+        {
+          "text": "Uses team-mode file locations like docs/ and root AGENTS.md",
+          "passed": true,
+          "evidence": "Response consistently uses docs/TOPIC.md paths (e.g. docs/RELEASING.md) and references AGENTS.md at the root level throughout the decision matrix and examples. Team-mode conventions are implicit in the file paths used, though 'team mode' is not mentioned by name."
+        },
+        {
+          "text": "Includes verification of links or paths or stale references before completion",
+          "passed": false,
+          "evidence": "No mention of verifying links, checking for stale references, or validating paths appears anywhere in the response or tool calls. The three file reads are for skill content, not verification. The workflow described (/opencode-coder/docs) does not mention a verification step."
+        }
+      ],
+      "notes": [
+        "The /opencode-coder/docs command behavior (doc-backed/skill-only/neither classification) is asserted without transcript evidence confirming it",
+        "Team-mode is not named explicitly; docs/ paths are used correctly but the connection to team mode is implicit",
+        "Verification of links, paths, and stale references is entirely absent from the response \u2014 this is a gap"
+      ]
+    },
+    {
+      "eval_id": 6,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 20.286,
+        "tokens": 2527,
+        "tool_calls": 2,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+          "passed": true,
+          "evidence": "Step 1 explicitly shows both `git diff --name-only --cached` (staged) and `git diff --name-only` (unstaged), combined and deduplicated, with fallback to HEAD~1..HEAD if empty."
+        },
+        {
+          "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+          "passed": true,
+          "evidence": "Step 2 defines three parallel reviewers: 'Reuse & Duplication', 'Code Quality', and 'Efficiency', each with a distinct focus description."
+        },
+        {
+          "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+          "passed": true,
+          "evidence": "Step 4 explicitly splits into safe fixes (local duplication collapse, helper extraction, naming) applied directly, versus riskier changes (public API reshaping, cross-module moves) requiring approval first."
+        },
+        {
+          "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+          "passed": true,
+          "evidence": "Step 6 lists exactly: Scope, Focus, Applied, Deferred/Ask-first, Validation, and Follow-up as the structured output fields."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0,
+        "passed": 0,
+        "failed": 5,
+        "total": 5,
+        "time_seconds": 11.836,
+        "tokens": 1158,
+        "tool_calls": 1,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
+          "passed": false,
+          "evidence": "No issues were created at all. The agent stopped after failing to read the spec file and asked the user for direction rather than proceeding with epic/task creation."
+        },
+        {
+          "text": "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
+          "passed": false,
+          "evidence": "No bd create commands were issued, so no priorities were assigned. Cannot pass without any issue creation."
+        },
+        {
+          "text": "Marks unclear or under-specified work with needs:discussion label plus blocked status",
+          "passed": false,
+          "evidence": "The agent correctly identified open questions (search backend, API contract, facet behavior, pagination style, relevance tuning) but did NOT create any issue with a needs:discussion label or blocked status. It only listed the questions in plain text and deferred to the user."
+        },
+        {
+          "text": "Uses the bd create --body-file - pattern for structured issue bodies",
+          "passed": false,
+          "evidence": "No bd commands of any kind were invoked in the transcript. The agent halted before any issue creation."
+        },
+        {
+          "text": "Mentions showing bd ready and bd blocked before execution begins",
+          "passed": false,
+          "evidence": "Neither bd ready nor bd blocked was mentioned or invoked anywhere in the response or tool calls."
+        }
+      ],
+      "notes": [
+        "Whether the missing spec file is the primary cause of the agent's failure to proceed, or whether the agent would have skipped the workflow steps anyway",
+        "The agent offered to proceed with reasonable defaults and bd human flagging, but never actually did so \u2014 unclear if this reflects a skill gap or just excessive caution"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "failed": 2,
+        "total": 5,
+        "time_seconds": 45.29,
+        "tokens": 2658,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Creates a bug rather than a generic task",
+          "passed": true,
+          "evidence": "The bd create command uses --type=bug explicitly for the main issue."
+        },
+        {
+          "text": "Uses the source:external label for the customer-reported bug",
+          "passed": false,
+          "evidence": "No --label or --tag flag is used anywhere in the commands. The description mentions 'Customer-reported' in prose but no source:external label is applied."
+        },
+        {
+          "text": "Captures steps to reproduce plus expected and actual behavior clearly",
+          "passed": true,
+          "evidence": "The bug description has distinct '## Steps to Reproduce', '## Expected Behavior', and '## Actual Behavior' sections with concrete content."
+        },
+        {
+          "text": "Adds a linked post-mortem task because this is an external bug",
+          "passed": false,
+          "evidence": "The agent adds a follow-up investigation/fix task (type=task), not a post-mortem. A post-mortem documents what went wrong and how to prevent recurrence; the linked task is purely a fix ticket."
+        },
+        {
+          "text": "Keeps the issue body concrete and executable instead of vague",
+          "passed": true,
+          "evidence": "The bug body lists specific root cause candidates (rendering limit, payload cap, pagination, memory), and the fix task has numbered action items and checkboxed acceptance criteria with measurable thresholds (200 items)."
+        }
+      ],
+      "notes": [
+        "Whether 'post-mortem task' means a separate retrospective document or just a linked follow-up is ambiguous in the expectation \u2014 the agent created a fix task, which is plausible but not a post-mortem.",
+        "source:external label requirement \u2014 the agent completely omitted it; this may indicate skill gap in label conventions",
+        "Agent lacked shell access and provided commands for the user to run instead of executing them directly \u2014 acceptable workaround but means nothing was actually created."
+      ]
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 47.393,
+        "tokens": 2437,
+        "tool_calls": 14,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Explains that fresh projects are not yet enabled until the user explicitly chooses a mode",
+          "passed": true,
+          "evidence": "Step 1 explicitly states: 'Result: project classified as \"not yet enabled\".' Step 2 makes clear the user must pick a mode before anything happens."
+        },
+        {
+          "text": "Offers stealth versus team as the mode choice and explains the difference",
+          "passed": true,
+          "evidence": "Step 2 lists both options with descriptions: stealth keeps artifacts local via .git/info/exclude; team commits artifacts to the repo. A third 'remain inactive' option is also offered."
+        },
+        {
+          "text": "Explains that startup must not create .coder/ or other artifacts before explicit enablement",
+          "passed": true,
+          "evidence": "Step 1 explicitly states '**No files are created during detection.**' Step 2 adds 'Only after you choose an active mode does .coder/ get created and .coder/opencode-coder.yaml get written.'"
+        },
+        {
+          "text": "Mentions .coder/opencode-coder.yaml as where the saved mode lives",
+          "passed": true,
+          "evidence": "Step 1 mentions checking .coder/opencode-coder.yaml first. Step 3 shows both modes writing to it (e.g., 'echo \"mode: stealth\" > .coder/opencode-coder.yaml')."
+        },
+        {
+          "text": "Explains at least one concrete stealth-versus-team path or git-visibility difference",
+          "passed": true,
+          "evidence": "Step 3 shows a concrete divergence: stealth adds exclusions to .git/info/exclude (keeping artifacts off the repo entirely), while team appends .coder/ to .gitignore and commits beads/AGENTS.md. Step 2 also notes AGENTS.md lands at root vs .coder/AGENTS.md."
+        }
+      ],
+      "notes": [
+        "The npm install -g beads prerequisite command was asserted without clear sourcing from the read files."
+      ]
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8,
+        "passed": 4,
+        "failed": 1,
+        "total": 5,
+        "time_seconds": 20.322,
+        "tokens": 1470,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts with inspect-first behavior before proposing what to do",
+          "passed": true,
+          "evidence": "The response leads with 'Step 4a (Inspection) runs first. Before asking you anything, the init flow should...' and lists four inspection steps before any proposal. Tool calls also show Glob and Grep searches prior to reading the init command."
+        },
+        {
+          "text": "Recognizes this as a migration scenario with existing non-standard docs",
+          "passed": true,
+          "evidence": "Response explicitly classifies the state as 'Docs exist in non-standard layout and may need migration', references 'migration signals', 'migration-specific wording', and a 'migration/routing plan'."
+        },
+        {
+          "text": "Asks the user a clear plain-language question about how to proceed rather than using internal jargon",
+          "passed": true,
+          "evidence": "Response includes example question wording in plain language: 'I found project documentation, but it is not organized in the standard topic layout. I can inspect what exists and propose a migration/routing plan before making changes. Do you want that proposal now?' No internal jargon used."
+        },
+        {
+          "text": "Explains that hollow docs should not be created for topics already covered by installed skills",
+          "passed": true,
+          "evidence": "Response states 'it will only create standard topic docs where there's real project-specific content to put in them; topics with no local specifics get routed via AGENTS.md instead of creating empty placeholder files.' Captures the no-hollow-docs principle, though doesn't explicitly connect routing to installed skill coverage."
+        },
+        {
+          "text": "Mentions what happens if the user skips the docs step",
+          "passed": false,
+          "evidence": "Response only notes 'With `Skip for now` always available' but never explains the consequences of skipping \u2014 e.g., that AGENTS.md still works, or that docs can be created later. No substantive explanation of what skipping means for the user's project."
+        }
+      ],
+      "notes": [
+        "Whether 'routed via AGENTS.md' is understood by the user as equivalent to skill coverage \u2014 the link between AGENTS.md routing and installed skills is implied but not spelled out.",
+        "Skip behavior: the response never explains what the user loses or retains if they choose Skip for now."
+      ]
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.4,
+        "passed": 2,
+        "failed": 3,
+        "total": 5,
+        "time_seconds": 29.82,
+        "tokens": 1478,
+        "tool_calls": 5,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses the saved mode file as primary source of truth when it exists",
+          "passed": true,
+          "evidence": "Agent found .coder/opencode-coder.yaml with mode: team and explicitly states 'This is an active team project \u2014 no legacy migration needed' and 'init should not act on it since the explicit yaml wins.' The yaml file is treated as authoritative."
+        },
+        {
+          "text": "Falls back to legacy detection when the saved mode file is missing",
+          "passed": false,
+          "evidence": "The user explicitly stated 'there is no .coder/opencode-coder.yaml file' but the agent found the file and redirected entirely to the yaml-exists scenario. The fallback behavior for when the file is missing was never explained."
+        },
+        {
+          "text": "Explains that inferred legacy active state should materialize .coder/opencode-coder.yaml before continuing",
+          "passed": false,
+          "evidence": "The agent did not address the user's actual scenario (no yaml file, but .beads/ and AGENTS.md present as legacy markers). There is no mention of materializing a yaml file from inferred legacy state. The agent pivoted to a different scenario entirely."
+        },
+        {
+          "text": "Treats this re-run as a refresh flow rather than fresh bootstrap",
+          "passed": false,
+          "evidence": "While the agent describes a refresh flow for the yaml-exists case, it did not address the user's actual scenario (no yaml, legacy markers present). For the scenario asked, the agent never explained that init should recognize this as a re-run and treat it as refresh rather than fresh bootstrap."
+        },
+        {
+          "text": "Addresses the ambiguity of having both team markers and stealth markers present",
+          "passed": true,
+          "evidence": "Agent explicitly notes: 'your project has a stealth marker in .git/info/exclude but is saved as mode: team. That's not necessarily a problem (the stealth marker may be a leftover from a previous mode), but init should not act on it since the explicit yaml wins.' This directly addresses the coexistence ambiguity."
+        }
+      ],
+      "notes": [
+        "Agent cannot distinguish between user's stated scenario (no yaml) and discovered scenario (yaml exists) without clarifying",
+        "Whether the init command actually presents three-option question() cannot be verified from transcript",
+        "Agent answered a different scenario than asked \u2014 user said no yaml, but agent found one; the entire response addresses the wrong case",
+        "Legacy detection and yaml materialization path was completely skipped"
+      ]
+    },
+    {
+      "eval_id": 5,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "time_seconds": 67.573,
+        "tokens": 2842,
+        "tool_calls": 11,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Treats AGENTS as a routing table rather than a handbook",
+          "passed": true,
+          "evidence": "The response explicitly frames AGENTS.md as a routing mechanism with a three-state decision table (doc-backed, skill-only, skill+doc) and proposes fixing a stale skill route. It evaluates each topic by what AGENTS.md should point to, not by what content AGENTS.md itself should contain."
+        },
+        {
+          "text": "Creates standard docs only when they contain real project-specific guidance",
+          "passed": true,
+          "evidence": "The response states explicitly: 'A doc is hollow when it just restates what the skill already says generically. A doc is legitimate when it has specific commands, env requirements, repo URLs, platform quirks, or project-specific checklists.' It then applies this test to RELEASING.md (passes: has bun commands, gh workflow invocation, rollback steps) and MONITORING.md (passes: has .coder/logs/ paths, scripts/log-analyzer commands). Concludes no new hollow docs are needed."
+        },
+        {
+          "text": "Routes skill-only topics to reusable skills instead of creating hollow docs",
+          "passed": true,
+          "evidence": "Issue tracking is explicitly identified as skill-only (routes to opencode-coder skill, no docs/BEADS.md needed). The response confirms this is correct and proposes no doc creation for it. The releases topic is noted as skill+doc rather than skill-only, with justification for why the doc adds value beyond the skill."
+        },
+        {
+          "text": "Uses team-mode file locations like docs/ and root AGENTS.md",
+          "passed": true,
+          "evidence": "All referenced files use team-mode paths: root AGENTS.md, docs/RELEASING.md, docs/MONITORING.md. The proposed fix targets AGENTS.md line 30. Tool calls read from these exact locations (steps 3, 8, 9)."
+        },
+        {
+          "text": "Includes verification of links or paths or stale references before completion",
+          "passed": true,
+          "evidence": "The response explicitly checks whether the 'observability-triage' skill referenced in AGENTS.md actually exists in ai-resources/skills/, finds it does not (step 10-11 glob checks), and flags it as a stale reference requiring removal. This is the primary action item identified."
+        }
+      ],
+      "notes": [
+        "The response offers to fix the stale observability-triage reference but does not make the edit \u2014 the fix remains pending user confirmation."
+      ]
+    },
+    {
+      "eval_id": 6,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "time_seconds": 20.243,
+        "tokens": 1966,
+        "tool_calls": 4,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Starts scope selection from recent git changes including staged or unstaged diffs",
+          "passed": true,
+          "evidence": "Response explicitly states: 'It runs git diff --name-only --cached and git diff --name-only, deduplicates the results, and drops any deleted files.' Both staged and unstaged diffs are named."
+        },
+        {
+          "text": "Calls for three review passes covering duplication, code quality, and efficiency",
+          "passed": true,
+          "evidence": "Response describes three parallel reviewer agents: Reviewer 1 (Reuse & Duplication), Reviewer 2 (Code Quality), Reviewer 3 (Efficiency), with specific sub-concerns listed for each."
+        },
+        {
+          "text": "Distinguishes safe local simplifications from broader ask-first refactors",
+          "passed": true,
+          "evidence": "Response explicitly separates 'Safe fixes go directly' (obvious duplication, within scoped files) from 'Ask-first' (anything touching public APIs, other modules, or requiring architectural discussion), and notes the safe-to-apply vs ask-first flag per finding."
+        },
+        {
+          "text": "Includes the expected closing summary fields such as scope, focus, applied, deferred or ask-first, validation, and follow-up",
+          "passed": true,
+          "evidence": "Response states: 'Ends with a structured output: Scope / Focus / Applied / Deferred / Validation / Follow-up.' All six expected fields are listed verbatim."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.7714,
+        "stddev": 0.3352,
+        "min": 0.2,
+        "max": 1
+      },
+      "time_seconds": {
+        "mean": 24.6871,
+        "stddev": 4.7315,
+        "min": 20.286,
+        "max": 34.079
+      },
+      "tokens": {
+        "mean": 2165.7143,
+        "stddev": 451.0686,
+        "min": 1616,
+        "max": 2749
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.6857,
+        "stddev": 0.3805,
+        "min": 0,
+        "max": 1
+      },
+      "time_seconds": {
+        "mean": 34.6396,
+        "stddev": 19.6476,
+        "min": 11.836,
+        "max": 67.573
+      },
+      "tokens": {
+        "mean": 2001.2857,
+        "stddev": 657.8234,
+        "min": 1158,
+        "max": 2842
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.09",
+      "time_seconds": "-10.0",
+      "tokens": "+164"
+    }
+  },
+  "notes": []
+}
