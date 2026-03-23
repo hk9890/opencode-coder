@@ -6,35 +6,37 @@ description: Report issues with the opencode-coder plugin
 
 > **Purpose**: Report issues with the **opencode-coder plugin itself** - NOT general project issues.
 
-Load the opencode-coder skill to analyze the session and report plugin issues.
-
 ## Task
 
-Use the skill tool to load comprehensive bug reporting guidance:
+Load the `opencode-coder` skill, then use its bug-reporting guidance to:
 
 ```
 skill({ name: "opencode-coder" })
 ```
 
-Then follow the **Reporting Issues** section to:
+1. Classify the problem.
+   - Decide whether this is a plugin issue or only a project issue.
+   - If it is only a project issue, explain that clearly and do not create a GitHub issue.
 
-### Step 1: Analyze & Classify
-- Review session and user arguments
-- Identify plugin issues vs project issues
-- Extract: component, expected/actual behavior, error messages
+2. Gather the evidence needed for a strong plugin report.
+   - component or command involved
+   - expected behavior
+   - actual behavior
+   - reproduction steps
+   - error messages, logs, diagnostics, or session export details when relevant
 
-### Step 2: Show Report
-- Present findings to user
-- Clearly distinguish plugin issues from project issues
-- Ask for confirmation before creating GitHub issues
+3. Show the draft report to the user.
+   - Clearly separate plugin issues from project issues.
+   - Ask for confirmation before creating any GitHub issue.
 
-### Step 3: Create Issues (if confirmed)
-- Use `gh issue create --repo dynatrace-oss/opencode-coder`
-- One issue per problem
-- Include proper formatting and details
+4. If the user confirms, create the GitHub issue(s).
+   - Use `gh issue create --repo dynatrace-oss/opencode-coder`.
+   - Create one issue per distinct plugin problem.
+   - Use the bundled template or other skill guidance when it improves the report.
 
-The skill provides:
-- Issue classification guidelines
-- Report templates
-- GitHub issue creation patterns
-- Proper filtering of bd doctor output
+## Requirements
+
+- Do not file GitHub issues for the user's own project bugs.
+- Ask before creating issues.
+- Prefer high-signal evidence over vague summaries.
+- If multiple unrelated plugin problems are found, split them into separate issues.

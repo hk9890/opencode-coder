@@ -273,24 +273,54 @@ Key AGENTS rules:
 - In team mode, write only root \`AGENTS.md\`
 - If a team \`AGENTS.md\` already exists and the repo is in stealth mode, read it for context but write only \`.coder/AGENTS.md\`
 
-### Step 5: Optional Docs Lifecycle Follow-through
+### Step 5: Optional Project-doc Follow-through (Inspect First)
 
-After AGENTS setup, check whether docs lifecycle support is available in this runtime.
+After AGENTS setup, first check whether \`/opencode-coder/docs\` is available in this session.
 
-Use this rule:
-- if "/opencode-coder/docs" is available in this session, docs lifecycle support is available
-- if "/opencode-coder/docs" is not available, treat docs lifecycle support as unavailable for this session
+- If \`/opencode-coder/docs\` is available, run the same lifecycle model used by \`/opencode-coder/docs\`: \`inspect -> decide -> apply -> verify/report\`.
+- If \`/opencode-coder/docs\` is not available, do not run project-doc setup/update in this session; explain that plainly and continue init safely.
 
-When docs lifecycle support is available:
-- MUST use the \`question()\` tool and offer:
-  - \`Set up project docs now\`
-  - \`Skip for now\`
-- If the user chooses \`Set up project docs now\`, run docs setup/refresh in this same session using the same lifecycle model used by \`/opencode-coder/docs\` (inspect -> decide -> apply -> verify/report)
-- Do not invent a second docs workflow inside init
+When \`/opencode-coder/docs\` is available, inspection is required before asking what to do:
 
-When docs lifecycle support is unavailable:
+1. Resolve active mode paths:
+   - team mode: docs at \`docs/\`, AGENTS at \`AGENTS.md\`
+   - stealth mode: docs at \`.coder/docs/\`, AGENTS at \`.coder/AGENTS.md\`
+2. Inspect standard topic docs in the active docs path:
+   - \`OVERVIEW.md\`, \`CODING.md\`, \`TESTING.md\`, \`RELEASING.md\`, \`MONITORING.md\`, \`PULL-REQUESTS.md\`
+3. Inspect project-specific guidance outside standard topic files (migration signals), including mixed content in broader files such as:
+   - \`README.md\`
+   - \`CONTRIBUTING.md\`
+   - non-standard docs filenames under \`docs/\` or \`.coder/docs/\`
+4. Inspect installed skills/workflows relevant to these topics (for example \`.opencode/skills/\` when present).
+5. Classify each topic as exactly one of:
+   - \`existing doc\` (project-specific local doc exists)
+   - \`skill-only\` (no local doc, but relevant reusable skill/workflow exists)
+   - \`neither\` (no local doc and no relevant skill/workflow signal)
+6. Classify docs state as one of these three scenarios before asking the user:
+    - \`No standard baseline exists yet\`
+    - \`Standard baseline already exists\`
+    - \`Docs exist in non-standard layout and may need migration\`
+7. Show the topic decision matrix and overall state to the user before asking the Step 5 question or creating/refreshing docs.
+
+Define migration concretely:
+- Migration means project-specific guidance exists outside the standard topic files, or mixed into broad files, and should be inspected before proposing extraction, relocation, renaming, or AGENTS routing updates.
+
+Then use \`question()\` with user-facing wording that matches the detected scenario:
+
+- Scenario A — bootstrap/setup (no standard baseline):
+  - Example wording: "I couldn't find the standard project docs layout yet. I can inspect this repo and set up topic docs plus an AGENTS routing document where there is real project-specific guidance. Do you want me to do that now?"
+- Scenario B — review/update (standard baseline exists):
+  - Example wording: "I found the standard docs layout already in place. I can review, refresh, and verify those docs and update AGENTS routing as needed. Do you want me to run that review now?"
+- Scenario C — migration/proposal (non-standard layout):
+  - Example wording: "I found project documentation, but it is not organized in the standard topic layout. I can inspect what exists and propose a migration/routing plan before making changes. Do you want that proposal now?"
+
+For every scenario, include \`Skip for now\` as an option.
+
+If the user chooses to proceed in any scenario, run the docs step through the shared lifecycle without inventing a second init-only docs workflow.
+
+When project-doc work is unavailable because \`/opencode-coder/docs\` is missing:
 - Skip this docs step safely
-- Explain briefly that docs lifecycle commands are not available yet in this runtime (for example missing resources)
+- Use plain language, for example: "Project-doc setup/update isn't available in this session because \`/opencode-coder/docs\` is unavailable right now. I'll continue init without changing project docs."
 - Continue and complete init without failing the no-skill/no-resource path
 
 ### Step 6: Report Completion
@@ -304,7 +334,7 @@ Summarize what happened:
 > ✓ Beads initialized or refreshed in the selected mode when enabled
 > ✓ Git hooks installed
 > ✓ AGENTS.md created or refreshed for the active mode
-> ✓ Docs step handled intentionally (run now, skipped by user, or unavailable in this runtime)
+> ✓ Docs step handled intentionally (run now, skipped by user, or unavailable in this session)
 
 If this run installed new commands or agents via aimgr, add:
 

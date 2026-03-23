@@ -4,7 +4,7 @@ These fixtures are **committed, read-only baselines** used by the e2e harness.
 
 Test helpers copy a fixture into a temp workspace before execution so tests can mutate files without touching committed inputs.
 
-The manual launcher also supports `--project-path <dir>` for reproducing behavior from a real local project. That mode uses the same copy-then-run model into a temp workspace (it does not run in place on the source directory).
+The manual launcher also supports `--project-path <dir>` for reproducing behavior from a real local project. That mode now runs **directly in the provided project path** while keeping HOME/XDG/OpenCode state isolated under the launcher run directory. Use a clean branch, worktree, or disposable project when testing this way.
 
 ## Fixture directories
 
@@ -13,7 +13,7 @@ The manual launcher also supports `--project-path <dir>` for reproducing behavio
 - `fresh-inactive-project/` — project with no `.coder/` state (init-only behavior)
 - `local-startup-parity-project/` — project shape used for local startup parity checks
 
-Each fixture intentionally keeps content minimal. Scenario-specific files can be added later with the same copy-then-run model.
+Each fixture intentionally keeps content minimal. Scenario-specific files can be added later with the same disposable fixture-copy model.
 
 ## Shared support fixtures
 

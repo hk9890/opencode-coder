@@ -156,7 +156,7 @@ Modes:
 
 Options:
   --fixture=<name>  Fixture to copy
-  --project-path    External project directory to copy into temp workspace
+  --project-path    External project directory to run directly in place (no copy)
   --plugin-source=<mode> Plugin source: local-build (default) | installed-configured
   --auth=<path>     Explicit auth.json path seed (copied to isolated XDG data)
   --require-auth    Fail if no auth seed source is available
@@ -165,6 +165,11 @@ Options:
 
 Available fixtures:
   ${FIXTURE_NAMES.join("\n  ")}
+
+Notes:
+  --fixture uses a copied disposable workspace.
+  --project-path runs directly in the provided project and may mutate it.
+  Use a clean branch, worktree, or disposable project when testing in place.
 `);
 }
 
@@ -648,9 +653,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       authSourceCategory = authSeedPath.source;
     }
 
-    console.log("\nManual isolated plugin test environment ready\n");
+    console.log("\nManual plugin test environment ready\n");
     printSection("Mode", args.mode);
     printSection("Plugin source", args.pluginSource);
+    printSection(
+      "Execution model",
+      workspace.workspaceSource.kind === "fixture" ? "fixture copy (disposable workspace)" : "direct project path (in place)"
+    );
     if (workspace.workspaceSource.kind === "fixture") {
       printSection("Fixture", workspace.workspaceSource.fixtureName);
     } else {
@@ -658,7 +667,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     }
     printSection("Project source", workspace.projectSourceDir);
     printSection("Temp root", workspace.tempRoot);
-    printSection("Temp workdir", workspace.workdir);
+    printSection("Workdir", workspace.workdir);
     printSection("Plugin path used", pluginPathUsed);
     printSection("Resolved installed package", resolvedInstalledPackage);
     printSection("Resolved host config", resolvedHostConfig);
@@ -675,7 +684,15 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         : "enabled"
     );
     printSection("Auth seeded", seededAuthPath ? `yes (${authSourceCategory})` : "no");
-    printSection("Cleanup plan", "preserve workspace (manual default)");
+    printSection(
+      "Cleanup plan",
+      workspace.workspaceSource.kind === "fixture"
+        ? "preserve copied workspace and isolated environment"
+        : "preserve isolated environment only; target project remains in place"
+    );
+    if (workspace.workspaceSource.kind === "project-path") {
+      printSection("Project mutation risk", "yes (project-path runs execute in place)");
+    }
     if (args.keep) {
       printSection("--keep", "accepted (backward-compatible no-op)");
     }
@@ -723,7 +740,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           exitCode = 1;
         }
       }
-      console.log(`\nIsolated shell finished (${exitReason(result.exitCode, result.signalCode)}).`);
+      console.log(`\nShell session finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else {
       const result = await runCaptured(args.command, workspace.workdir, childEnv);
       if (result.stdout.trim().length > 0) {

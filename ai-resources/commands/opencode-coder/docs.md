@@ -4,7 +4,7 @@ description: Inspect, bootstrap, refresh, audit, and verify project docs lifecyc
 
 # Project Docs Lifecycle
 
-Use `/opencode-coder/docs` as the primary docs lifecycle entry point.
+Use `/opencode-coder/docs` when you want help setting up, reviewing, refreshing, repairing, slimming, or verifying a project's docs and AGENTS routing.
 
 ## Task
 
@@ -13,50 +13,45 @@ Load the `opencode-coder` skill, then use:
 - `references/project-structure.md`
 - `references/project-docs-lifecycle.md`
 
-## Dispatcher Flow (thin)
+Then help with the project's docs lifecycle:
 
-### 1) Detect mode and canonical paths
+1. Resolve the active mode and canonical paths before changing anything.
+   - team → `AGENTS.md`, `docs/`
+   - stealth → `.coder/AGENTS.md`, `.coder/docs/`
 
-Determine active mode from `.coder/opencode-coder.yaml` first, then fallback to legacy markers.
+2. Inspect the current docs state before proposing edits.
+   - Check whether AGENTS exists at the active path.
+   - Check whether the active docs directory exists.
+   - Check which standard topic docs already exist.
+   - Check whether installed skills should be routed through AGENTS instead of duplicated in local docs.
 
-Apply canonical paths from `project-structure.md`:
+3. Choose the lifecycle work that matches the repo state or the user's request.
+   - bootstrap when no lifecycle-aligned baseline exists yet
+   - refresh when docs already exist and need normal maintenance
+   - audit when links, routing, references, or coverage look stale or broken
+   - slim when docs are oversized or noisy
+   - AGENTS refresh as one phase within the docs lifecycle when routing needs to be updated
 
-- team → `AGENTS.md`, `docs/`
-- stealth → `.coder/AGENTS.md`, `.coder/docs/`
+4. Apply only the phases the project actually needs.
+   - Create docs only when they contain real project-specific guidance.
+   - Do not create hollow topic docs for skill-only topics.
+   - Keep AGENTS concise and routing-oriented.
 
-### 2) Inspect high-level state
+5. Finish with verification and a concise report.
 
-Gather only high-level signals:
+## Report
 
-- whether AGENTS file exists at the active path
-- whether docs directory exists at the active path
-- which standard docs exist (`OVERVIEW`, `CODING`, `TESTING`, `RELEASING`, `MONITORING`, `PULL-REQUESTS`)
-- whether `.opencode/skills/` exists for skill routing candidates
-
-### 3) Dispatch lifecycle mode
-
-Select primary mode and run the shared workflow in `project-docs-lifecycle.md`:
-
-- no active AGENTS/docs baseline → **bootstrap**
-- baseline exists and needs normal maintenance → **refresh**
-- user asks for doc health cleanup or stale link repair → **audit**
-- user asks to reduce oversized docs/context footprint → **slim**
-- AGENTS-only routing refresh request → run **AGENTS phase** within lifecycle
-
-Always run **inspect** first and **verify/report** last.
-
-### 4) Report
-
-Return a concise summary:
+Summarize:
 
 - mode and active paths used
 - phases executed
-- files changed
+- files created or updated
 - files skipped (and why)
-- skill-only routed topics (no local doc created)
+- topics routed through skills instead of local docs
+- any unresolved follow-ups
 
-## Rules
+## Requirements
 
-- Do not inline the full lifecycle workflow here
-- Keep lifecycle logic in `references/project-docs-lifecycle.md`
-- Treat AGENTS updates as one lifecycle phase, not a separate command family
+- Always inspect before editing.
+- Use the lifecycle rules in `references/project-docs-lifecycle.md` as the source of truth.
+- Treat AGENTS maintenance as part of the same docs lifecycle work.

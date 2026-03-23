@@ -350,16 +350,17 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Mode: command");
       expect(result.stdout).toContain("Plugin source: local-build");
+      expect(result.stdout).toContain("Execution model: fixture copy (disposable workspace)");
       expect(result.stdout).toContain("Fixture: cli-smoke-project");
       expect(result.stdout).toContain("Project source:");
-      expect(result.stdout).toContain("Temp workdir:");
+      expect(result.stdout).toContain("Workdir:");
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
       expect(result.stdout).toContain("Plugin path used:");
       expect(result.stdout).toContain("Resolved installed package: <none>");
       expect(result.stdout).toContain("Resolved host config: <none>");
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
       expect(result.stdout).toContain("Loaded plugin version:");
-      expect(result.stdout).toContain("Cleanup plan: preserve workspace (manual default)");
+      expect(result.stdout).toContain("Cleanup plan: preserve copied workspace and isolated environment");
       expect(result.stdout).not.toContain("--keep: accepted (backward-compatible no-op)");
       expect(result.stdout).toContain("OPENCODE_DISABLE_DEFAULT_PLUGINS=true");
       expect(result.stdout).toContain("OPENCODE_CONFIG_DIR=");
@@ -413,7 +414,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
     }
   }, 120000);
 
-  it("runs one-shot command with external --project-path copied into isolated workspace", async () => {
+  it("runs one-shot command with external --project-path directly in place", async () => {
     const sourceRoot = await mkdtemp(join(tmpdir(), "opencode-coder-manual-project-source-"));
     const sourceAuthDir = await mkdtemp(join(tmpdir(), "opencode-coder-manual-auth-"));
     const authPath = join(sourceAuthDir, "auth.json");
@@ -457,10 +458,12 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Mode: command");
       expect(result.stdout).toContain("Plugin source: local-build");
+      expect(result.stdout).toContain("Execution model: direct project path (in place)");
       expect(result.stdout).toContain(`Project path: ${sourceRoot}`);
       expect(result.stdout).toContain(`Project source: ${sourceRoot}`);
-      expect(result.stdout).toContain("Temp workdir:");
+      expect(result.stdout).toContain(`Workdir: ${sourceRoot}`);
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
+      expect(result.stdout).toContain("Project mutation risk: yes (project-path runs execute in place)");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
       expect(preservedMatch).not.toBeNull();
@@ -468,26 +471,33 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(Boolean(preservedRoot)).toBe(true);
       expect(preservedRoot).toContain(`${join(".manual-test-runs", "run-")}`);
 
-      const copiedReadme = Bun.file(join(preservedRoot!, "project", "README.md"));
-      const copiedGitHead = Bun.file(join(preservedRoot!, "project", ".git", "HEAD"));
-      const copiedGitSentinel = Bun.file(join(preservedRoot!, "project", ".git", "SENTINEL"));
-      const copiedBeadsPid = Bun.file(join(preservedRoot!, "project", ".beads", "daemon.pid"));
-      const copiedBeadsSocket = Bun.file(join(preservedRoot!, "project", ".beads", "bd.sock"));
-      const copiedCoderProject = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
-      const copiedCoderModeState = Bun.file(join(preservedRoot!, "project", ".coder", "opencode-coder.yaml"));
-      const copiedOpencodeLocalCommand = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "local-command.md"));
-      const copiedOpencodeBrokenLink = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "broken-link.md"));
+      const preservedProjectDir = Bun.file(join(preservedRoot!, "project"));
+      const isolatedConfig = Bun.file(join(preservedRoot!, "isolated-opencode", "xdg-config", "opencode", "opencode.json"));
+      const isolatedAuth = Bun.file(join(preservedRoot!, "isolated-opencode", "xdg-data", "opencode", "auth.json"));
+      const sourceReadme = Bun.file(join(sourceRoot, "README.md"));
+      const sourceGitSentinel = Bun.file(join(sourceRoot, ".git", "SENTINEL"));
+      const sourceBeadsPid = Bun.file(join(sourceRoot, ".beads", "daemon.pid"));
+      const sourceBeadsSocket = Bun.file(join(sourceRoot, ".beads", "bd.sock"));
+      const sourceCoderProject = Bun.file(join(sourceRoot, ".coder", "project.yaml"));
+      const sourceCoderModeState = Bun.file(join(sourceRoot, ".coder", "opencode-coder.yaml"));
+      const sourceOpencodeLocalCommand = Bun.file(join(sourceRoot, ".opencode", "commands", "local-command.md"));
+      const sourceOpencodeBrokenLink = Bun.file(join(sourceRoot, ".opencode", "commands", "broken-link.md"));
+      const sourcePluginLink = Bun.file(join(sourceRoot, ".opencode", "plugins", "opencode-coder.js"));
 
-      expect(await copiedReadme.exists()).toBe(true);
-      expect(await copiedGitHead.exists()).toBe(true);
-      expect(await copiedGitSentinel.exists()).toBe(false);
-      expect(await copiedBeadsPid.exists()).toBe(false);
-      expect(await copiedBeadsSocket.exists()).toBe(false);
-      expect(await copiedCoderProject.exists()).toBe(false);
-      expect(await copiedCoderModeState.exists()).toBe(true);
-      expect(await copiedCoderModeState.text()).toContain("mode: team");
-      expect(await copiedOpencodeLocalCommand.exists()).toBe(false);
-      expect(await copiedOpencodeBrokenLink.exists()).toBe(false);
+      expect(await preservedProjectDir.exists()).toBe(false);
+      expect(await isolatedConfig.exists()).toBe(true);
+      expect(await isolatedAuth.exists()).toBe(true);
+      expect(await sourceReadme.exists()).toBe(true);
+      expect(await sourceGitSentinel.exists()).toBe(true);
+      expect(await sourceBeadsPid.exists()).toBe(true);
+      expect(await sourceBeadsSocket.exists()).toBe(true);
+      expect(await sourceCoderProject.exists()).toBe(true);
+      expect(await sourceCoderProject.text()).toContain("pluginVersion: stale");
+      expect(await sourceCoderModeState.exists()).toBe(true);
+      expect(await sourceCoderModeState.text()).toContain("mode: team");
+      expect(await sourceOpencodeLocalCommand.exists()).toBe(true);
+      expect(await sourceOpencodeBrokenLink.exists()).toBe(false);
+      expect(await sourcePluginLink.exists()).toBe(true);
     } finally {
       await new Promise<void>((resolve, reject) => {
         sourceSocketServer.close((error) => {

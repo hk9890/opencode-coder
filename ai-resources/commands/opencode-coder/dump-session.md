@@ -2,12 +2,20 @@
 description: Export full session data to private/session-dump/ folder
 ---
 
-Export the current session's complete data (messages, tool calls, tokens, costs, file diffs) to a local folder for archival and review.
+# Export Session Data
 
-Steps:
-1. Call `coder session` to get the current session ID
-2. Call `coder session-export private/session-dump/<session-id>` to export the full session data
+Use `/opencode-coder/dump-session` to export the current session's messages, tool calls, token usage, costs, and file diffs to a private local folder.
 
-The export will create the directory if needed and write a `session.json` file containing all session data.
+## Task
 
-After exporting, report the output path and summary to the user.
+1. Call `coder session` to get the current session ID.
+2. Export the session to `private/session-dump/<session-id>` with `coder session-export private/session-dump/<session-id>`.
+3. Confirm that the export completed and that `session.json` was written.
+
+## Report
+
+Tell the user:
+
+- the session ID
+- the export path
+- that the export may contain sensitive project or environment data and should be reviewed before sharing

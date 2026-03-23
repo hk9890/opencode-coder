@@ -3,7 +3,7 @@ import { constants, existsSync } from "fs";
 import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
-import { dirname, join, relative, sep } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -108,7 +108,6 @@ export interface ResolvedAuthSeedPath {
 export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "share", "opencode", "auth.json");
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
-const EXCLUDED_COPY_SEGMENTS = [".git", ".beads", ".opencode"] as const;
 let isolatedTestManifestCache: IsolatedTestManifest | null = null;
 
 async function findExecutableOnPath(
@@ -651,7 +650,7 @@ export async function createFixtureWorkspace(
 }
 
 /**
- * Copies an external project directory into an isolated temp workdir.
+ * Uses an external project directory directly while preserving isolated HOME/XDG roots under tempRoot.
  */
 export async function createProjectPathWorkspace(
   projectPath: string,
@@ -662,35 +661,18 @@ export async function createProjectPathWorkspace(
     throw new Error("Missing external project path");
   }
 
-  return createWorkspaceFromSource({
-    kind: "project-path",
-    projectPath: normalizedPath,
-    sourceDir: normalizedPath,
-  }, options);
-}
+  const tempRoot = options?.tempRoot ?? (await mkdtemp(join(tmpdir(), "opencode-coder-project-path-")));
 
-function shouldCopyPath(sourceRoot: string, sourcePath: string): boolean {
-  const rel = relative(sourceRoot, sourcePath);
-  if (!rel) {
-    return true;
-  }
-
-  const segments = rel.split(sep).filter(Boolean);
-  if (EXCLUDED_COPY_SEGMENTS.some((excludedSegment) => segments.includes(excludedSegment))) {
-    return false;
-  }
-
-  if (segments[0] === ".coder") {
-    if (segments[1] === "project.yaml") {
-      return false;
-    }
-
-    if (segments[1] === "logs") {
-      return false;
-    }
-  }
-
-  return true;
+  return {
+    workspaceSource: {
+      kind: "project-path",
+      projectPath: normalizedPath,
+      sourceDir: normalizedPath,
+    },
+    projectSourceDir: normalizedPath,
+    tempRoot,
+    workdir: normalizedPath,
+  };
 }
 
 async function createWorkspaceFromSource(
@@ -701,14 +683,7 @@ async function createWorkspaceFromSource(
   const tempRoot = options?.tempRoot ?? (await mkdtemp(join(tmpdir(), `opencode-coder-${sourceLabel}-`)));
   const workdir = join(tempRoot, "project");
 
-  if (workspaceSource.kind === "project-path") {
-    await cp(workspaceSource.sourceDir, workdir, {
-      recursive: true,
-      filter: async (sourcePath) => shouldCopyPath(workspaceSource.sourceDir, sourcePath),
-    });
-  } else {
-    await cp(workspaceSource.sourceDir, workdir, { recursive: true });
-  }
+  await cp(workspaceSource.sourceDir, workdir, { recursive: true });
 
   await $`git init --quiet`.cwd(workdir).quiet();
 

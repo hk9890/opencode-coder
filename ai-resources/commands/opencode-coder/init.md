@@ -136,29 +136,38 @@ Key rules:
 
 ---
 
-### Step 4: Optional project-doc setup/refresh
+### Step 4: Optional project-doc setup or review (inspect first)
 
-After mode selection and core setup, explicitly ask the user:
+After mode selection and core setup, first check whether `/opencode-coder/docs` is available in this session.
 
-- `Set up project docs now`
-- `Skip for now`
+- If `/opencode-coder/docs` is available, inspect the project's docs state, ask the user what to do, apply the chosen action, and verify the result.
+- If `/opencode-coder/docs` is not available, do not run project-doc setup/update in this session; explain that plainly and continue init.
 
-Rules:
+Rules when docs follow-through is available:
 
-- If the user chooses `Skip for now`, do not create/refresh docs in this run
-- If the user chooses `Set up project docs now`, use the shared lifecycle model from:
+- Follow these references:
   - `references/project-docs-lifecycle.md`
   - `references/project-setup.md`
   - `references/project-structure.md`
-- Do not define or invent a second docs lifecycle inside init
+- Inspection is required before asking the user what to do next
+- Ask the user with scenario-aware wording and include `Skip for now` in every branch
+- If the user chooses `Skip for now`, do not create/refresh docs in this run
 
-#### 4a. Inspection (explicit, required before write actions)
+Fallback rules when docs follow-through is unavailable:
+
+- Use plain language, for example: "Project-doc setup/update isn't available in this session because `/opencode-coder/docs` is unavailable right now. I'll continue init without changing project docs."
+- Continue and complete init without failing the no-skill/no-resource path
+
+#### 4a. Inspection and state classification (explicit, required before prompts or write actions)
 
 Run lifecycle **Phase 1 — Inspect** with these explicit checks:
 
 1. Resolve active docs directory from mode (`project-structure.md`):
-   - team: `docs/`
-   - stealth: `.coder/docs/`
+    - team: `docs/`
+    - stealth: `.coder/docs/`
+   Resolve active AGENTS path from mode:
+    - team: `AGENTS.md`
+    - stealth: `.coder/AGENTS.md`
 2. Inspect existing standard topic docs in the active docs directory:
    - `OVERVIEW.md`
    - `CODING.md`
@@ -166,20 +175,43 @@ Run lifecycle **Phase 1 — Inspect** with these explicit checks:
    - `RELEASING.md`
    - `MONITORING.md`
    - `PULL-REQUESTS.md`
-3. Inspect installed skills/workflows relevant to these topics (for example `.opencode/skills/` when present)
-4. Classify each topic as exactly one of:
-   - `existing doc` (project-specific local doc exists)
-   - `skill-only` (no local doc, but relevant reusable skill/workflow exists)
-   - `neither` (no local doc and no relevant skill/workflow signal)
-5. Show the topic decision matrix to the user **before** creating or refreshing docs
+3. Inspect project-specific guidance outside the standard topic files (migration signals), including mixed content in broader files and non-standard docs names, for example:
+   - `README.md`
+   - `CONTRIBUTING.md`
+   - non-standard files in `docs/` or `.coder/docs/`
+4. Inspect installed skills/workflows relevant to these topics (for example `.opencode/skills/` when present)
+5. Classify each topic as exactly one of:
+    - `existing doc` (project-specific local doc exists)
+    - `skill-only` (no local doc, but relevant reusable skill/workflow exists)
+    - `neither` (no local doc and no relevant skill/workflow signal)
+6. Classify overall docs state as exactly one of:
+   - `No standard baseline exists yet`
+   - `Standard baseline already exists`
+   - `Docs exist in non-standard layout and may need migration`
+7. Show the topic decision matrix and overall state to the user **before** asking the Step 4 question or creating/refreshing docs
 
-#### 4b. Apply lifecycle phases for docs
+Define migration concretely:
 
-After presenting the matrix, execute lifecycle phases from `project-docs-lifecycle.md` as appropriate:
+- Migration means project-specific guidance exists outside the standard topic docs or is mixed into broader files and should be inspected before proposing extraction, relocation, renaming, or AGENTS routing updates.
+
+Ask the user what to do using wording that matches what was found:
+
+- Bootstrap/setup (no standard baseline):
+  - Example wording: "I couldn't find the standard project docs layout yet. I can inspect this repo and set up topic docs plus an AGENTS routing document where there is real project-specific guidance. Do you want me to do that now?"
+- Review/update (standard baseline exists):
+  - Example wording: "I found the standard docs layout already in place. I can review, refresh, and verify those docs and update AGENTS routing as needed. Do you want me to run that review now?"
+- Migration/proposal (non-standard layout):
+  - Example wording: "I found project documentation, but it is not organized in the standard topic layout. I can inspect what exists and propose a migration/routing plan before making changes. Do you want that proposal now?"
+
+For every scenario, include `Skip for now` as an option.
+
+#### 4b. Apply the matching docs workflow
+
+After presenting the matrix, choose and run the lifecycle work that matches the project state:
 
 - bootstrap/setup when active baseline is missing
 - refresh/update when baseline exists
-- AGENTS phase as part of lifecycle (not a separate command family)
+- update AGENTS routing as part of the docs work
 - verify/report phase before completion
 
 Docs-writing rules:

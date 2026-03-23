@@ -23,7 +23,7 @@ const DOCS_LIFECYCLE_COMMAND_DEFINITIONS = {
     description: "Inspect, bootstrap, refresh, audit, and verify project docs lifecycle",
     template: `# Project Docs Lifecycle
 
-Use /opencode-coder/docs as the primary docs lifecycle entry point.
+Use /opencode-coder/docs to inspect, set up, refresh, repair, slim, or verify the project's docs and AGENTS routing.
 
 ## Task
 
@@ -31,11 +31,11 @@ Load the opencode-coder skill, then use:
 - references/project-structure.md
 - references/project-docs-lifecycle.md
 
-## Rules
-
-- keep this command as a dispatcher
-- lifecycle decision logic stays in references/project-docs-lifecycle.md
-- treat AGENTS updates as one lifecycle phase, not a separate command family
+Then:
+1. Resolve the active mode and mode-correct docs and AGENTS paths.
+2. Inspect the project's current docs, AGENTS state, and relevant installed skills before making changes.
+3. Choose the lifecycle work that matches the repo state or the user's request.
+4. Finish with a concise report of what changed, what was skipped, and what is routed through skills.
 `,
   },
   "opencode-coder/improve-doc": {
@@ -50,11 +50,11 @@ Load the opencode-coder skill, then use:
 - references/project-structure.md
 - references/project-docs-lifecycle.md (incident-improvement section)
 
-## Rules
-
-- this command is incident-driven recurrence prevention
-- not a generic typo/grammar cleanup command
-- keep this file as a dispatcher; lifecycle logic stays in references/project-docs-lifecycle.md
+Then:
+1. Capture what failed, where it failed, and where guidance was expected.
+2. Inspect the relevant docs and routing before proposing changes.
+3. Determine whether the fix belongs in a project doc, AGENTS routing, a skill/reference, or a combination.
+4. Focus on recurrence prevention, not generic typo cleanup.
 `,
   },
 } as const;

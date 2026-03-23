@@ -6,7 +6,7 @@ description: Turn a documentation/routing incident into targeted recurrence-prev
 
 Use `/opencode-coder/improve-doc` when something went wrong because guidance was missing, unclear, stale, or routed incorrectly.
 
-## Task
+## Workflow
 
 Load the `opencode-coder` skill, then use:
 
@@ -25,22 +25,25 @@ This command accepts either or both:
 
 If neither input is useful, prompt with `question()` for failure context and (optionally) an issue/reference ID before continuing.
 
-## Dispatcher Flow (thin)
+## Task
 
-### 1) Normalize incident inputs
+Turn the incident into targeted documentation improvement work:
 
-- Capture the free-text context when provided.
-- Capture issue/reference ID when provided.
-- If issue/reference is present, fetch incident context from the tracker.
-- If context is still incomplete, ask focused follow-up questions for what failed and where guidance was expected.
+1. Capture the incident clearly.
+   - Use the free-text context when provided.
+   - Use the issue/reference when provided.
+   - If context is incomplete, ask focused follow-up questions about what failed, where it failed, and where guidance was expected.
 
-### 2) Dispatch to shared incident-improvement lifecycle
+2. Follow the incident-improvement workflow in `references/project-docs-lifecycle.md`.
+   - Inspect the relevant docs and routing first.
+   - Determine whether the missing guidance belongs in a project doc, AGENTS routing, a skill/reference, or a combination.
+   - Focus on recurrence prevention rather than cosmetic edits.
 
-Run the incident-improvement workflow in `references/project-docs-lifecycle.md`.
+3. Propose or apply the smallest useful updates that would have prevented the incident.
 
-Do not duplicate lifecycle decision logic here.
+4. Verify the resulting guidance is discoverable and correctly routed.
 
-### 3) Return recurrence-prevention plan
+## Report
 
 Summarize:
 
@@ -49,8 +52,8 @@ Summarize:
 - concrete updates proposed/applied to prevent recurrence
 - open follow-ups (if any)
 
-## Rules
+## Requirements
 
 - This command is for incident-driven recurrence prevention.
 - It is **not** a generic typo/grammar/editorial cleanup command.
-- Keep this file as a dispatcher; lifecycle logic stays in `references/project-docs-lifecycle.md`.
+- Use mode-correct docs and AGENTS paths from `references/project-structure.md`.
