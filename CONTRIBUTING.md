@@ -42,44 +42,6 @@ For targeted test levels (unit, integration, e2e), use the commands in [`docs/TE
 4. Run relevant tests from [`docs/TESTING.md`](docs/TESTING.md)
 5. Open a PR and follow [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
 
-## aimgr Resource Installation and Repair
-
-This repository uses `ai.package.yaml` as the source of truth for packaged AI resources.
-
-### Skill-creator package mapping
-
-- The project now packages `skill/opencode-coder-skill-creator` (from `open-coder` source)
-- It does **not** use the legacy Anthropic entry `skill/skill-creator`
-- After installation, OpenCode should contain:
-  - directory: `.opencode/skills/opencode-coder-skill-creator/`
-  - skill frontmatter name: `opencode-coder-skill-creator`
-
-### Contributor workflow (CLI-only)
-
-From repository root:
-
-```bash
-# 1) Confirm resource exists in configured source
-aimgr repo list --source open-coder
-
-# 2) Install all declared resources from ai.package.yaml
-aimgr install
-
-# 3) Verify installed resources
-aimgr verify
-
-# 4) If verify reports drift/missing links, repair
-aimgr repair
-```
-
-If you need to explicitly refresh only this skill in OpenCode:
-
-```bash
-aimgr install skill/opencode-coder-skill-creator --target opencode --force
-```
-
-Do not manually edit `.opencode/skills/*` as implementation source; treat it as generated install output.
-
 ## Where To Put Commands and Agents
 
 ### `ai-resources/` (published with the plugin)

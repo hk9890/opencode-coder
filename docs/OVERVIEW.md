@@ -33,13 +33,6 @@ At a high level, the codebase is organized as a small startup entry point plus f
 - `ai-resources/` contains published, reusable AI resources (agents, commands, skills)
 - `.opencode/` contains project-local resources for developing this plugin repository
 
-### Packaged skill-creator integration
-
-- Packaging is declared in `ai.package.yaml`
-- This project references `skill/opencode-coder-skill-creator` (from the `open-coder` aimgr source)
-- Contributors should install/repair resources with `aimgr install`, `aimgr verify`, and `aimgr repair`
-- The installed OpenCode path for that resource is `.opencode/skills/opencode-coder-skill-creator/`
-
 For implementation details, conventions, and architecture rules, see the focused coding guide instead of this overview.
 
 ## Where to go next
