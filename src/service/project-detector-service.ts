@@ -36,6 +36,37 @@ export interface ProjectDetectionOptions {
   startupMode?: Exclude<SavedPluginMode, "disabled">;
 }
 
+export type RuntimePhase = "bootstrap" | "normal";
+
+export interface RuntimePhaseClassification {
+  /** Runtime phase based on actual required resource surfaces available on disk. */
+  phase: RuntimePhase;
+  /** Missing required command/skill resource surfaces for Phase 2. */
+  missingRequiredSurfaces: string[];
+  /** Whether runtime should register bootstrap /opencode-coder/init in this session. */
+  shouldExposeBootstrapInit: boolean;
+  /** Whether runtime should rely on resource-backed opencode-coder commands. */
+  shouldUseResourceBackedCommands: boolean;
+  /** Detailed command/skill surface checks used as source-of-truth for phase detection. */
+  requiredSurfaceAvailability: Record<string, boolean>;
+  /** Optional agent surfaces (diagnostic only; does not control phase). */
+  optionalAgentAvailability: Record<string, boolean>;
+  /** Supporting diagnostics; these are secondary to resource-surface checks. */
+  diagnostics: {
+    aimgrAvailable: boolean;
+    packageYamlAvailable: boolean;
+    coderPackageInstalled: boolean;
+    resourcesHealthy: boolean;
+  };
+}
+
+export interface RuntimePhaseDiagnosticsOverride {
+  aimgrAvailable?: boolean;
+  packageYamlAvailable?: boolean;
+  coderPackageInstalled?: boolean;
+  resourcesHealthy?: boolean;
+}
+
 /**
  * Detected project context written to .coder/project.yaml during active startup.
  */
@@ -91,6 +122,9 @@ export interface ProjectContext {
 
   /** Plugin version string */
   pluginVersion: string;
+
+  /** Explicit two-phase runtime classification for command registration/gating. */
+  runtimePhase: RuntimePhaseClassification;
 }
 
 /**
@@ -98,6 +132,36 @@ export interface ProjectContext {
  * We search for this line to determine whether the project is in stealth mode.
  */
 const STEALTH_MARKER = "# opencode-coder stealth mode";
+
+const PHASE2_REQUIRED_COMMAND_SURFACES = [
+  "opencode-coder/init",
+  "opencode-coder/docs",
+  "opencode-coder/improve-doc",
+  "opencode-coder/doctor",
+  "opencode-coder/status",
+  "opencode-coder/report-bug",
+  "opencode-coder/dump-session",
+] as const;
+
+const PHASE2_REQUIRED_SKILL_SURFACES = ["opencode-coder"] as const;
+
+const PHASE2_REQUIRED_SKILL_REFERENCE_SURFACES = [
+  "agents-md-template.md",
+  "bug-reporting.md",
+  "debugging-logs.md",
+  "installation-setup.md",
+  "mode-transition.md",
+  "planning.md",
+  "project-docs-lifecycle.md",
+  "project-setup.md",
+  "project-structure.md",
+  "session-dump.md",
+  "simplify.md",
+  "status-health.md",
+  "troubleshooting-patterns.md",
+] as const;
+
+const PHASE2_OPTIONAL_AGENT_SURFACES = ["orchestrator", "tasker", "reviewer", "verifier"] as const;
 
 /**
  * Service that detects facts about the current project and writes them
@@ -292,6 +356,91 @@ export class ProjectDetectorService {
     }
   }
 
+  private detectResourcePath(relativePath: string): boolean {
+    const resourcePath = path.join(this.workdir, relativePath);
+    const exists = fs.existsSync(resourcePath);
+    this.logger.debug("Resource surface check", { relativePath, exists });
+    return exists;
+  }
+
+  /**
+   * Detect runtime phase using resource surfaces as source-of-truth.
+   *
+   * Phase 2 = all required markdown command + skill surfaces exist on disk,
+   * regardless of whether they arrived via `aimgr install package/opencode-coder`
+   * or equivalent manual copying.
+   *
+   * aimgr/package metadata remains diagnostic only and must not be the sole phase gate.
+   */
+  classifyRuntimePhase(overrides?: RuntimePhaseDiagnosticsOverride): RuntimePhaseClassification {
+    const requiredSurfaceAvailability: Record<string, boolean> = {};
+
+    for (const command of PHASE2_REQUIRED_COMMAND_SURFACES) {
+      requiredSurfaceAvailability[`command/${command}`] = this.detectResourcePath(
+        path.join(".opencode", "commands", "opencode-coder", `${command.replace("opencode-coder/", "")}.md`),
+      );
+    }
+
+    for (const skill of PHASE2_REQUIRED_SKILL_SURFACES) {
+      requiredSurfaceAvailability[`skill/${skill}`] = this.detectResourcePath(
+        path.join(".opencode", "skills", skill, "SKILL.md"),
+      );
+    }
+
+    for (const reference of PHASE2_REQUIRED_SKILL_REFERENCE_SURFACES) {
+      requiredSurfaceAvailability[`skill-reference/opencode-coder/${reference}`] = this.detectResourcePath(
+        path.join(".opencode", "skills", "opencode-coder", "references", reference),
+      );
+    }
+
+    const optionalAgentAvailability: Record<string, boolean> = {};
+    for (const agent of PHASE2_OPTIONAL_AGENT_SURFACES) {
+      optionalAgentAvailability[`agent/${agent}`] = this.detectResourcePath(
+        path.join(".opencode", "agents", `${agent}.md`),
+      );
+    }
+
+    const missingRequiredSurfaces = Object.entries(requiredSurfaceAvailability)
+      .filter(([, available]) => !available)
+      .map(([surface]) => surface);
+
+    const phase: RuntimePhase = missingRequiredSurfaces.length === 0 ? "normal" : "bootstrap";
+    const shouldExposeBootstrapInit = phase === "bootstrap";
+    const shouldUseResourceBackedCommands = phase === "normal";
+
+    const aimgrAvailable = overrides?.aimgrAvailable ?? this.detectAimgrInstalled();
+    const packageYamlAvailable = overrides?.packageYamlAvailable ?? this.detectPackageYaml();
+    const coderPackageInstalled = overrides?.coderPackageInstalled ?? (aimgrAvailable ? this.detectCoderPackageInstalled() : false);
+    const resourcesHealthy = overrides?.resourcesHealthy ?? (aimgrAvailable ? this.detectResourcesHealthy(aimgrAvailable) : false);
+
+    const classification: RuntimePhaseClassification = {
+      phase,
+      missingRequiredSurfaces,
+      shouldExposeBootstrapInit,
+      shouldUseResourceBackedCommands,
+      requiredSurfaceAvailability,
+      optionalAgentAvailability,
+      diagnostics: {
+        aimgrAvailable,
+        packageYamlAvailable,
+        coderPackageInstalled,
+        resourcesHealthy,
+      },
+    };
+
+    this.logger.info("Runtime phase classification resolved", {
+      phase: classification.phase,
+      missingRequiredSurfaces: classification.missingRequiredSurfaces,
+      shouldExposeBootstrapInit: classification.shouldExposeBootstrapInit,
+      shouldUseResourceBackedCommands: classification.shouldUseResourceBackedCommands,
+      aimgrAvailable: classification.diagnostics.aimgrAvailable,
+      coderPackageInstalled: classification.diagnostics.coderPackageInstalled,
+      resourcesHealthy: classification.diagnostics.resourcesHealthy,
+    });
+
+    return classification;
+  }
+
   // ---------------------------------------------------------------------------
   // Mode derivation
   // ---------------------------------------------------------------------------
@@ -428,6 +577,12 @@ export class ProjectDetectorService {
       packageYaml,
       resourcesHealthy,
     );
+    const runtimePhase = this.classifyRuntimePhase({
+      aimgrAvailable: aimgrInstalled,
+      packageYamlAvailable: packageYaml,
+      coderPackageInstalled,
+      resourcesHealthy,
+    });
 
     const context: ProjectContext = {
       mode,
@@ -448,6 +603,7 @@ export class ProjectDetectorService {
         coderPackageInstalled,
       },
       pluginVersion: versionInfo.version,
+      runtimePhase,
     };
 
     this.writeProjectContext(context);
@@ -458,6 +614,8 @@ export class ProjectDetectorService {
       ecosystemReady: context.ecosystemReady,
       resourcesHealthy: context.aimgr.resourcesHealthy,
       coderPackageInstalled: context.aimgr.coderPackageInstalled,
+      runtimePhase: context.runtimePhase.phase,
+      missingRequiredSurfaces: context.runtimePhase.missingRequiredSurfaces,
       projectContextFile: ".coder/project.yaml",
     });
 

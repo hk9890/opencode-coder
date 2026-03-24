@@ -8,6 +8,7 @@ import {
   SessionExportService,
   ProjectDetectorService,
   PluginModeService,
+  type RuntimePhaseClassification,
   type ProjectContext,
 } from "./service";
 import { createCoderTool } from "./tool";
@@ -17,47 +18,6 @@ const PROJECT_CONTEXT_TIMEOUT_MS = 30_000;
 const PROJECT_CONTEXT_TIMEOUT = Symbol("project-context-timeout");
 const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
 const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md" as const;
-
-const DOCS_LIFECYCLE_COMMAND_DEFINITIONS = {
-  "opencode-coder/docs": {
-    description: "Inspect, bootstrap, refresh, audit, and verify project docs lifecycle",
-    template: `# Project Docs Lifecycle
-
-Use /opencode-coder/docs to inspect, set up, refresh, repair, slim, or verify the project's docs and AGENTS routing.
-
-## Task
-
-Load the opencode-coder skill, then use:
-- references/project-structure.md
-- references/project-docs-lifecycle.md
-
-Then:
-1. Resolve the active mode and mode-correct docs and AGENTS paths.
-2. Inspect the project's current docs, AGENTS state, and relevant installed skills before making changes.
-3. Choose the lifecycle work that matches the repo state or the user's request.
-4. Finish with a concise report of what changed, what was skipped, and what is routed through skills.
-`,
-  },
-  "opencode-coder/improve-doc": {
-    description: "Turn a documentation/routing incident into targeted recurrence-prevention updates",
-    template: `# Incident-Driven Docs Improvement
-
-Use /opencode-coder/improve-doc when guidance was missing, stale, unclear, or routed incorrectly.
-
-## Task
-
-Load the opencode-coder skill, then use:
-- references/project-structure.md
-- references/project-docs-lifecycle.md (incident-improvement section)
-
-Then:
-1. Capture what failed, where it failed, and where guidance was expected.
-2. Inspect the relevant docs and routing before proposing changes.
-3. Determine whether the fix belongs in a project doc, AGENTS routing, a skill/reference, or a combination.
-4. Focus on recurrence prevention, not generic typo cleanup.
-`,
-  },
-} as const;
 
 export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const log = createLogger(client, worktree);
@@ -140,48 +100,77 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   const aimgrInitStart = Date.now();
   const projectContextPromise: Promise<ProjectContext | null> = !activeMode
     ? Promise.resolve(null)
-    : aimgrService.autoInitialize()
-        .then(() => {
-          log.debug("aimgr autoInitialize completed", { durationMs: Date.now() - aimgrInitStart });
-        })
-        .catch((err) => {
-          log.error("Failed to auto-initialize aimgr", { error: String(err) });
-        })
-        .then(() => aimgrService.verifyAndAutoRepairResources())
-        .then((health) => {
-          log.debug("aimgr verify/repair startup flow completed", {
-            durationMs: Date.now() - aimgrInitStart,
-            repairAttempted: health.repairAttempted,
-            repairSucceeded: health.repairSucceeded,
-            resourcesHealthy: health.resourcesHealthy,
-          });
-          if (health.verifyResult === null) {
-            return projectDetector.detectAndWrite(versionInfo, {
-              startupMode: activeMode,
-            });
-          }
-
-          return projectDetector.detectAndWrite(versionInfo, {
-            startupMode: activeMode,
-            resourcesHealthyOverride: health.resourcesHealthy,
-          });
-        })
-        .then((ctx) => {
-          emitRuntimeSignal("runtime.project_context.available", {
-            startupMode: activeMode,
-            mode: ctx.mode,
-            installReady: ctx.installReady,
-            ecosystemReady: ctx.ecosystemReady,
-            resourcesHealthy: ctx.aimgr.resourcesHealthy,
-            coderPackageInstalled: ctx.aimgr.coderPackageInstalled,
-          });
-          log.debug("Project context written to .coder/project.yaml", { ecosystemReady: ctx.ecosystemReady });
-          return ctx;
-        })
-        .catch((err) => {
-          log.error("Project detection failed", { error: String(err) });
-          return null;
+    : (() => {
+        const startupRuntimePhase = projectDetector.classifyRuntimePhase({
+          aimgrAvailable: aimgrService.isAimgrAvailable(),
+          packageYamlAvailable: aimgrService.hasPackageYaml(),
         });
+
+        emitRuntimeSignal("runtime.phase.classified", {
+          startupMode: activeMode,
+          runtimePhase: startupRuntimePhase.phase,
+          missingRequiredSurfaces: startupRuntimePhase.missingRequiredSurfaces,
+          shouldBootstrap: startupRuntimePhase.shouldExposeBootstrapInit,
+        });
+
+        const contextPromise = startupRuntimePhase.phase === "normal"
+          ? Promise.resolve()
+              .then(() => {
+                log.info("Runtime phase already normal from required resource surfaces; skipping startup bootstrap", {
+                  runtimePhase: startupRuntimePhase.phase,
+                  missingRequiredSurfaces: startupRuntimePhase.missingRequiredSurfaces,
+                });
+                return projectDetector.detectAndWrite(versionInfo, {
+                  startupMode: activeMode,
+                });
+              })
+          : aimgrService.autoInitialize()
+              .then(() => {
+                log.debug("aimgr autoInitialize completed", { durationMs: Date.now() - aimgrInitStart });
+              })
+              .catch((err) => {
+                log.error("Failed to auto-initialize aimgr", { error: String(err) });
+              })
+              .then(() => aimgrService.verifyAndAutoRepairResources())
+              .then((health) => {
+                log.debug("aimgr verify/repair startup flow completed", {
+                  durationMs: Date.now() - aimgrInitStart,
+                  repairAttempted: health.repairAttempted,
+                  repairSucceeded: health.repairSucceeded,
+                  resourcesHealthy: health.resourcesHealthy,
+                });
+                if (health.verifyResult === null) {
+                  return projectDetector.detectAndWrite(versionInfo, {
+                    startupMode: activeMode,
+                  });
+                }
+
+                return projectDetector.detectAndWrite(versionInfo, {
+                  startupMode: activeMode,
+                  resourcesHealthyOverride: health.resourcesHealthy,
+                });
+              });
+
+        return contextPromise
+          .then((ctx) => {
+            emitRuntimeSignal("runtime.project_context.available", {
+              startupMode: activeMode,
+              mode: ctx.mode,
+              installReady: ctx.installReady,
+              ecosystemReady: ctx.ecosystemReady,
+              runtimePhase: ctx.runtimePhase.phase,
+              missingRequiredSurfaces: ctx.runtimePhase.missingRequiredSurfaces,
+              resourcesHealthy: ctx.aimgr.resourcesHealthy,
+              coderPackageInstalled: ctx.aimgr.coderPackageInstalled,
+            });
+            log.debug("Project context written to .coder/project.yaml", { ecosystemReady: ctx.ecosystemReady });
+            return ctx;
+          })
+          .catch((err) => {
+            log.error("Project detection failed", { error: String(err) });
+            return null;
+          });
+      })();
 
   if (!activeMode) {
     log.info("Project not explicitly enabled for active startup; exposing init entry point only", {
@@ -238,12 +227,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
         }
       }
 
-      // Always register /opencode-coder/init so users can explicitly opt into setup.
       input.command = input.command ?? {};
-      input.command["opencode-coder/init"] = {
-        template: getInstallGuideTemplate(),
-        description: "Set up prerequisites for the opencode-coder plugin",
-      };
 
       // Await project context once for default_agent decisions only.
       let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
@@ -270,15 +254,38 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
         });
       }
 
-      const docsLifecycleResourcesAvailable =
-        activeMode !== null && projectContext?.aimgr.resourcesHealthy === true;
+      const runtimePhase: RuntimePhaseClassification = projectContext?.runtimePhase ?? {
+        phase: "bootstrap",
+        missingRequiredSurfaces: ["project-context-unavailable"],
+        shouldExposeBootstrapInit: true,
+        shouldUseResourceBackedCommands: false,
+        requiredSurfaceAvailability: {},
+        optionalAgentAvailability: {},
+        diagnostics: {
+          aimgrAvailable: projectContext?.aimgr.installed ?? false,
+          packageYamlAvailable: projectContext?.aimgr.packageYaml ?? false,
+          coderPackageInstalled: projectContext?.aimgr.coderPackageInstalled ?? false,
+          resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? false,
+        },
+      };
+
+      if (runtimePhase.shouldExposeBootstrapInit || !activeMode) {
+        input.command["opencode-coder/init"] = {
+          template: getInstallGuideTemplate(),
+          description: "Bootstrap prerequisites for opencode-coder resources",
+        };
+      } else if (input.command["opencode-coder/init"]?.template === getInstallGuideTemplate()) {
+        delete input.command["opencode-coder/init"];
+      }
+
+      const docsLifecycleResourcesAvailable = activeMode !== null && runtimePhase.shouldUseResourceBackedCommands;
       if (docsLifecycleResourcesAvailable) {
-        input.command["opencode-coder/docs"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/docs"];
-        input.command["opencode-coder/improve-doc"] = DOCS_LIFECYCLE_COMMAND_DEFINITIONS["opencode-coder/improve-doc"];
         emitRuntimeSignal("runtime.command_registration.docs_lifecycle", {
           startupMode: activeMode,
           action: "registered",
           projectContextAvailable: projectContext !== null,
+          runtimePhase: runtimePhase.phase,
+          missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
           resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
         });
       } else {
@@ -292,13 +299,17 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           startupMode: activeMode,
           action: "suppressed",
           projectContextAvailable: projectContext !== null,
+          runtimePhase: runtimePhase.phase,
+          missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
           resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
         });
       }
 
       if (activeMode && !docsLifecycleResourcesAvailable) {
-        log.info("Docs lifecycle commands not registered because runtime resources are unavailable", {
+        log.info("Docs lifecycle commands not registered because runtime phase is bootstrap", {
           mode: activeMode,
+          runtimePhase: runtimePhase.phase,
+          missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
           projectContextAvailable: projectContext !== null,
           resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
         });
@@ -308,7 +319,17 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
         delete input.command[LEGACY_DOCS_COMMAND];
       }
 
-      log.info("Registered /opencode-coder/init with installation guidance");
+      if (runtimePhase.shouldExposeBootstrapInit || !activeMode) {
+        log.info("Registered runtime Phase 1 /opencode-coder/init bootstrap template", {
+          activeMode,
+          runtimePhase: runtimePhase.phase,
+        });
+      } else {
+        log.info("Runtime /opencode-coder/init bootstrap suppressed in Phase 2", {
+          activeMode,
+          runtimePhase: runtimePhase.phase,
+        });
+      }
 
       // Set orchestrator as default agent when ecosystem is fully ready
       // and user hasn't explicitly configured a different default agent.

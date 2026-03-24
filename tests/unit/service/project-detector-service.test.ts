@@ -6,6 +6,60 @@ import { ProjectDetectorService } from "../../../src/service/project-detector-se
 import type { ProjectContext } from "../../../src/service/project-detector-service";
 import { createMockLogger, type MockLogger } from "../../helpers/mock-logger";
 
+function createProjectContextFixture(overrides?: Partial<ProjectContext>): ProjectContext {
+  return {
+    mode: "team",
+    installReady: true,
+    ecosystemReady: true,
+    git: { initialized: true },
+    beads: { initialized: true, stealthMode: false, bdCliInstalled: true },
+    aimgr: { installed: true, packageYaml: true, resourcesHealthy: true, coderPackageInstalled: true },
+    pluginVersion: "1.0.0",
+    runtimePhase: {
+      phase: "normal",
+      missingRequiredSurfaces: [],
+      shouldExposeBootstrapInit: false,
+      shouldUseResourceBackedCommands: true,
+      requiredSurfaceAvailability: {
+        "command/opencode-coder/init": true,
+        "command/opencode-coder/docs": true,
+        "command/opencode-coder/improve-doc": true,
+        "command/opencode-coder/doctor": true,
+        "command/opencode-coder/status": true,
+        "command/opencode-coder/report-bug": true,
+        "command/opencode-coder/dump-session": true,
+        "skill/opencode-coder": true,
+        "skill-reference/opencode-coder/agents-md-template.md": true,
+        "skill-reference/opencode-coder/bug-reporting.md": true,
+        "skill-reference/opencode-coder/debugging-logs.md": true,
+        "skill-reference/opencode-coder/installation-setup.md": true,
+        "skill-reference/opencode-coder/mode-transition.md": true,
+        "skill-reference/opencode-coder/planning.md": true,
+        "skill-reference/opencode-coder/project-docs-lifecycle.md": true,
+        "skill-reference/opencode-coder/project-setup.md": true,
+        "skill-reference/opencode-coder/project-structure.md": true,
+        "skill-reference/opencode-coder/session-dump.md": true,
+        "skill-reference/opencode-coder/simplify.md": true,
+        "skill-reference/opencode-coder/status-health.md": true,
+        "skill-reference/opencode-coder/troubleshooting-patterns.md": true,
+      },
+      optionalAgentAvailability: {
+        "agent/orchestrator": true,
+        "agent/tasker": true,
+        "agent/reviewer": true,
+        "agent/verifier": true,
+      },
+      diagnostics: {
+        aimgrAvailable: true,
+        packageYamlAvailable: true,
+        coderPackageInstalled: true,
+        resourcesHealthy: true,
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe("ProjectDetectorService", () => {
   let mockLogger: MockLogger;
   let service: ProjectDetectorService;
@@ -397,6 +451,103 @@ describe("ProjectDetectorService", () => {
     });
   });
 
+  describe("classifyRuntimePhase", () => {
+    it("classifies Phase 2 normal when required command and skill surfaces exist without aimgr", () => {
+      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
+        const normalized = String(p);
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
+        if (normalized.endsWith("/.opencode/agents/orchestrator.md")) return false;
+        if (normalized.endsWith("/.opencode/agents/tasker.md")) return false;
+        if (normalized.endsWith("/.opencode/agents/reviewer.md")) return false;
+        if (normalized.endsWith("/.opencode/agents/verifier.md")) return false;
+        if (normalized.endsWith("/ai.package.yaml")) return false;
+        return false;
+      });
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v aimgr") throw new Error("aimgr missing");
+        throw new Error(`unexpected command: ${cmd}`);
+      });
+
+      const result = service.classifyRuntimePhase();
+
+      expect(result.phase).toBe("normal");
+      expect(result.shouldUseResourceBackedCommands).toBe(true);
+      expect(result.shouldExposeBootstrapInit).toBe(false);
+      expect(result.missingRequiredSurfaces).toEqual([]);
+      expect(result.optionalAgentAvailability["agent/orchestrator"]).toBe(false);
+      expect(result.diagnostics.aimgrAvailable).toBe(false);
+      expect(result.diagnostics.coderPackageInstalled).toBe(false);
+
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+    });
+
+    it("classifies Phase 1 bootstrap when required surfaces are missing even if aimgr package is installed", () => {
+      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
+        const normalized = String(p);
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/docs.md")) return false;
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
+        if (normalized.endsWith("/ai.package.yaml")) return true;
+        return false;
+      });
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v aimgr") return "/usr/bin/aimgr" as any;
+        if (cmd === 'aimgr list "package/opencode-coder" --format json') {
+          return JSON.stringify([{ type: "package", name: "opencode-coder" }]) as any;
+        }
+        if (cmd === "aimgr verify --format json") {
+          return JSON.stringify({ status: "ok", issues: [] }) as any;
+        }
+        throw new Error(`unexpected command: ${cmd}`);
+      });
+
+      const result = service.classifyRuntimePhase();
+
+      expect(result.phase).toBe("bootstrap");
+      expect(result.shouldUseResourceBackedCommands).toBe(false);
+      expect(result.shouldExposeBootstrapInit).toBe(true);
+      expect(result.missingRequiredSurfaces).toContain("command/opencode-coder/docs");
+      expect(result.diagnostics.aimgrAvailable).toBe(true);
+      expect(result.diagnostics.coderPackageInstalled).toBe(true);
+
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+    });
+
+    it("classifies Phase 1 bootstrap when a required skill reference surface is missing", () => {
+      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
+        const normalized = String(p);
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/references/status-health.md")) return false;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
+        if (normalized.endsWith("/ai.package.yaml")) return false;
+        return false;
+      });
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v aimgr") throw new Error("aimgr missing");
+        throw new Error(`unexpected command: ${cmd}`);
+      });
+
+      const result = service.classifyRuntimePhase();
+
+      expect(result.phase).toBe("bootstrap");
+      expect(result.shouldUseResourceBackedCommands).toBe(false);
+      expect(result.shouldExposeBootstrapInit).toBe(true);
+      expect(result.missingRequiredSurfaces).toContain("skill-reference/opencode-coder/status-health.md");
+
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // Mode derivation
   // ---------------------------------------------------------------------------
@@ -490,15 +641,12 @@ describe("ProjectDetectorService", () => {
       const existsSyncSpy = spyOn(fs, "existsSync").mockReturnValue(false);
       const writeFileSyncSpy = spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
 
-      const context: ProjectContext = {
-        mode: "team",
+      const context: ProjectContext = createProjectContextFixture({
         installReady: false,
         ecosystemReady: false,
-        git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        pluginVersion: "1.0.0",
-      };
+      });
 
       service.writeProjectContext(context);
 
@@ -522,15 +670,12 @@ describe("ProjectDetectorService", () => {
         (p: any, data: any) => { calls.push([String(p), String(data)]); }
       );
 
-      const context: ProjectContext = {
-        mode: "team",
+      const context: ProjectContext = createProjectContextFixture({
         installReady: false,
         ecosystemReady: false,
-        git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        pluginVersion: "1.0.0",
-      };
+      });
 
       service.writeProjectContext(context);
 
@@ -554,15 +699,12 @@ describe("ProjectDetectorService", () => {
         (p: any, data: any) => { calls.push([String(p), String(data)]); }
       );
 
-      const context: ProjectContext = {
-        mode: "team",
+      const context: ProjectContext = createProjectContextFixture({
         installReady: false,
         ecosystemReady: false,
-        git: { initialized: true },
         beads: { initialized: true, stealthMode: false, bdCliInstalled: false },
         aimgr: { installed: false, packageYaml: false, resourcesHealthy: false, coderPackageInstalled: false },
-        pluginVersion: "1.0.0",
-      };
+      });
 
       service.writeProjectContext(context);
 
@@ -582,15 +724,14 @@ describe("ProjectDetectorService", () => {
         (_p: any, data: any) => { writtenContent = data; }
       );
 
-      const context: ProjectContext = {
+      const context: ProjectContext = createProjectContextFixture({
         mode: "stealth",
         installReady: false,
         ecosystemReady: true,
-        git: { initialized: true },
         beads: { initialized: false, stealthMode: true, bdCliInstalled: true },
         aimgr: { installed: true, packageYaml: true, resourcesHealthy: true, coderPackageInstalled: true },
         pluginVersion: "2.3.4",
-      };
+      });
 
       service.writeProjectContext(context);
 

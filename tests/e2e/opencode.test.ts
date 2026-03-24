@@ -1,6 +1,6 @@
 import { createOpencodeClient, createOpencodeServer } from "@opencode-ai/sdk";
 import { describe, expect, it } from "bun:test";
-import { mkdir, readFile } from "fs/promises";
+import { cp, mkdir, readFile, rm } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
@@ -24,6 +24,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..", "..");
 const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
+const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
 const opencodeCheck = await checkOpencodeAvailability();
 if (!opencodeCheck.available && opencodeCheck.diagnostics) {
@@ -140,6 +141,22 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     }
   };
 
+  const seedManualPhase2Resources = async (workspaceDir: string) => {
+    const commandsRootDir = join(workspaceDir, ".opencode", "commands");
+    const skillsRootDir = join(workspaceDir, ".opencode", "skills");
+
+    await mkdir(commandsRootDir, { recursive: true });
+    await mkdir(skillsRootDir, { recursive: true });
+
+    const commandsTargetDir = join(commandsRootDir, "opencode-coder");
+    const skillTargetDir = join(skillsRootDir, "opencode-coder");
+    await rm(commandsTargetDir, { recursive: true, force: true });
+    await rm(skillTargetDir, { recursive: true, force: true });
+
+    await cp(join(AI_RESOURCES_DIR, "commands", "opencode-coder"), commandsTargetDir, { recursive: true });
+    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder"), skillTargetDir, { recursive: true });
+  };
+
   describe("real startup scenario coverage", () => {
     it("scenario 1: should load once in existing real-server startup path", async () => {
       await withScenarioLogging("scenario 1", async () => {
@@ -152,11 +169,7 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
 
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
           expect(pluginSignals.commandNames).toContain("opencode-coder/init");
-          if (aimgrCheck.available) {
-            expectDocsLifecycleCommands(pluginSignals.commandNames);
-          } else {
-            expectNoDocsLifecycleCommands(pluginSignals.commandNames);
-          }
+          expectNoDocsLifecycleCommands(pluginSignals.commandNames);
 
           const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           expect(projectYamlAfter).toContain("pluginVersion:");
@@ -230,6 +243,9 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       await withScenarioLogging("scenario 3", async () => {
         const workspace = await createFixtureWorkspace("local-startup-parity-project");
         try {
+          await seedManualPhase2Resources(workspace.workdir);
+          await rm(join(workspace.workdir, "ai.package.yaml"), { force: true });
+
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
@@ -260,11 +276,12 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
           expect(projectYamlAfter).toContain("mode: stealth");
           expect(projectYamlAfter).toContain("pluginVersion:");
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
-          if (aimgrCheck.available) {
-            expectDocsLifecycleCommands(pluginSignals.commandNames);
-          } else {
-            expectNoDocsLifecycleCommands(pluginSignals.commandNames);
-          }
+          expectDocsLifecycleCommands(pluginSignals.commandNames);
+
+          const today = new Date().toISOString().slice(0, 10);
+          const startupLog = await readIfExists(join(workspace.workdir, ".coder", "logs", `coder-${today}.log`));
+          expect(startupLog).toContain("Runtime phase already normal from required resource surfaces; skipping startup bootstrap");
+          expect(startupLog).not.toContain("Running aimgr init");
         } finally {
           await cleanupFixtureWorkspace(workspace);
         }
