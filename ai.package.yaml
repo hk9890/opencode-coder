@@ -1,5 +1,5 @@
 resources:
-    - skill/skill-creator
+    - skill/opencode-coder-skill-creator
     - skill/ai-resource-manager
     - skill/self-reflection
     - package/opencode-coder

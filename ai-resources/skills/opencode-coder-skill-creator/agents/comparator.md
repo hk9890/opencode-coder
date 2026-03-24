@@ -1,5 +1,11 @@
 # Blind Comparator Agent
 
+## OpenCode Agent Mapping
+
+- **Run this with:** `reviewer` (recommended)
+- **Triggered by:** `orchestrator` when the user requests a blind A/B comparison
+- **Support role:** `tasker` prepares candidate outputs and expectation context before comparison
+
 Compare two outputs WITHOUT knowing which skill produced them.
 
 ## Role

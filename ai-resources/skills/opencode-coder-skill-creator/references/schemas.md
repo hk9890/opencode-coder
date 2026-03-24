@@ -198,7 +198,12 @@ Output from the executor agent. Located at `<run-dir>/outputs/metrics.json`.
 
 Wall clock timing for a run. Located at `<run-dir>/timing.json`.
 
-**How to capture:** When a subagent task completes, the task notification includes `total_tokens` and `duration_ms`. Save these immediately — they are not persisted anywhere else and cannot be recovered after the fact.
+**How to capture (OpenCode):** Record timing for every run, even when token telemetry is unavailable.
+
+Recommended priority:
+1. If completion metadata includes `total_tokens` / duration values, store them directly.
+2. Otherwise capture start/end timestamps and compute duration locally.
+3. If tokens are unavailable, set `total_tokens` to `null` and include `"token_source": "unavailable"`.
 
 ```json
 {
@@ -225,7 +230,7 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
   "metadata": {
     "skill_name": "pdf",
     "skill_path": "/path/to/pdf",
-    "executor_model": "claude-sonnet-4-20250514",
+    "executor_model": "strong-reasoning-model",
     "analyzer_model": "most-capable-model",
     "timestamp": "2026-01-15T10:30:00Z",
     "evals_run": [1, 2, 3],

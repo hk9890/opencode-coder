@@ -60,7 +60,7 @@
   <p class="summary" id="summary"></p>
 
   <script>
-    const EVAL_DATA = __EVAL_DATA_PLACEHOLDER__;
+    const EVAL_DATA = JSON.parse(decodeURIComponent("__EVAL_DATA_PLACEHOLDER__"));
 
     let evalItems = [...EVAL_DATA];
 

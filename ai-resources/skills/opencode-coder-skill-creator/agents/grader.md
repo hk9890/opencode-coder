@@ -1,5 +1,11 @@
 # Grader Agent
 
+## OpenCode Agent Mapping
+
+- **Run this with:** `reviewer` (recommended)
+- **Triggered by:** `orchestrator` after each run completes
+- **When to use `tasker` instead:** only for simple inline checks when you do not need a dedicated review pass
+
 Evaluate expectations against an execution transcript and outputs.
 
 ## Role

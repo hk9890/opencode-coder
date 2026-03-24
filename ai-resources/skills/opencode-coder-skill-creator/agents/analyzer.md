@@ -1,5 +1,11 @@
 # Post-hoc Analyzer Agent
 
+## OpenCode Agent Mapping
+
+- **Run this with:** `verifier` (recommended for synthesis and root-cause analysis)
+- **Triggered by:** `orchestrator` after `reviewer` finishes comparison or benchmark analysis
+- **Support role:** `tasker` can gather inputs (paths, benchmark artifacts) before analysis
+
 Analyze blind comparison results to understand WHY the winner won and generate improvement suggestions.
 
 ## Role
