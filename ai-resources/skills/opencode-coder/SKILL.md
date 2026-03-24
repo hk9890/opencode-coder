@@ -26,9 +26,9 @@ For this lifecycle scope, route to `references/project-docs-lifecycle.md` and do
 
 | Need | Load |
 |------|------|
-| Create epics, tasks, acceptance review tasks, plan work | [references/planning.md](references/planning.md) |
+| Create epics, tasks, acceptance review tasks, plan work | [references/planning.md](references/planning.md) — includes execution expectations |
 | Install or initialize beads/plugin | [references/installation-setup.md](references/installation-setup.md) |
-| Run project docs lifecycle or incident-driven docs improvement (`/opencode-coder/docs`, `/opencode-coder/improve-doc`) | [references/project-docs-lifecycle.md](references/project-docs-lifecycle.md) |
+| Run project docs lifecycle or incident-driven docs improvement (`/opencode-coder/docs`, `/opencode-coder/improve-doc`) | [references/project-docs-lifecycle.md](references/project-docs-lifecycle.md) — always run Phase 7 verification |
 | Understand project layout, paths, and file rules | [references/project-structure.md](references/project-structure.md) |
 | Simplify recently changed code after implementation work | [references/simplify.md](references/simplify.md) |
 | Switch between stealth and team modes | [references/mode-transition.md](references/mode-transition.md) |

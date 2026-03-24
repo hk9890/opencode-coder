@@ -22,7 +22,7 @@ When overlap exists with older guidance (for example prior `fix-documentation` p
 3. Discover installed skills under `.opencode/skills/` when present.
 4. Classify topics as:
    - **doc-backed**: project-specific local doc exists
-   - **skill-only**: no local doc, but a matching reusable skill/workflow exists
+   - **skill-only**: no local doc, but a matching reusable skill/workflow is installed under `.opencode/skills/`
    - **neither**: no local doc and no relevant skill signal
 
 Standard topic set:
@@ -34,14 +34,38 @@ Standard topic set:
 - `MONITORING.md`
 - `PULL-REQUESTS.md`
 
+## User Communication During Docs Setup
+
+When the init flow reaches the docs step (especially with existing non-standard docs), communicate in **plain language** rather than internal terminology.
+
+**Do this:**
+> "I found some existing markdown files in your docs/ folder, but they don't follow the standard topic layout. I can inspect what's there and propose how to organize it — or you can skip this step for now and set up docs later."
+
+**Do NOT do this:**
+> "Detected doc-backed and skill-only classification mismatch in lifecycle Phase 1. Proceed with migration flow?"
+
+When proposing next steps, frame them as clear questions the user can answer without understanding plugin internals.
+
 ## Phase 2 — Bootstrap / Setup
 
 Use when active baseline is missing (no AGENTS and no lifecycle-aligned docs at active paths).
 
 1. Create minimal docs structure only where real project-specific content exists.
-2. Do not create hollow topic files for skill-only topics.
-3. Preserve mode-specific path rules from `project-structure.md`.
-4. Continue into AGENTS phase so routing reflects created/available docs and skills.
+2. Do not create hollow topic files for topics already covered by installed skills — if a skill under `.opencode/skills/` handles a topic (e.g., releases, monitoring), AGENTS.md should route to the skill instead of creating an empty `docs/RELEASING.md`.
+3. Do not create hollow topic files for topics with no project-specific content at all — omit them entirely.
+4. Preserve mode-specific path rules from `project-structure.md`.
+5. Continue into AGENTS phase so routing reflects created/available docs and skills.
+
+### Skipping the Docs Step
+
+The docs step during init is optional. If the user skips it:
+
+- **AGENTS.md still works** — it will be created/refreshed with routing entries to whatever already exists (installed skills, existing docs).
+- **Docs can be created later** — the user can run `/opencode-coder/docs` at any time to revisit the docs lifecycle.
+- **No loss of functionality** — beads tracking, mode selection, and all other plugin features work independently of the docs step.
+- **The skip is non-destructive** — existing docs are not modified or removed.
+
+Always offer "skip for now" as an explicit option when presenting the docs step.
 
 ## Phase 3 — Refresh / Update
 
@@ -83,23 +107,26 @@ Treat AGENTS as one lifecycle phase, not a standalone command family.
    - stealth: `.coder/AGENTS.md`
 5. Treat AGENTS maintenance here as the canonical workflow; do not route AGENTS lifecycle updates to deprecated standalone AGENTS-fix workflows.
 
-## Phase 7 — Verify / Report
+## Phase 7 — Verify / Report (MANDATORY)
 
-Before completion:
+> **This phase is not optional.** Every docs lifecycle run MUST end with verification. Skipping it is the most common failure mode — the baseline often catches stale references and broken links that skill users miss because they stop after Phase 6.
 
-- verify all referenced local file paths exist
-- verify AGENTS routes only to real docs/skills
-- verify skill-only topics are reported as routed-through-skill (no hollow doc implied)
-- verify mode/path consistency from `project-structure.md`
-- verify documented commands referenced by lifecycle-touched docs are still valid in this project
-- verify cross-reference links and anchors across lifecycle-touched docs resolve correctly
-- verify no stale references remain to retired lifecycle routes
+Before completion, verify:
+
+1. **File paths** — all referenced local file paths exist (glob or ls each path mentioned in AGENTS and docs)
+2. **AGENTS routes** — every route in AGENTS.md points to a real doc or installed skill (check `.opencode/skills/` for skill references)
+3. **Skill-only topics** — topics routed to skills have no hollow doc created; confirm the skill actually exists
+4. **Mode/path consistency** — file locations match the active mode from `project-structure.md`
+5. **Command validity** — documented commands referenced by lifecycle-touched docs still work in this project
+6. **Cross-reference links and anchors** — links and anchors across lifecycle-touched docs resolve correctly
+7. **No stale references** — no references remain to retired routes, renamed files, or removed skills
 
 Final report should include:
 
 - mode and active paths
 - executed phases
 - created/updated/skipped files with reason
+- verification results (all checks passed, or specific failures found)
 - unresolved follow-ups (if any)
 
 ## Incident-Driven Improvement (for `/opencode-coder/improve-doc`)

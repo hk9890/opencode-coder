@@ -250,6 +250,26 @@ These tasks represent **blocking conditions**, not approval states. Add comments
 
 **Format**: Always use numeric 0-4 or P0-P4. Do NOT use "high", "medium", "low" — bd does not accept string priorities.
 
+## Execution Expectations
+
+When the user asks you to create beads issues (epic, tasks, bugs), **create them immediately**. Do not describe what you would create and ask for permission. The user's request to plan work IS the permission.
+
+**Do this:**
+```
+User: "Create an epic and tasks for the search feature."
+→ Run bd create commands. Show the created issues afterward.
+```
+
+**Do NOT do this:**
+```
+User: "Create an epic and tasks for the search feature."
+→ "I would create an epic with these tasks... Shall I go ahead?"
+```
+
+The plan is the deliverable. Creating the issues IS the work. If the plan needs user input on specific ambiguities, create what you can and mark the ambiguous parts with `needs:discussion` + `status=blocked` — don't hold everything back waiting for permission to start.
+
+After creating the plan, show `bd ready` and `bd blocked` so the user can see what's actionable and what needs their input.
+
 ## Workflow Phases
 
 ### Discovery
