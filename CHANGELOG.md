@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- *(No unreleased changes yet)*
+## [0.36.0] - 2026-03-24
+
+### Added
+
+- **OpenCode skill-creator parity**: Completed the OpenCode-native skill creator workflow and captured parity/packaging evidence for the port.
+
+### Changed
+
+- **Bootstrap architecture split**: Separated core opencode-coder bootstrap behavior from resource-backed workflows to clarify startup responsibilities.
+- **Published command UX/content**: Reworked published command text and `/opencode-coder/init` guidance to be inspect-first, state-aware, and user-facing.
+
+### Fixed
+
+- **Unix socket detection in tests**: Corrected project-path test socket detection by using `fs.stat().isSocket()` semantics.
+- **Skill creator packaging reliability**: Replaced symlink-based wiring with vendored skill-creator files/resources for stable packaging.
+
+### Docs
+
+- **Planning and docs lifecycle guidance**: Tightened opencode-coder planning and documentation-lifecycle guidance across project docs.
+- **Packaging detail cleanup**: Trimmed overly specific skill-packaging details in overview/contributor docs.
+
+### Chore
+
+- **Skill creator resource snapshot**: Snapshotted skill creator resources to support the OpenCode port.
 
 ## [0.35.0] - 2026-03-23
 
