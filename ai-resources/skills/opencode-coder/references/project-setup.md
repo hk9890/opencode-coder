@@ -37,6 +37,9 @@ docs/
 These are the standard file names to use **when the project actually needs those topics documented**.
 They are not mandatory.
 
+For detailed writing guidance for each canonical project doc, see
+[project-doc-guidelines.md](project-doc-guidelines.md).
+
 If a topic is already fully covered by a reusable skill or workflow and the project has no extra local rules for it, do not create a duplicate project doc for that topic.
 In that case, `AGENTS.md` can simply route the reader to the relevant skill or workflow.
 

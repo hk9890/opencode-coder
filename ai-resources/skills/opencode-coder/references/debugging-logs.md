@@ -200,7 +200,7 @@ When analyzing logs for plugin issues:
 
 | Issue Type | What to Search For |
 |------------|-------------------|
-| Plugin not loading | "plugin", "knowledge-base", "coder" keywords |
+| Plugin not loading | "plugin", "skill", "command", "agent", "coder" keywords |
 | Plugin debug messages | "opencode-coder" (when `OPENCODE_CODER_DEBUG=1`) |
 | Command failures | "command", "error", stack traces |
 | bd CLI issues | "bd", "beads", "spawn", "ENOENT" |

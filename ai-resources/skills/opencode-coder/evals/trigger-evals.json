@@ -36,6 +36,26 @@
     "should_trigger": true
   },
   {
+    "query": "Can you run /opencode-coder/status and summarize whether this project is healthy, especially mode and aimgr readiness?",
+    "should_trigger": true
+  },
+  {
+    "query": "My setup seems broken after init. Please run /opencode-coder/doctor and walk me through troubleshooting before doing any repair actions.",
+    "should_trigger": true
+  },
+  {
+    "query": "I think this is a plugin defect, not app code. Use /opencode-coder/report-bug and help me collect the right reproduction evidence.",
+    "should_trigger": true
+  },
+  {
+    "query": "Please use /opencode-coder/dump-session so I can send diagnostics to maintainers, and tell me what privacy risks to review first.",
+    "should_trigger": true
+  },
+  {
+    "query": "A docs gap caused an incident yesterday. Run /opencode-coder/improve-doc so we update AGENTS routing and prevent this from happening again.",
+    "should_trigger": true
+  },
+  {
     "query": "We need to add three new API endpoints to our backend. Can you plan that as beads work with proper tasks, priorities, and an acceptance review before we close it out?",
     "should_trigger": true
   },

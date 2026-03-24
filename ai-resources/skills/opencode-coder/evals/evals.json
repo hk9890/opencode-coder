@@ -91,6 +91,123 @@
         "Suggests creating a beads task or follow-up for the deduplication if it is too large to do inline",
         "References the structured closing summary where deferred and ask-first items are listed"
       ]
+    },
+    {
+      "id": 7,
+      "prompt": "Can you run /opencode-coder/status for me in plain English? My repo has .coder/opencode-coder.yaml set to team mode and .coder/project.yaml exists, but I also exported OPENCODE_CODER_DISABLED=1 in this shell and now commands seem unavailable.",
+      "expected_output": "A status snapshot that reports hard-disabled override taking precedence while still clearly distinguishing saved mode from current effective mode.",
+      "files": [],
+      "expectations": [
+        "Reports OPENCODE_CODER_DISABLED as a hard override that wins over saved mode",
+        "Distinguishes saved project mode in yaml from effective runtime behavior in the current shell",
+        "Explains command availability impact under hard-disabled state",
+        "Provides concrete next step to re-enable behavior by unsetting the env var",
+        "Keeps output concise and status-oriented rather than turning into full troubleshooting"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Please run /opencode-coder/doctor. Startup logs show aimgr verify failing and resources look unhealthy, but I do not want automatic repair without confirmation because this is a shared dev environment.",
+      "expected_output": "A troubleshooting-first doctor response that gathers evidence, narrows likely causes, and asks before any repair action.",
+      "files": [],
+      "expectations": [
+        "Starts with diagnosis and evidence collection before proposing mutations",
+        "Uses status and troubleshooting references to structure checks (mode, project context, aimgr health, logs)",
+        "Asks for confirmation before running repair actions like aimgr repair or re-init",
+        "Separates likely root causes from confirmed findings",
+        "Provides an ordered next-step plan instead of one-shot speculative fixes"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I think this is an opencode-coder plugin bug. /opencode-coder/docs says docs are healthy, but /opencode-coder/improve-doc still reports stale routing for AGENTS.md in the same repo. Use /opencode-coder/report-bug and tell me what evidence you need before filing.",
+      "expected_output": "A report-bug workflow response that requests missing evidence, distinguishes plugin defect from project-content issue, and proposes a concrete bug report package.",
+      "files": [],
+      "expectations": [
+        "Asks for reproducible steps, expected versus actual, and plugin/version context",
+        "Requests concrete artifacts such as relevant logs or command outputs before filing",
+        "Explicitly evaluates plugin-bug versus project-doc-content mismatch",
+        "Produces or outlines a structured report payload rather than vague prose",
+        "Avoids claiming the bug is confirmed without sufficient evidence"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "Use /opencode-coder/dump-session so I can send diagnostics to maintainers. I need to know where the export goes and any privacy caveats before I share it.",
+      "expected_output": "A dump-session response that exports session data to the expected private path and clearly warns about sensitive contents before sharing.",
+      "files": [],
+      "expectations": [
+        "States that a session export is written and provides the output location",
+        "Warns that exports can include sensitive conversation content and metadata",
+        "Recommends review or redaction before sharing externally",
+        "Keeps workflow focused on diagnostics/support handoff",
+        "Does not imply public-safe storage by default"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "Yesterday an engineer followed docs/RELEASING.md and cut a bad release because our project had moved to the github-releases skill months ago. Please run /opencode-coder/improve-doc to fix this so the same incident does not repeat.",
+      "expected_output": "An incident-driven improve-doc response that identifies stale guidance, updates routing to the canonical skill, and defines verification steps.",
+      "files": [],
+      "expectations": [
+        "Classifies the incident as stale or misrouted docs rather than generic user error",
+        "Proposes concrete AGENTS and project-doc updates that route release work to github-releases skill",
+        "Avoids creating hollow duplicate release docs when skill routing is sufficient",
+        "Includes verification step (for example docs lifecycle verify/audit) after applying updates",
+        "Captures incident context so the doc change is tied to a real failure mode"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "I ran /opencode-coder/docs verify and it found two issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
+      "expected_output": "A docs lifecycle verification follow-up that fixes stale links, removes hollow docs where skill routing applies, and re-validates.",
+      "files": [],
+      "expectations": [
+        "Treats stale AGENTS links as a must-fix verification failure",
+        "Replaces hollow topic docs with explicit routing to installed skills when appropriate",
+        "Preserves project-specific content while slimming only duplicated generic sections",
+        "Calls for re-running verify/audit after edits to confirm clean state",
+        "Describes concrete file-level outcomes rather than generic advice"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "I want to switch from stealth mode to team mode, but our CI exports OPENCODE_CODER_DISABLED=1 during some jobs. How should /opencode-coder/init handle this transition and what should I expect until that env var is removed?",
+      "expected_output": "An init transition response that separates persisted mode changes from runtime hard-disable behavior and clarifies when commands will become active.",
+      "files": [],
+      "expectations": [
+        "Explains stealth-to-team transition effects on file paths and git visibility",
+        "Explains hard-disabled env var as higher precedence than saved mode transitions",
+        "Clarifies that init can persist intent but runtime commands remain unavailable while hard-disabled",
+        "Provides explicit next step for CI/runtime env cleanup",
+        "Avoids conflating saved disabled mode with env hard-disable override"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "I ran /simplify right after a tiny docs-only commit that just fixed punctuation, and it returned basically no actionable cleanup. Is that expected?",
+      "expected_output": "A simplify no-op response that confirms no-op is valid when there is no meaningful safe simplification and does not invent changes.",
+      "files": [],
+      "expectations": [
+        "Acknowledges that no-op outcomes are acceptable when recent changes do not contain worthwhile simplifications",
+        "Avoids fabricating refactors just to satisfy the workflow",
+        "Keeps scope anchored to recently changed files and commit intent",
+        "Provides a brief completion summary even when no edits are made",
+        "Reflects post-refactor simplify contract where command routing is thin and workflow semantics come from the skill reference"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "On my latest commit, two private helper functions in the same file parse the same JSON shape with slightly different error strings. If I run /simplify with focus on duplication cleanup, should that be treated as a safe-path change?",
+      "expected_output": "A simplify safe-path explanation that identifies local same-file deduplication as safe and keeps changes bounded.",
+      "files": [],
+      "expectations": [
+        "Identifies same-file private helper deduplication as a typical safe-path candidate",
+        "Keeps edits bounded to recently changed scoped files without widening across modules",
+        "Preserves behavior while reducing duplication",
+        "Explains why this differs from cross-module ask-first cases",
+        "Includes concise summary of what would be changed and why"
+      ]
     }
   ]
 }
