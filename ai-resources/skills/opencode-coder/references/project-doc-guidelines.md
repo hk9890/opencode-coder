@@ -327,6 +327,8 @@ Avoid:
 
 **Purpose**: repo-specific release companion to the generic release workflow.
 
+When a release skill owns the generic flow, this doc should make that dependency obvious and should not read like a complete standalone runbook.
+
 Include:
 
 - exact pre-release checks for this repo
@@ -347,6 +349,7 @@ Avoid:
 - long generic explanations of release theory
 - generic SemVer tutorial content beyond what is needed locally
 - repeating the whole release skill inside the project doc
+- wording that makes the doc look safe to follow without first loading the release skill or repo release command
 
 ### `docs/MONITORING.md`
 

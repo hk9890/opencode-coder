@@ -22,8 +22,8 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 
 ### Releases
 
-- Load the **github-releases** skill for release workflow.
-- Read [`docs/RELEASING.md`](docs/RELEASING.md) for repository-specific release checks and publishing details.
+- Start release work with `/opencode-coder-dev/release` or by loading the **github-releases** skill.
+- Treat [`docs/RELEASING.md`](docs/RELEASING.md) as a repo-specific companion only, not a standalone release runbook.
 
 ### Monitoring
 

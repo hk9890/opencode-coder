@@ -120,6 +120,7 @@ Before completion, verify:
 5. **Command validity** — documented commands referenced by lifecycle-touched docs still work in this project
 6. **Cross-reference links and anchors** — links and anchors across lifecycle-touched docs resolve correctly
 7. **No stale references** — no references remain to retired routes, renamed files, or removed skills
+8. **Skill-backed docs are not standalone traps** — when a topic depends on an installed skill (for example `RELEASING.md`), the doc clearly says to start with the skill or command entrypoint and does not read like a complete generic workflow
 
 Final report should include:
 
@@ -163,8 +164,9 @@ The command should combine both sources when available.
      - guidance exists but is too ambiguous to trigger correct action
 
 4. **Propose recurrence-prevention updates**
-   - Propose targeted, concrete changes that make the correct action easier to discover and apply next time.
-   - Prioritize fixes that improve routing and decision points, not cosmetic edits.
+    - Propose targeted, concrete changes that make the correct action easier to discover and apply next time.
+    - Prioritize fixes that improve routing and decision points, not cosmetic edits.
+    - For skill-backed topics, prefer explicit "start here" entrypoints and clear warnings against standalone use.
 
 5. **Apply/prepare updates with lifecycle consistency**
    - Reuse the same mode/path and verification rules from phases above.

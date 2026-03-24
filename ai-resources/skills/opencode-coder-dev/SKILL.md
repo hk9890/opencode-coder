@@ -12,7 +12,7 @@ Internal dev reference hub for the opencode-coder plugin repository. Load specif
 | Need | Load |
 |------|------|
 | Analyze OpenCode log files | [references/log-analyzer.md](references/log-analyzer.md) |
-| Release a new plugin version | [docs/RELEASING.md](../../docs/RELEASING.md) + `github-releases` skill |
+| Release a new plugin version | `/opencode-coder-dev/release` or `github-releases` skill, then [docs/RELEASING.md](../../docs/RELEASING.md) |
 | Import bugs from GitHub issues | Run `/opencode-coder-dev import-tasks` command |
 | Fix and triage open bugs | Run `/opencode-coder-dev fix-bugs` command |
 
@@ -30,7 +30,7 @@ Internal dev reference hub for the opencode-coder plugin repository. Load specif
 | Resource | Path |
 |----------|------|
 | Log analyzer script | `scripts/log-analyzer/` |
-| Release docs | `docs/RELEASING.md` |
+| Release companion doc | `docs/RELEASING.md` |
 | GitHub repo | `https://github.com/dynatrace-oss/opencode-coder` |
 | Dev commands | `.opencode/commands/opencode-coder-dev/` |
 | This skill | `.opencode/skills/opencode-coder-dev/` |

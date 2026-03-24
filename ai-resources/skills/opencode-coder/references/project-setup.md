@@ -317,6 +317,8 @@ So `docs/RELEASING.md` should usually answer questions like:
 
 It should not try to redefine the entire generic release workflow if the skill already covers that.
 
+A contributor should have to start from the release skill or release command first. If `docs/RELEASING.md` can be followed as a complete standalone runbook, the routing is too weak and the document is carrying the wrong scope.
+
 The same idea applies to other topics:
 
 - generic PR behavior in a skill, project-specific PR rules in `docs/PULL-REQUESTS.md`

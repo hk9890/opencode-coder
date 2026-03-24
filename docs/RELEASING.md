@@ -1,8 +1,17 @@
-# Release Process
+# Release Companion
 
-Use the **github-releases** skill for the generic release workflow.
+Start every release from `/opencode-coder-dev/release` or by loading the **github-releases** skill.
 
-This file only records the **repo-specific** checks, commands, and publishing quirks for `opencode-coder`.
+This file is intentionally incomplete on its own. It only records the **repo-specific** checks, commands, and publishing quirks for `opencode-coder`.
+
+Do not use this document as a standalone release checklist; the skill owns the generic workflow, validation structure, and recovery flow.
+
+## Supported Entrypoints
+
+- `/opencode-coder-dev/release` when releasing from this repository
+- the **github-releases** skill when you need the generic workflow directly
+
+Read this file after starting from one of those entrypoints.
 
 ## Release Entrypoint
 

@@ -16,7 +16,7 @@ These are the default project-memory docs for day-to-day work.
 | `OVERVIEW.md` | Project identity, concepts, repo map | Understanding what the repo does |
 | `CODING.md` | Safe change guidance and architecture boundaries | Editing code, resources, or repo workflows |
 | `TESTING.md` | Test selection and execution guidance | Verifying any change |
-| `RELEASING.md` | Repo-specific release rules | Cutting or validating a release |
+| `RELEASING.md` | Repo-specific release companion, not a standalone runbook | After starting the release workflow |
 | `MONITORING.md` | Logs, diagnostics, and evidence workflow | Debugging incidents or runtime behavior |
 | `PULL-REQUESTS.md` | Branch, PR, review, and merge rules | Opening or reviewing a PR |
 

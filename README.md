@@ -168,7 +168,7 @@ These commands are provided by this plugin and available in OpenCode:
 | `/opencode-coder-dev/analyze-logs` | Analyze OpenCode logs for errors (dev use) |
 | `/opencode-coder-dev/fix-bugs` | Triage and fix bugs from logs (dev use) |
 | `/opencode-coder-dev/import-tasks` | Import tasks from GitHub issues (dev use) |
-| `/opencode-coder-dev/release` | Run the release workflow (dev use) |
+| `/opencode-coder-dev/release` | Canonical repo release entrypoint (dev use) |
 
 ### Beads CLI Commands (requires `bd` installed separately)
 

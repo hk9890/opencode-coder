@@ -6,10 +6,12 @@ description: Create a new release for opencode-coder
 
 Create a new release for the opencode-coder plugin.
 
+This is the canonical release entrypoint for this repository.
+
 ## Instructions
 
 1. Load the `github-releases` skill
-2. **Before starting**: Read `docs/RELEASING.md` for opencode-coder-specific instructions
+2. Treat `docs/RELEASING.md` as the opencode-coder-specific companion only; do not use it as a standalone checklist
 3. Follow the skill's release workflow from references/release-workflow.md:
    - Quality gates (tests, lints, builds)
    - Version management (bump package.json)

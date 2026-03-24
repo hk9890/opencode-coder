@@ -170,7 +170,7 @@ If a testing skill is installed, add: `Load the **skill-name** skill for [descri
 ```markdown
 ## Releases
 
-Load the **release-skill-name** skill for release workflow. Read `{docs}RELEASING.md` for details.
+Start release work by loading the **release-skill-name** skill. Treat `{docs}RELEASING.md` as a repo-specific companion, not a standalone release runbook.
 ```
 
 #### Monitoring (conditional)

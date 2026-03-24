@@ -51,7 +51,7 @@ For implementation details, conventions, and architecture rules, see the focused
 - [Contributor workflow](../CONTRIBUTING.md)
 - [Coding guide](./CODING.md)
 - [Testing guide](./TESTING.md)
-- [Release process](./RELEASING.md)
+- [Release companion](./RELEASING.md)
 - [Monitoring and triage](./MONITORING.md)
 - [Pull request workflow](./PULL-REQUESTS.md)
 - [Project setup guide](./user-guide/getting-started.md)

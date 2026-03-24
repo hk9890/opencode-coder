@@ -11,3 +11,6 @@
 
 // Environment variable helpers
 export { isDebugLoggingEnabled, isPluginDisabled } from "./env";
+
+// Config key helpers
+export { normalizeConfigKey } from "./keys";
