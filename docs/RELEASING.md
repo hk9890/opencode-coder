@@ -31,7 +31,7 @@ bun run validate:isolated-pins  # REQUIRED: isolated harness/config pin drift gu
 bun run test:e2e
 ```
 
-All checks above must pass with no failures.
+All automated checks above must pass, but GitHub Actions does not currently enforce the private-package-dependent e2e/manual checks because `@hk9890/opencode-dynatrace` is not public yet, and that accepted gap remains until that changes.
 
 ## Type Checking
 
@@ -62,7 +62,7 @@ This project follows [Semantic Versioning](https://semver.org/):
 - [ ] Startup no-`.coder` regression test passes locally (`bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"`)
 - [ ] Type checking passes (`bun run typecheck`)
 - [ ] Build succeeds (`bun run build`)
-- [ ] E2E suite passes (`bun run test:e2e`)
+- [ ] E2E suite passes in an environment with access to `@hk9890/opencode-dynatrace` (`bun run test:e2e`)
 - [ ] [`../CHANGELOG.md`](../CHANGELOG.md) updated with new version and changes
 - [ ] No uncommitted changes before dispatch (`git status`)
 - [ ] CI green on main branch (`gh run list --limit 1`)

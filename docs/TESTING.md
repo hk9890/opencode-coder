@@ -95,6 +95,7 @@ Use them for:
 Prerequisites:
 - built plugin artifact (`bun run build`)
 - `opencode` available on `PATH`
+- E2E and isolated manual harness runs currently require access to `@hk9890/opencode-dynatrace`; if you do not have access, those checks cannot be run right now and that limitation is accepted.
 
 Commands:
 
