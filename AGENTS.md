@@ -8,9 +8,6 @@ OpenCode plugin for story-driven development with agents and commands.
 
 - Project overview and repository map: [`docs/OVERVIEW.md`](docs/OVERVIEW.md)
 - Contributor setup and local workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- This file is a routing layer; use topic docs below for detailed guidance.
-
-## Route by Task
 
 ### Coding
 
@@ -18,39 +15,29 @@ OpenCode plugin for story-driven development with agents and commands.
 
 ### Testing
 
-- Read [`docs/TESTING.md`](docs/TESTING.md) for test levels, commands, and local/e2e requirements.
+- Read [`docs/TESTING.md`](docs/TESTING.md) for test levels, commands, and local/e2e guidance.
 
 ### Releases
 
 - Load the **github-releases** skill for release workflow.
-- Read [`docs/RELEASING.md`](docs/RELEASING.md) for repository-specific release details.
+- Read [`docs/RELEASING.md`](docs/RELEASING.md) for repository-specific release checks and publishing details.
 
-### Monitoring and Triage
+### Monitoring
 
-- Load the **observability-triage** skill for logs/metrics triage.
-- Read [`docs/MONITORING.md`](docs/MONITORING.md) for project-specific monitoring sources and workflows.
+- Load the **observability-triage** skill for logs, metrics, and incident triage.
+- Read [`docs/MONITORING.md`](docs/MONITORING.md) for repo-specific evidence sources and analysis workflow.
 
 ### Pull Requests
 
-- Read [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md) for branch strategy, PR expectations, and merge rules.
+- Read [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md) for branch naming, PR expectations, and review conventions.
 
 ### Issue Tracking (beads)
 
 - Use `bd` for all project issue tracking.
 - Load the **opencode-coder** skill for issue-tracking, planning, setup, and beads workflow guidance.
-- Follow the opencode-coder workflow when creating or updating issues so project tracking stays consistent.
+- Keep issue descriptions, dependencies, and status aligned with the current plan.
 
-## OpenCode Reference Docs
-
-- [Commands](https://opencode.ai/docs/commands/) - Custom commands with arguments
-- [Agents](https://opencode.ai/docs/agents/) - Agent configuration and modes
-- [Skills](https://opencode.ai/docs/skills/) - Agent skills
-- [Plugins](https://opencode.ai/docs/plugins/) - Plugin development
-- [SDK](https://opencode.ai/docs/sdk/) - TypeScript SDK reference
-
-## Critical Global Rules
-
-### Required Session-End Workflow
+## Landing the Plane (Session Completion)
 
 When ending a work session, complete all steps:
 
@@ -68,19 +55,3 @@ When ending a work session, complete all steps:
 5. Verify no work is stranded locally.
 
 **Critical**: Work is not complete until `git push` succeeds.
-
-### Task Tracking Policy
-
-- Use **bd (beads)** for all task tracking.
-- Do not create markdown TODO trackers.
-- For agent/programmatic flows, use `--json` with `bd` commands.
-
-### Discovered Work Policy
-
-If you find unrelated problems while executing an issue, create a linked bug:
-
-```bash
-bd create --title="Found: <description>" --type=bug --priority=2 --description="Discovered while working on <task-id>. <details>"
-```
-
-Link discovered follow-up work with `discovered-from:<parent-id>` dependencies where appropriate.

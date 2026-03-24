@@ -48,11 +48,11 @@ npm install -g beads
 ### aimgr missing
 If \`aimgr\` is missing, explain both paths:
 - Standard path (recommended): install aimgr, then use \`aimgr init\` and \`aimgr install package/opencode-coder\`
-- Manual equivalent path: copy/install required resources manually under \`.opencode/\`:
-  - required skill entrypoint: \`.opencode/skills/opencode-coder/SKILL.md\`
-  - required commands: \`.opencode/commands/opencode-coder/{init,docs,improve-doc,doctor,status,report-bug,dump-session}.md\`
-  - required skill references: \`.opencode/skills/opencode-coder/references/{agents-md-template,bug-reporting,debugging-logs,installation-setup,mode-transition,planning,project-docs-lifecycle,project-setup,project-structure,session-dump,simplify,status-health,troubleshooting-patterns}.md\`
-  - optional (helpful, not Phase 2 required): \`.opencode/agents/{orchestrator,tasker,reviewer,verifier}.md\`
+- Manual equivalent path: install/copy the opencode-coder resource as one unit under \`.opencode/\`:
+  - required marker for the resource: \`.opencode/skills/opencode-coder/SKILL.md\`
+  - copy the full skill directory: \`.opencode/skills/opencode-coder/\`
+  - copy the matching command directory: \`.opencode/commands/opencode-coder/\`
+  - optional (helpful, not Phase 2 required): \`.opencode/agents/\`
 
 Do not auto-install aimgr. Ask user what path they want.
 
@@ -62,7 +62,7 @@ If aimgr is available and \`package/opencode-coder\` is missing, MUST ask via \`
 aimgr init && aimgr install package/opencode-coder
 \`\`\`
 
-If user declines, provide the same complete manual resource list above (required skill entrypoint + required commands + required references; optional agents optional) and explicitly state degraded Phase 1 continues until required surfaces are present.
+If user declines, provide the same manual resource guidance above (install the opencode-coder resource as one unit with SKILL.md marker) and explicitly state degraded Phase 1 continues until required surfaces are present.
 
 ## Step 3 — Bootstrap handoff
 

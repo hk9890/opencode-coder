@@ -29,10 +29,9 @@ src/
 ├── index.ts           # Plugin entry - minimal, delegates to packages
 ├── core/              # Foundation utilities (logger, version, parser)
 ├── config/            # Configuration loading and schema
-├── service/           # Main services (AimgrService, BeadsService, ProjectDetectorService, SessionExportService)
+├── service/           # Main services (PluginModeService, AimgrService, BeadsService, ProjectDetectorService, SessionExportService)
 ├── templates/         # Template generation for init guides
-├── tool/              # OpenCode tool definitions (coder tool)
-└── beads/             # Beads integration (detector)
+└── tool/              # OpenCode tool definitions (coder tool)
 ```
 
 ## 2. Package Index Pattern

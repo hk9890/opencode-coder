@@ -41,15 +41,15 @@ export type RuntimePhase = "bootstrap" | "normal";
 export interface RuntimePhaseClassification {
   /** Runtime phase based on actual required resource surfaces available on disk. */
   phase: RuntimePhase;
-  /** Missing required command/skill resource surfaces for Phase 2. */
+  /** Missing required high-level resource surfaces for Phase 2. */
   missingRequiredSurfaces: string[];
   /** Whether runtime should register bootstrap /opencode-coder/init in this session. */
   shouldExposeBootstrapInit: boolean;
   /** Whether runtime should rely on resource-backed opencode-coder commands. */
   shouldUseResourceBackedCommands: boolean;
-  /** Detailed command/skill surface checks used as source-of-truth for phase detection. */
+  /** User-visible required resource availability (collapsed to high-level signals). */
   requiredSurfaceAvailability: Record<string, boolean>;
-  /** Optional agent surfaces (diagnostic only; does not control phase). */
+  /** Optional resource availability (diagnostic only; does not control phase). */
   optionalAgentAvailability: Record<string, boolean>;
   /** Supporting diagnostics; these are secondary to resource-surface checks. */
   diagnostics: {
@@ -57,6 +57,7 @@ export interface RuntimePhaseClassification {
     packageYamlAvailable: boolean;
     coderPackageInstalled: boolean;
     resourcesHealthy: boolean;
+    opencodeCoderSkillMarkerAvailable: boolean;
   };
 }
 
@@ -373,36 +374,54 @@ export class ProjectDetectorService {
    * aimgr/package metadata remains diagnostic only and must not be the sole phase gate.
    */
   classifyRuntimePhase(overrides?: RuntimePhaseDiagnosticsOverride): RuntimePhaseClassification {
-    const requiredSurfaceAvailability: Record<string, boolean> = {};
+    const commandSurfaceAvailability: Record<string, boolean> = {};
 
     for (const command of PHASE2_REQUIRED_COMMAND_SURFACES) {
-      requiredSurfaceAvailability[`command/${command}`] = this.detectResourcePath(
+      commandSurfaceAvailability[`command/${command}`] = this.detectResourcePath(
         path.join(".opencode", "commands", "opencode-coder", `${command.replace("opencode-coder/", "")}.md`),
       );
     }
 
+    const skillSurfaceAvailability: Record<string, boolean> = {};
     for (const skill of PHASE2_REQUIRED_SKILL_SURFACES) {
-      requiredSurfaceAvailability[`skill/${skill}`] = this.detectResourcePath(
+      skillSurfaceAvailability[`skill/${skill}`] = this.detectResourcePath(
         path.join(".opencode", "skills", skill, "SKILL.md"),
       );
     }
 
+    const skillReferenceAvailability: Record<string, boolean> = {};
     for (const reference of PHASE2_REQUIRED_SKILL_REFERENCE_SURFACES) {
-      requiredSurfaceAvailability[`skill-reference/opencode-coder/${reference}`] = this.detectResourcePath(
+      skillReferenceAvailability[`skill-reference/opencode-coder/${reference}`] = this.detectResourcePath(
         path.join(".opencode", "skills", "opencode-coder", "references", reference),
       );
     }
 
-    const optionalAgentAvailability: Record<string, boolean> = {};
+    const rawOptionalAgentAvailability: Record<string, boolean> = {};
     for (const agent of PHASE2_OPTIONAL_AGENT_SURFACES) {
-      optionalAgentAvailability[`agent/${agent}`] = this.detectResourcePath(
+      rawOptionalAgentAvailability[`agent/${agent}`] = this.detectResourcePath(
         path.join(".opencode", "agents", `${agent}.md`),
       );
     }
 
-    const missingRequiredSurfaces = Object.entries(requiredSurfaceAvailability)
-      .filter(([, available]) => !available)
-      .map(([surface]) => surface);
+    const opencodeCoderSkillMarkerAvailable = Object.values(skillSurfaceAvailability).every(Boolean);
+
+    const requiredSurfacesComplete = [
+      ...Object.values(commandSurfaceAvailability),
+      ...Object.values(skillSurfaceAvailability),
+      ...Object.values(skillReferenceAvailability),
+    ].every(Boolean);
+
+    const optionalAgentsComplete = Object.values(rawOptionalAgentAvailability).every(Boolean);
+
+    const requiredSurfaceAvailability: Record<string, boolean> = {
+      "resource/opencode-coder": requiredSurfacesComplete,
+    };
+
+    const optionalAgentAvailability: Record<string, boolean> = {
+      "resource/opencode-coder/optional-agents": optionalAgentsComplete,
+    };
+
+    const missingRequiredSurfaces = requiredSurfacesComplete ? [] : ["resource/opencode-coder"];
 
     const phase: RuntimePhase = missingRequiredSurfaces.length === 0 ? "normal" : "bootstrap";
     const shouldExposeBootstrapInit = phase === "bootstrap";
@@ -425,6 +444,7 @@ export class ProjectDetectorService {
         packageYamlAvailable,
         coderPackageInstalled,
         resourcesHealthy,
+        opencodeCoderSkillMarkerAvailable,
       },
     };
 

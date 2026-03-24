@@ -266,6 +266,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
           packageYamlAvailable: projectContext?.aimgr.packageYaml ?? false,
           coderPackageInstalled: projectContext?.aimgr.coderPackageInstalled ?? false,
           resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? false,
+          opencodeCoderSkillMarkerAvailable: false,
         },
       };
 

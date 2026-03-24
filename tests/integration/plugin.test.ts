@@ -14,39 +14,17 @@ function createProjectContext(overrides?: Partial<ProjectContext>): ProjectConte
     shouldExposeBootstrapInit: false,
     shouldUseResourceBackedCommands: true,
       requiredSurfaceAvailability: {
-        "command/opencode-coder/init": true,
-        "command/opencode-coder/docs": true,
-        "command/opencode-coder/improve-doc": true,
-        "command/opencode-coder/doctor": true,
-        "command/opencode-coder/status": true,
-        "command/opencode-coder/report-bug": true,
-        "command/opencode-coder/dump-session": true,
-        "skill/opencode-coder": true,
-        "skill-reference/opencode-coder/agents-md-template.md": true,
-        "skill-reference/opencode-coder/bug-reporting.md": true,
-        "skill-reference/opencode-coder/debugging-logs.md": true,
-        "skill-reference/opencode-coder/installation-setup.md": true,
-        "skill-reference/opencode-coder/mode-transition.md": true,
-        "skill-reference/opencode-coder/planning.md": true,
-        "skill-reference/opencode-coder/project-docs-lifecycle.md": true,
-        "skill-reference/opencode-coder/project-setup.md": true,
-        "skill-reference/opencode-coder/project-structure.md": true,
-        "skill-reference/opencode-coder/session-dump.md": true,
-        "skill-reference/opencode-coder/simplify.md": true,
-        "skill-reference/opencode-coder/status-health.md": true,
-        "skill-reference/opencode-coder/troubleshooting-patterns.md": true,
+        "resource/opencode-coder": true,
       },
     optionalAgentAvailability: {
-      "agent/orchestrator": true,
-      "agent/tasker": true,
-      "agent/reviewer": true,
-      "agent/verifier": true,
+      "resource/opencode-coder/optional-agents": true,
     },
     diagnostics: {
       aimgrAvailable: true,
       packageYamlAvailable: true,
       coderPackageInstalled: true,
       resourcesHealthy: true,
+      opencodeCoderSkillMarkerAvailable: true,
     },
   };
 
@@ -399,10 +377,10 @@ describe("OpencodeCoder Plugin Integration", () => {
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["skill/opencode-coder"],
+            missingRequiredSurfaces: ["resource/opencode-coder"],
             requiredSurfaceAvailability: {
               ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "skill/opencode-coder": false,
+              "resource/opencode-coder": false,
             },
           },
         })
@@ -455,10 +433,10 @@ describe("OpencodeCoder Plugin Integration", () => {
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["skill/opencode-coder"],
+            missingRequiredSurfaces: ["resource/opencode-coder"],
             requiredSurfaceAvailability: {
               ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "skill/opencode-coder": false,
+              "resource/opencode-coder": false,
             },
           },
         })
@@ -472,7 +450,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("question()");
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("restart/reopen OpenCode");
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("Manual equivalent path");
-      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("required skill references");
+      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("install/copy the opencode-coder resource as one unit");
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -499,10 +477,10 @@ describe("OpencodeCoder Plugin Integration", () => {
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["command/opencode-coder/docs"],
+            missingRequiredSurfaces: ["resource/opencode-coder"],
             requiredSurfaceAvailability: {
               ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "command/opencode-coder/docs": false,
+              "resource/opencode-coder": false,
             },
           },
         })
@@ -794,16 +772,14 @@ describe("OpencodeCoder Plugin Integration", () => {
         shouldUseResourceBackedCommands: true,
         requiredSurfaceAvailability: createProjectContext().runtimePhase.requiredSurfaceAvailability,
         optionalAgentAvailability: {
-          "agent/orchestrator": false,
-          "agent/tasker": false,
-          "agent/reviewer": false,
-          "agent/verifier": false,
+          "resource/opencode-coder/optional-agents": false,
         },
         diagnostics: {
           aimgrAvailable: true,
           packageYamlAvailable: false,
           coderPackageInstalled: false,
           resourcesHealthy: false,
+          opencodeCoderSkillMarkerAvailable: true,
         },
       });
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);

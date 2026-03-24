@@ -21,39 +21,17 @@ function createProjectContextFixture(overrides?: Partial<ProjectContext>): Proje
       shouldExposeBootstrapInit: false,
       shouldUseResourceBackedCommands: true,
       requiredSurfaceAvailability: {
-        "command/opencode-coder/init": true,
-        "command/opencode-coder/docs": true,
-        "command/opencode-coder/improve-doc": true,
-        "command/opencode-coder/doctor": true,
-        "command/opencode-coder/status": true,
-        "command/opencode-coder/report-bug": true,
-        "command/opencode-coder/dump-session": true,
-        "skill/opencode-coder": true,
-        "skill-reference/opencode-coder/agents-md-template.md": true,
-        "skill-reference/opencode-coder/bug-reporting.md": true,
-        "skill-reference/opencode-coder/debugging-logs.md": true,
-        "skill-reference/opencode-coder/installation-setup.md": true,
-        "skill-reference/opencode-coder/mode-transition.md": true,
-        "skill-reference/opencode-coder/planning.md": true,
-        "skill-reference/opencode-coder/project-docs-lifecycle.md": true,
-        "skill-reference/opencode-coder/project-setup.md": true,
-        "skill-reference/opencode-coder/project-structure.md": true,
-        "skill-reference/opencode-coder/session-dump.md": true,
-        "skill-reference/opencode-coder/simplify.md": true,
-        "skill-reference/opencode-coder/status-health.md": true,
-        "skill-reference/opencode-coder/troubleshooting-patterns.md": true,
+        "resource/opencode-coder": true,
       },
       optionalAgentAvailability: {
-        "agent/orchestrator": true,
-        "agent/tasker": true,
-        "agent/reviewer": true,
-        "agent/verifier": true,
+        "resource/opencode-coder/optional-agents": true,
       },
       diagnostics: {
         aimgrAvailable: true,
         packageYamlAvailable: true,
         coderPackageInstalled: true,
         resourcesHealthy: true,
+        opencodeCoderSkillMarkerAvailable: true,
       },
     },
     ...overrides,
@@ -477,9 +455,10 @@ describe("ProjectDetectorService", () => {
       expect(result.shouldUseResourceBackedCommands).toBe(true);
       expect(result.shouldExposeBootstrapInit).toBe(false);
       expect(result.missingRequiredSurfaces).toEqual([]);
-      expect(result.optionalAgentAvailability["agent/orchestrator"]).toBe(false);
+      expect(result.optionalAgentAvailability["resource/opencode-coder/optional-agents"]).toBe(false);
       expect(result.diagnostics.aimgrAvailable).toBe(false);
       expect(result.diagnostics.coderPackageInstalled).toBe(false);
+      expect(result.diagnostics.opencodeCoderSkillMarkerAvailable).toBe(true);
 
       existsSyncSpy.mockRestore();
       execSyncSpy.mockRestore();
@@ -512,7 +491,7 @@ describe("ProjectDetectorService", () => {
       expect(result.phase).toBe("bootstrap");
       expect(result.shouldUseResourceBackedCommands).toBe(false);
       expect(result.shouldExposeBootstrapInit).toBe(true);
-      expect(result.missingRequiredSurfaces).toContain("command/opencode-coder/docs");
+      expect(result.missingRequiredSurfaces).toContain("resource/opencode-coder");
       expect(result.diagnostics.aimgrAvailable).toBe(true);
       expect(result.diagnostics.coderPackageInstalled).toBe(true);
 
@@ -541,7 +520,7 @@ describe("ProjectDetectorService", () => {
       expect(result.phase).toBe("bootstrap");
       expect(result.shouldUseResourceBackedCommands).toBe(false);
       expect(result.shouldExposeBootstrapInit).toBe(true);
-      expect(result.missingRequiredSurfaces).toContain("skill-reference/opencode-coder/status-health.md");
+      expect(result.missingRequiredSurfaces).toContain("resource/opencode-coder");
 
       existsSyncSpy.mockRestore();
       execSyncSpy.mockRestore();
