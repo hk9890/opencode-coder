@@ -6,8 +6,11 @@ OpenCode plugin for story-driven development with agents and commands.
 
 ## Start Here
 
+- Documentation taxonomy and canonical doc map: [`docs/README.md`](docs/README.md)
 - Project overview and repository map: [`docs/OVERVIEW.md`](docs/OVERVIEW.md)
 - Contributor setup and local workflow: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
+Prefer the canonical docs above for default task guidance. Brainstorming notes, design history, and test-report artifacts are secondary unless the task explicitly needs them.
 
 ### Coding
 

@@ -33,6 +33,19 @@ For implementation architecture and build guidance, see [`CODING.md`](CODING.md)
 | Reproduce an issue from a real local project | Manual testing with `--project-path` |
 | Compare installed published plugin vs current local implementation | Manual testing with `--plugin-source=installed-configured` then `local-build` |
 
+## Change-Type Matrix
+
+| Change type | Minimum checks | Usually add |
+|---|---|---|
+| Pure service/helper logic | `bun run typecheck`, targeted `bun test tests/unit/...` | adjacent unit tests for touched modules |
+| Startup / mode / detection changes | `bun run typecheck`, touched service unit tests, `bun test tests/integration/plugin.test.ts` | targeted e2e/manual check if CLI-visible behavior changed |
+| Published commands / skills / agents | `bun run typecheck`, `bun test tests/integration/plugin.test.ts` | targeted `bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario ..."` and manual semantic validation |
+| Docs lifecycle / init / improve-doc guidance | `bun test tests/unit/docs-lifecycle-contract.test.ts`, `bun test tests/integration/plugin.test.ts` | targeted e2e scenarios and manual acceptance |
+| Manual launcher / isolated harness changes | `bun test tests/integration/manual-launcher.test.ts`, `bun run validate:isolated-pins` | targeted e2e/manual run on a representative fixture |
+| Logs / diagnostics changes | targeted unit tests such as `tests/unit/log-analyzer.test.ts`, `tests/unit/collect-diagnostics.test.ts`, `tests/unit/coder-tool-logs.test.ts` | manual evidence collection if output shape changed |
+
+Use the smallest matrix row that still gives meaningful confidence. If a change spans multiple rows, run the union of their checks.
+
 ## Unit Tests
 
 Use unit tests for isolated code behavior with mocks.

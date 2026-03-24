@@ -6,6 +6,7 @@ OpenCode plugin for story-driven development with agents and commands.
 
 Use these docs as the primary navigation path:
 
+- [`docs/README.md`](docs/README.md) — documentation taxonomy and canonical operating docs
 - [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context and repository map
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor setup and workflow
 

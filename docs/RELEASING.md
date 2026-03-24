@@ -1,288 +1,112 @@
 # Release Process
 
 Use the **github-releases** skill for the generic release workflow.
-This file records the repository-specific commands, checks, and publishing details for this project.
 
-## Prerequisites
+This file only records the **repo-specific** checks, commands, and publishing quirks for `opencode-coder`.
 
-- Bun installed (latest version)
-- GitHub CLI authenticated: `gh auth status`
-- GitHub Packages write access
-- Clean working tree (no uncommitted changes)
+## Release Entrypoint
 
-## Build
+This repo releases through:
+
+- `.github/workflows/release.yml`
+
+Dispatch it with:
 
 ```bash
-bun install
-bun run build
+gh workflow run release.yml -f version="0.36.1" -f release_notes="## What's New
+- ..."
 ```
 
-Output: `dist/opencode-coder.js` compiled JavaScript bundle.
+The workflow:
 
-## Tests
+- updates `package.json`
+- creates tag `v<version>`
+- pushes `main` and the tag
+- publishes `@dynatrace-oss/opencode-coder` to GitHub Packages
+- creates the GitHub release
 
-Run release-critical checks before triggering a release:
+## Local Prerequisites
+
+- `bun install`
+- `gh auth status`
+- clean working tree
+- permission to publish GitHub Packages
+
+## Required Checks Before Dispatch
+
+Run these locally before triggering the release workflow:
 
 ```bash
+bun run typecheck
+bun run build
 bun run test:unit
 bun run test:integration
-bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"  # REQUIRED for startup no-.coder safeguard
-bun run validate:isolated-pins  # REQUIRED: isolated harness/config pin drift guard
+bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"
+bun run validate:isolated-pins
 bun run test:e2e
 ```
 
-All automated checks above must pass, but GitHub Actions does not currently enforce the private-package-dependent e2e/manual checks because `@hk9890/opencode-dynatrace` is not public yet, and that accepted gap remains until that changes.
+## Repo-Specific Release Checklist
 
-## Type Checking
+- update [`../CHANGELOG.md`](../CHANGELOG.md) under `## [Unreleased]`
+- confirm `main` is green: `gh run list --limit 1`
+- prepare release notes for the workflow input
+- do **not** pre-bump `package.json`; the workflow owns the version update
 
-```bash
-bun run typecheck
-```
+## Accepted Release Gap
 
-Must complete with no type errors.
+`bun run test:e2e` and isolated manual harness checks currently depend on access to `@hk9890/opencode-dynatrace`.
 
-## Version Files
+That means:
 
-- `package.json` — version field (auto-updated by workflow)
+- the checks are required for a real release environment
+- GitHub Actions does not fully enforce that private-package-dependent coverage yet
+- this gap is currently accepted and should be mentioned if release confidence is discussed
 
-## Versioning
+## Publishing and Auth Quirks
 
-This project follows [Semantic Versioning](https://semver.org/):
+Package target:
 
-- **Major (X.0.0)**: Breaking changes to plugin API or workflow
-- **Minor (0.X.0)**: New features, backward compatible
-- **Patch (0.0.X)**: Bug fixes, documentation updates
+- GitHub Packages
+- registry: `https://npm.pkg.github.com`
+- package: `@dynatrace-oss/opencode-coder`
 
-## Pre-Release Checklist
+Important auth note:
 
-- [ ] Dependencies installed (`bun install`)
-- [ ] Working tree and branch state checked (`git status --short --branch`)
-- [ ] All tests pass (`bun run test:unit && bun run test:integration`)
-- [ ] Isolated pin consistency passes (`bun run validate:isolated-pins`)
-- [ ] Startup no-`.coder` regression test passes locally (`bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"`)
-- [ ] Type checking passes (`bun run typecheck`)
-- [ ] Build succeeds (`bun run build`)
-- [ ] E2E suite passes in an environment with access to `@hk9890/opencode-dynatrace` (`bun run test:e2e`)
-- [ ] [`../CHANGELOG.md`](../CHANGELOG.md) updated with new version and changes
-- [ ] No uncommitted changes before dispatch (`git status`)
-- [ ] CI green on main branch (`gh run list --limit 1`)
-- [ ] Breaking changes documented with migration guide (if major/minor)
+- `gh auth login` is not always sufficient for **npm package reads**
+- installation verification may require a token with `read:packages`
+- do not assume a token that works for GitHub CLI also works for `npm install`
 
-## Release Process
+## Post-Release Verification
 
-### Automated Release via GitHub Actions (Recommended)
-
-1. **Determine version number** based on changes since last release:
-   ```bash
-   # View last release
-   gh release view
-   
-   # Compare changes since last tag
-   LAST_TAG=$(git describe --tags --abbrev=0)
-   git log $LAST_TAG..HEAD --oneline
-   ```
-
-2. **Prepare release notes**:
-   - Summarize key changes (features, fixes, breaking changes)
-   - Use markdown format
-   - Include migration guide if breaking changes exist
-
-3. **Trigger release workflow**:
-   ```bash
-   VERSION="0.35.0"
-   gh workflow run release.yml \
-     -f version="$VERSION" \
-     -f release_notes="## What's New
-   
-   ### Added
-   - New beads workflow features
-   - Enhanced documentation
-   
-   ### Fixed
-   - Bug fixes in CLI parsing
-   
-   ### Changed
-   - Updated dependencies"
-   ```
-
-4. **Monitor workflow**:
-   ```bash
-   gh run watch
-   ```
-
-5. **Verify release**:
-   ```bash
-   gh release view "v$VERSION"
-   ```
-
-### Manual Release (Fallback)
-
-Only use if GitHub Actions workflow fails or is unavailable.
+Run these after the workflow completes:
 
 ```bash
-# 1. Update version in package.json
-NEW_VERSION="0.35.0"
-bun -e "
-  const pkg = await Bun.file('package.json').json();
-  pkg.version = '$NEW_VERSION';
-  await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-
-# 2. Commit version bump
-git add package.json
-git commit -m "release: v$NEW_VERSION"
-
-# 3. Create and push tag
-git tag -a "v$NEW_VERSION" -m "v$NEW_VERSION"
-git push origin main --follow-tags
-
-# 4. Publish to GitHub Packages
-npm publish
-
-# 5. Create GitHub release
-gh release create "v$NEW_VERSION" \
-  --title "v$NEW_VERSION" \
-  --notes "Release notes here..."
+gh release view "v<version>"
+npm view @dynatrace-oss/opencode-coder@<version> --registry=https://npm.pkg.github.com
 ```
 
-## Post-Release
-
-After releasing:
-
-1. **Verify package metadata is published (existence check, no auth validation)**:
-   ```bash
-   npm view @dynatrace-oss/opencode-coder --registry=https://npm.pkg.github.com
-   ```
-
-   This confirms the package/version is visible in GitHub Packages metadata.
-   It does **not** prove your npm auth token has package read access.
-
-2. **Check GitHub release**:
-   ```bash
-   gh release view
-   ```
-
-3. **Test authenticated installation** in a test project:
-   ```bash
-   # In a clean test directory, use a token with read:packages scope
-   # (for GitHub Packages reads). Do not assume any gh auth token works.
-   TOKEN="<token-with-read:packages>"
-   printf '@dynatrace-oss:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "$TOKEN" > .npmrc
-   npm install @dynatrace-oss/opencode-coder@latest
-   ```
-
-   If your environment already has a known-good npm auth setup for `npm.pkg.github.com`,
-   you may use that instead of writing a temporary token.
-
-4. **Announce release** (if significant):
-   - Update project [`../README.md`](../README.md) if needed
-   - Post in relevant channels/forums
-   - Update documentation site
-
-## Rollback
-
-If a release has critical issues:
-
-### Unpublish from GitHub Packages
+Also verify an authenticated install in a clean test project using a token with package read access:
 
 ```bash
-# Delete the release
-VERSION="0.35.0"
-gh release delete "v$VERSION" -y
-
-# Delete the tag locally and remotely
-git tag -d "v$VERSION"
-git push origin ":refs/tags/v$VERSION"
-
-# Revert the version bump commit
-git revert HEAD
-git push origin main
+TOKEN="<token-with-read:packages>"
+printf '@dynatrace-oss:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "$TOKEN" > .npmrc
+npm install @dynatrace-oss/opencode-coder@<version>
 ```
 
-**Note**: npm unpublish is NOT available for GitHub Packages. You must publish a patch version with the fix instead.
+## If the Release Fails
 
-### Publish hotfix
+Use the generic recovery workflow from the **github-releases** skill, plus these repo-specific rules:
 
-```bash
-# Fix the issue, then release a patch version
-VERSION="0.35.1"
-gh workflow run release.yml \
-  -f version="$VERSION" \
-  -f release_notes="## Hotfix
+- if the workflow reports an existing tag, stop and inspect the existing tag/release before retrying
+- if publish succeeds but install verification fails with `E403 permission_denied`, suspect token scope before assuming the release is broken
+- if a bad release gets out, publish a new patch version; GitHub Packages does not support a simple npm unpublish rollback flow here
 
-### Fixed
-- Critical bug in v0.35.0"
-```
+## Workflow Reference
 
-## Troubleshooting
+When changing release behavior, review these files together:
 
-### Workflow fails: "Tag already exists"
-
-```bash
-# Check if tag exists
-VERSION="0.35.0"
-git tag -l "v$VERSION"
-
-# Delete tag if needed
-git tag -d "v$VERSION"
-git push origin ":refs/tags/v$VERSION"
-```
-
-### Workflow fails: "Tests failed"
-
-Fix the test failures before releasing:
-
-```bash
-# Run tests locally to reproduce
-bun run test:unit
-bun run test:integration
-
-# Fix issues, commit, push, then retry release
-```
-
-### Workflow fails: "Type check failed"
-
-```bash
-# Run type check locally
-bun run typecheck
-
-# Fix type errors, commit, push, then retry
-```
-
-### Publish fails: Authentication error
-
-Ensure GitHub Packages authentication is configured:
-
-```bash
-# Check authentication
-gh auth status
-
-# Re-authenticate if needed
-gh auth login
-```
-
-Important: `gh auth login` / `gh auth token` is **not** universally sufficient for npm
-GitHub Packages reads. The token used in `.npmrc` must include GitHub Packages read scope
-(for example `read:packages`). If install fails with `E403 permission_denied` while
-`npm view ... --registry=https://npm.pkg.github.com` succeeds, publication is likely fine
-and the problem is token scope/auth configuration.
-
-## Release Workflow Details
-
-The GitHub Actions workflow (`.github/workflows/release.yml`) performs:
-
-1. **Quality Gates**: Type check, build, unit tests, integration tests
-2. **Version Validation**: Ensures semver format, checks tag doesn't exist
-3. **Version Bump**: Updates package.json
-4. **Git Operations**: Commits version bump, creates tag, pushes to remote
-5. **Publish**: Publishes to GitHub Packages (@dynatrace-oss/opencode-coder)
-6. **GitHub Release**: Creates release with provided notes
-
-**Inputs:**
-- `version` (required): Semver version (e.g., "0.35.0")
-- `release_notes` (required): Markdown-formatted release notes
-
-**Outputs:**
-- Git tag: `v{version}`
-- GitHub Release: `https://github.com/dynatrace-oss/opencode-coder/releases/tag/v{version}`
-- NPM Package: `@dynatrace-oss/opencode-coder@{version}`
+- `.github/workflows/release.yml`
+- `package.json`
+- `CHANGELOG.md`
+- this file

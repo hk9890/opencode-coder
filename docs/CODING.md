@@ -1,342 +1,254 @@
 # Coding Guidelines
 
-For local onboarding and contribution flow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
-For test strategy and all test-level commands, see [`TESTING.md`](TESTING.md).
+For contributor workflow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
+For test selection and commands, see [`TESTING.md`](TESTING.md).
+
+This file is about **how to change this repo safely**.
 
 ## Build & Development Commands
 
-Use these while implementing changes:
-
 | Command | Purpose |
 |---|---|
-| `bun run build` | Build plugin artifact at `dist/opencode-coder.js` |
-| `bun run dev` | Run watch mode for iterative development |
-| `bun run typecheck` | Run TypeScript type checks |
-| `bun run opencode:dev` | Build and start OpenCode with DEBUG logging |
+| `bun run build` | Build the plugin artifact at `dist/opencode-coder.js` |
+| `bun run dev` | Watch-mode local development |
+| `bun run typecheck` | TypeScript safety check |
+| `bun run opencode:dev` | Build, then start OpenCode with DEBUG logging |
 
-## 1. Source Architecture Overview
+## Change-Type Matrix
 
-### Minimal Entry Point Pattern
+| Change type | Edit here first | Usually update together | Minimum checks |
+|---|---|---|---|
+| Startup or mode behavior | `src/index.ts` | `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`, `docs/OVERVIEW.md` if behavior changes | `bun run typecheck`, unit tests for touched services, `bun test tests/integration/plugin.test.ts` |
+| Service or helper logic | `src/service/`, `src/core/`, `src/config/` | matching unit tests under `tests/unit/` | `bun run typecheck`, targeted `bun test tests/unit/...` |
+| Published commands / skills / agents | `ai-resources/` | matching skill references, command wrappers, and user docs if behavior changed | `bun run typecheck`, `bun test tests/integration/plugin.test.ts`, targeted e2e/manual coverage |
+| Project-local dev resources | `.opencode/` | matching published docs or references only if they intentionally mirror each other | targeted tests for the affected workflow |
+| `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests | `bun run typecheck`, targeted unit tests |
+| Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests | targeted unit/integration tests, `bun run validate:isolated-pins` when harness pins change |
+| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` | synced copies under `docs/user-guide/` in the same change | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
 
-- `src/index.ts` is intentionally minimal and startup-focused
-- Delegates ALL functionality to domain packages
-- Only orchestrates initialization order and wires dependencies
+## Repository Structure
 
-### Package Structure
-
-```
+```text
 src/
-├── index.ts           # Plugin entry - minimal, delegates to packages
-├── core/              # Foundation utilities (logger, version, parser)
-├── config/            # Configuration loading and schema
-├── service/           # Main services (PluginModeService, AimgrService, BeadsService, ProjectDetectorService, SessionExportService)
-├── templates/         # Template generation for init guides
-└── tool/              # OpenCode tool definitions (coder tool)
+  index.ts                 plugin startup and mode orchestration
+  core/                    shared low-level helpers
+  config/                  env/config loading
+  service/                 domain services
+  tool/                    exposed tool implementations
+  templates/               generated setup/init text
+ai-resources/              published commands, skills, and agents
+.opencode/                 repo-local development resources (not published)
+scripts/                   diagnostics, harness, and maintenance tooling
+tests/                     unit, integration, and e2e coverage
+docs/                      canonical repo docs, user guides, and reference material
 ```
 
-## 2. Package Index Pattern
+## Architecture Boundaries
 
-Every package has an `index.ts` that exposes its public interface:
+### 1. Keep `src/index.ts` orchestration-only
 
-```typescript
-// Example from src/core/index.ts
-export { createLogger, SERVICE_NAME } from "./logger";
-export type { Logger } from "./logger";
+`src/index.ts` should stay small and startup-focused.
 
-export { getVersionInfo } from "./version";
-export type { VersionInfo } from "./version";
+It should:
 
-export { parseFrontmatter } from "./parser";
-export type { Frontmatter, ParsedDocument } from "./parser";
+- resolve startup mode
+- wire services together
+- decide whether the plugin is active
+- sequence startup side effects
 
+It should **not** absorb domain logic that belongs in services.
+
+### 2. Startup side effects happen only after mode is resolved
+
+When changing startup behavior, preserve these invariants:
+
+- hard-disabled state wins over saved mode
+- fresh or saved-disabled projects must not trigger active side effects
+- inactive startup paths must not create active-project artifacts by accident
+- project detection should use the final startup health result, not a stale pre-repair snapshot
+
+Start with:
+
+- `src/index.ts`
+- `src/service/plugin-mode-service.ts`
+- `src/service/project-detector-service.ts`
+- `src/service/aimgr-service.ts`
+
+Check against:
+
+- `tests/unit/service/plugin-mode-service.test.ts`
+- `tests/unit/service/project-detector-service.test.ts`
+- `tests/unit/service/aimgr-service.test.ts`
+- `tests/integration/plugin.test.ts`
+
+### 3. Import through package indexes
+
+When a package has an `index.ts`, import through the package boundary rather than internal files.
+
+Good:
+
+```ts
+import { createLogger } from "./core"
 ```
 
-### Rules
+Avoid:
 
-- Import from package index, not internal files: `import { Logger } from "./core"` ✅
-- Never import from internal files: `import { Logger } from "./core/logger"` ❌
-- Export both values AND types explicitly
-- Keep implementation details private (not exported)
-
-## 3. Testing Boundary
-
-Keep code-level testing strategy in [`TESTING.md`](TESTING.md):
-
-- unit test patterns and commands
-- integration/e2e setup and execution
-- test fixtures/helpers organization
-
-This keeps `CODING.md` focused on implementation architecture and patterns.
-
-
-## PluginModeService
-
-### Purpose
-
-The `PluginModeService` resolves whether the plugin should behave as:
-
-- `hard-disabled` via `OPENCODE_CODER_DISABLED`
-- saved `disabled`
-- active `stealth`
-- active `team`
-- `not-enabled` for fresh projects with no explicit opt-in yet
-
-### Key Features
-
-- Reads explicit saved mode from `.coder/opencode-coder.yaml`
-- Gives the env-var hard override highest precedence
-- Infers legacy active installs from old markers and persists migrated state
-- Treats corrupted saved mode files as init-only with warning logs
-
-### Architectural Boundary
-
-- `src/index.ts` owns startup-mode resolution and branching
-- services should consume the already-resolved active/inactive decision
-- fresh and saved-disabled startup paths must not trigger project-local side effects
-
-## AimgrService
-
-### Purpose
-
-The `AimgrService` provides automatic integration with aimgr (AI Resource Manager) for discovering and installing AI resources when the plugin starts in an active mode.
-
-### Key Features
-
-- **Auto-detection**: Checks if aimgr CLI is installed on PATH
-- **Auto-initialization**: Runs `aimgr init` if no `ai.package.yaml` exists
-- **Package installation**: Installs `opencode-coder` package if available
-- **Resource verification**: Runs `aimgr verify` to check resource health
-- **Resource repair**: Runs `aimgr repair` to fix resource issues
-- **User notifications**: Shows toast messages for initialization status
-- **Graceful degradation**: All errors are logged but don't prevent plugin loading
-
-### Architecture
-
-```typescript
-class AimgrService {
-  // Detection methods (synchronous)
-  isAimgrAvailable(): boolean
-  hasPackageYaml(): boolean
-  isPackageAvailable(packageName: string): boolean
-
-  // Action methods (synchronous, throw on error)
-  initializeAimgr(): void
-  installPackage(packageName: string): void
-
-  // Resource health methods (synchronous, return null when aimgr unavailable)
-  verifyResources(): any   // runs `aimgr verify --format json`
-  repairResources(): any   // runs `aimgr repair --format json`
-  verifyAndAutoRepairResources(): Promise<AimgrStartupHealthResult>
-
-  // Main orchestration (async, catches all errors)
-  autoInitialize(): Promise<void>
-}
+```ts
+import { createLogger } from "./core/logger"
 ```
 
-### Integration Pattern
+Keep public exports explicit and keep implementation details private.
 
-The service is instantiated in `src/index.ts` and participates in startup sequencing only after the plugin mode is resolved as active:
+### 4. Keep published and local resources separate
 
-```typescript
-// Create service
-const aimgrService = new AimgrService({ logger: log, client, workdir });
+- `ai-resources/` ships with the plugin
+- `.opencode/` exists for developing this repository itself
 
-// Startup flow
-await aimgrService.autoInitialize();
-const health = await aimgrService.verifyAndAutoRepairResources();
-detectorService.detectAndWrite(versionInfo, {
-  resourcesHealthyOverride: health.verifyResult === null ? undefined : health.resourcesHealthy,
-});
-```
+If a change should affect plugin users, edit `ai-resources/`.
+If it only helps maintain this repo, keep it under `.opencode/`.
 
-This sequencing ensures that:
-- project detection uses the final startup health result
-- automatic `aimgr repair` can affect `ecosystemReady`
-- the config hook sees the current readiness state instead of a stale snapshot
-- inactive startup paths avoid aimgr side effects entirely
+### 5. Keep commands thin and workflow logic in skills/references
 
-### Testing
+If a command and a skill cover the same workflow:
 
-- All methods are unit tested with mocks for `execSync` and `fs.existsSync`
-- Tests verify both success and failure scenarios
-- `autoInitialize` is tested for all code paths (skip, init, install, error)
-- `verifyAndAutoRepairResources` is tested for healthy, repaired, and still-unhealthy flows
-- See `tests/unit/service/aimgr-service.test.ts`
+- command file = thin entrypoint
+- `SKILL.md` = workflow routing
+- reference docs = durable detail
 
-### Error Handling
+See [`docs/design/how-to-write-commands.md`](design/how-to-write-commands.md).
 
-- Individual methods (`initializeAimgr`, `installPackage`) throw errors
-- `verifyResources` and `repairResources` return `null` instead of throwing
-- `verifyAndAutoRepairResources` returns the post-repair verification result as the authoritative startup health signal
-- `autoInitialize` catches all errors and logs them
-- Plugin continues loading even if aimgr operations fail
-- This ensures aimgr is optional and doesn't break the plugin
+### 6. Respect canonical + synced doc pairs
 
+Some user-guide docs are synced copies of canonical skill references.
 
-## ProjectDetectorService
+When you change one of these areas:
 
-### Purpose
+1. update the canonical source under `ai-resources/skills/opencode-coder/references/`
+2. mirror the repo-local copy under `docs/user-guide/`
+3. keep both in the same change
 
-The `ProjectDetectorService` detects facts about the current project environment and writes them to `.coder/project.yaml` only during active startup.
+Examples:
 
-### Key Features
+- `ai-resources/skills/opencode-coder/references/project-setup.md`
+- `docs/user-guide/project-setup.md`
+- `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md`
+- `docs/user-guide/project-doc-guidelines.md`
 
-- **Git detection**: Checks for `.git/` directory
-- **Beads detection**: Checks for `.beads/` directory, stealth mode, and bd CLI availability
-- **aimgr detection**: Checks for aimgr CLI, `ai.package.yaml`, and resource health
-- **Mode derivation**: Derives `stealth | team | uninitialized` from detector facts, or accepts an active startup-mode override from `src/index.ts`
-- **Context writing**: Writes full `ProjectContext` to `.coder/project.yaml` as YAML only after startup is already active
+## How to Change This Repo Safely
 
-### Architecture
+### Startup / mode / detection work
 
-```typescript
-class ProjectDetectorService {
-  // Git detection (synchronous)
-  detectGitInitialized(): boolean
+Edit here first:
 
-  // Beads detection (synchronous)
-  detectBeadsInitialized(): boolean
-  detectStealthMode(): boolean
-  detectBdCliInstalled(): boolean
+- `src/index.ts`
+- `src/service/plugin-mode-service.ts`
+- `src/service/project-detector-service.ts`
 
-  // aimgr detection (synchronous)
-  detectAimgrInstalled(): boolean
-  detectPackageYaml(): boolean
-  detectCoderPackageInstalled(): boolean
-  detectResourcesHealthy(aimgrInstalled?: boolean): boolean
+Also inspect:
 
-  // Mode derivation (synchronous, pure)
-  deriveMode(beadsInitialized: boolean, stealthMode: boolean): "stealth" | "team" | "uninitialized"
-  deriveEcosystemReady(...): boolean
-  deriveInstallReady(...): boolean
+- `src/service/aimgr-service.ts`
+- `tests/integration/plugin.test.ts`
+- `docs/OVERVIEW.md` or `README.md` if behavior visible to users changed
 
-  // YAML writing (synchronous)
-  writeProjectContext(context: ProjectContext): void
+Good rule: if startup behavior changes, verify both the pure service logic and the end-to-end plugin path.
 
-  // Main orchestration (synchronous, never throws)
-  detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): ProjectContext
-}
-```
+### Published command / skill / agent work
 
-### ProjectContext Shape
+Edit here first:
 
-```typescript
-interface ProjectContext {
-  mode: "stealth" | "team" | "uninitialized";
-  installReady: boolean;   // all prereqs for /init in place
-  ecosystemReady: boolean; // all ecosystem components installed and healthy
-  git: {
-    initialized: boolean;
-  };
-  beads: {
-    initialized: boolean;
-    stealthMode: boolean;
-    bdCliInstalled: boolean;
-  };
-  aimgr: {
-    installed: boolean;
-    packageYaml: boolean;
-    resourcesHealthy: boolean;
-    coderPackageInstalled: boolean;
-  };
-  pluginVersion: string;
-}
-```
+- `ai-resources/commands/`
+- `ai-resources/skills/`
 
-### Integration Pattern
+Also inspect:
 
-The service is called from `src/index.ts` during active plugin startup:
+- `tests/integration/plugin.test.ts`
+- `tests/e2e/opencode.test.ts`
+- `docs/design/how-to-write-commands.md`
+- user docs if user-facing behavior changed
 
-```typescript
-const detectorService = new ProjectDetectorService({ logger: log });
-const health = await aimgrService.verifyAndAutoRepairResources();
-const projectContext = detectorService.detectAndWrite(versionInfo, {
-  startupMode: "stealth" | "team",
-  resourcesHealthyOverride: health.verifyResult === null ? undefined : health.resourcesHealthy,
-});
-```
+Good rule: do not copy large workflow logic into command wrappers when the skill should own it.
 
-When `resourcesHealthyOverride` is provided, the detector uses that value instead of running
-its own `aimgr verify` call. This keeps startup health evaluation authoritative and avoids
-double-checking resources after repair. When `detectAndWrite` already knows whether aimgr is
-installed, it passes that result through to `detectResourcesHealthy` so startup does not shell
-out to `command -v aimgr` a second time.
+### Service logic work
 
-Inactive startup paths should skip `detectAndWrite` entirely so fresh or saved-disabled projects
-do not create `.coder/project.yaml`.
+Edit here first:
 
-### Testing
+- `src/service/*.ts`
+- `src/core/*.ts`
+- `src/config/*.ts`
 
-- See `tests/unit/service/project-detector-service.test.ts`
+Also inspect:
 
+- `tests/unit/service/*.test.ts`
+- adjacent unit tests such as `tests/unit/parser.test.ts`, `tests/unit/env.test.ts`, `tests/unit/logger.test.ts`
 
-## SessionExportService
+Good rule: make the smallest domain-local change you can before widening behavior elsewhere.
 
-### Purpose
+### `coder` tool / session export work
 
-The `SessionExportService` fetches session data from the OpenCode SDK and serializes it to JSON files on disk. Used by the `coder` tool and `/dump-session` command.
+Edit here first:
 
-### Key Features
+- `src/tool/coder-tool.ts`
+- `src/service/session-export-service.ts`
 
-- **Session info**: Fetches metadata (id, title, timestamps, summary)
-- **Message history**: Fetches full conversation with all message parts
-- **File diffs**: Fetches file diffs made during the session
-- **Token summary**: Aggregates token usage and cost across all assistant messages
-- **Full export**: Writes session data to `session.json` in a specified directory
-- **Formatted output**: Human-readable formatters for info, tokens, and session list
+Also inspect:
 
-### Architecture
+- `tests/unit/service/session-export-service.test.ts`
+- `tests/unit/coder-tool-logs.test.ts`
+- `docs/MONITORING.md`
 
-```typescript
-class SessionExportService {
-  // Data fetching (async)
-  getSessionInfo(sessionID: string): Promise<unknown>
-  getSessionMessages(sessionID: string): Promise<unknown[]>
-  getSessionDiffs(sessionID: string): Promise<unknown>
-  getTokenSummary(sessionID: string): Promise<TokenSummary>
-  listSessions(): Promise<unknown[]>
+### Diagnostics / logging / harness work
 
-  // Export (async)
-  exportSession(sessionID: string, outputDir: string): Promise<ExportResult>
+Edit here first:
 
-  // Formatting (async, returns human-readable strings)
-  formatSessionInfo(sessionID: string): Promise<string>
-  formatTokenSummary(sessionID: string): Promise<string>
-  formatSessionList(): Promise<string>
-}
-```
+- `src/core/opencode-log-paths.ts`
+- `scripts/log-analyzer/`
+- `scripts/collect-diagnostics/`
+- `scripts/manual-test/`
 
-### Key Types
+Also inspect:
 
-```typescript
-interface TokenSummary {
-  totalInput: number;
-  totalOutput: number;
-  totalReasoning: number;
-  totalCacheRead: number;
-  totalCacheWrite: number;
-  totalCost: number;
-}
+- `tests/unit/log-analyzer.test.ts`
+- `tests/unit/collect-diagnostics.test.ts`
+- `tests/unit/opencode-log-paths.test.ts`
+- `tests/integration/manual-launcher.test.ts`
+- `tests/unit/validate-isolated-pins.test.ts`
 
-interface ExportResult {
-  outputPath: string;
-  messageCount: number;
-  totalTokens: number;
-  totalCost: number;
-}
-```
+Good rule: if a change affects isolated harness behavior or pins, run `bun run validate:isolated-pins`.
 
-### Integration Pattern
+### Docs lifecycle / project-doc work
 
-```typescript
-const sessionExportService = new SessionExportService({ logger: log, client });
+Edit here first:
 
-// Export current session to disk
-const result = await sessionExportService.exportSession(sessionID, outputDir);
-// result.outputPath → path to written session.json
-```
+- `ai-resources/skills/opencode-coder/references/`
+- `docs/user-guide/` when the file is a synced local copy
 
-### Testing
+Also inspect:
 
-- No dedicated `SessionExportService` unit test exists yet in `tests/unit/service/`
-- When updating this service, add focused unit coverage alongside other service tests
+- `tests/unit/docs-lifecycle-contract.test.ts`
+- `docs/README.md`
+- `AGENTS.md`
+
+Good rule: keep routing docs short and move deep detail into focused docs.
+
+## Files That Often Change Together
+
+| If you touch | Also check |
+|---|---|
+| `src/index.ts` | `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`, `tests/integration/plugin.test.ts` |
+| `src/service/aimgr-service.ts` | `src/service/project-detector-service.ts`, `tests/unit/service/aimgr-service.test.ts`, startup-related docs |
+| `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, `docs/MONITORING.md`, unit tests |
+| `scripts/log-analyzer/` | `docs/MONITORING.md`, `tests/unit/log-analyzer.test.ts` |
+| `scripts/validate-isolated-pins.ts` or harness setup | `docs/TESTING.md`, `tests/unit/validate-isolated-pins.test.ts`, `tests/integration/manual-launcher.test.ts` |
+| `ai-resources/skills/opencode-coder/references/project-setup.md` | `docs/user-guide/project-setup.md` |
+| `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md` | `docs/user-guide/project-doc-guidelines.md` |
+
+## Representative References
+
+- `tests/integration/plugin.test.ts` — plugin registration, gating, and startup behavior
+- `tests/integration/manual-launcher.test.ts` — manual launcher/harness integration behavior
+- `tests/e2e/opencode.test.ts` — real CLI startup and runtime exposure
+- `tests/unit/service/*.test.ts` — service-level unit patterns
+- `docs/design/how-to-write-commands.md` — command-authoring conventions
+- `docs/README.md` — documentation taxonomy and canonical doc map
+
+If you change behavior that a maintainer would need to remember later, update the matching canonical doc in the same change.

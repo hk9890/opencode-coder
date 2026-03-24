@@ -35,8 +35,18 @@ At a high level, the codebase is organized as a small startup entry point plus f
 
 For implementation details, conventions, and architecture rules, see the focused coding guide instead of this overview.
 
+## Common change areas
+
+- **Startup and mode behavior** — `src/index.ts`, `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`
+- **Published commands, skills, and agents** — `ai-resources/`
+- **Project-local plugin-dev resources** — `.opencode/`
+- **Diagnostics and log tooling** — `src/core/opencode-log-paths.ts`, `scripts/log-analyzer/`, `scripts/collect-diagnostics/`
+- **Testing harness and fixtures** — `tests/`, `scripts/manual-test/`, `docs/TESTING.md`
+- **Docs lifecycle and project-doc guidance** — `ai-resources/skills/opencode-coder/references/`, `docs/user-guide/`
+
 ## Where to go next
 
+- [Documentation taxonomy](./README.md)
 - [Agent routing entrypoint](../AGENTS.md)
 - [Contributor workflow](../CONTRIBUTING.md)
 - [Coding guide](./CODING.md)
