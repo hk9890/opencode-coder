@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-03-31
+
+### Added
+
+- **Config key normalization helper**: Added and exported `normalizeConfigKey()` with unit-test coverage to keep config-key handling consistent.
+
+### Changed
+
+- **Runtime resource diagnostics**: Simplified runtime diagnostics to high-level `resource/opencode-coder` signals and streamlined manual bootstrap guidance.
+
+### Docs
+
+- **Release and docs guidance clarity**: Clarified canonical documentation ownership, release entry points, and the accepted limitation around private-package access for release-test coverage.
+
 ## [0.36.0] - 2026-03-24
 
 ### Added
