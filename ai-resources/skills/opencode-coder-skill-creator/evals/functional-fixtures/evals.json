@@ -1,0 +1,73 @@
+{
+  "skill_name": "opencode-coder-skill-creator",
+  "evals": [
+    {
+      "id": 201,
+      "name": "successful before+after with bare workspace proof",
+      "prompt": "Return a short confirmation message.",
+      "files": [
+        "evals/functional-fixtures/input/hydrated.txt"
+      ],
+      "hooks": {
+        "before_run": [
+          {
+            "script": "evals/functional-fixtures/hooks/assert-bare-workspace.sh"
+          }
+        ],
+        "after_run": [
+          {
+            "name": "write success marker",
+            "script": "evals/functional-fixtures/hooks/after-success.sh"
+          }
+        ]
+      }
+    },
+    {
+      "id": 202,
+      "name": "before failure skips model but still runs after",
+      "prompt": "This prompt should never execute.",
+      "files": [],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "intentional before failure",
+            "script": "evals/functional-fixtures/hooks/before-fail.sh"
+          },
+          {
+            "name": "should be skipped",
+            "script": "evals/functional-fixtures/hooks/before-should-not-run.sh"
+          }
+        ],
+        "after_run": [
+          {
+            "name": "after runs even on setup failure",
+            "script": "evals/functional-fixtures/hooks/after-on-before-failure.sh"
+          }
+        ]
+      }
+    },
+    {
+      "id": 203,
+      "name": "after failure recorded while later after hook still runs",
+      "prompt": "Return another short confirmation message.",
+      "files": [],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "prepare marker directory",
+            "script": "evals/functional-fixtures/hooks/before-pass.sh"
+          }
+        ],
+        "after_run": [
+          {
+            "name": "intentional after failure",
+            "script": "evals/functional-fixtures/hooks/after-fail.sh"
+          },
+          {
+            "script": "evals/functional-fixtures/hooks/after-write-late.sh"
+          }
+        ]
+      }
+    }
+  ]
+}

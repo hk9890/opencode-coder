@@ -1,0 +1,24 @@
+{
+  "skill_name": "opencode-coder-skill-creator",
+  "evals": [
+    {
+      "id": 100,
+      "prompt": "I need to plan a backend feature in beads. Create an epic plus child tasks and call out anything that still needs discussion before execution.",
+      "expected_output": "A planning-style response that can execute against workspace-local beads state initialized by hooks.",
+      "files": [],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "setup local beads workspace",
+            "script": "evals/hooks/setup-local-beads-workspace.sh"
+          }
+        ]
+      },
+      "expectations": [
+        "Planning-style eval uses workspace-local beads state prepared in before_run",
+        "Hook artifacts prove git and beads were initialized inside the disposable workspace",
+        "No repository-specific absolute paths or fixed issue IDs are required"
+      ]
+    }
+  ]
+}

@@ -190,6 +190,38 @@ Save test cases to `evals/evals.json`. Don't write assertions yet — just the p
 
 See `references/schemas.md` for the full schema (including the `assertions` field, which you'll add later).
 
+### Files vs hooks in functional evals
+
+Use `files` when the input is static and can be declared upfront (fixtures, sample docs, templates). The runner hydrates these files into the eval workspace before execution.
+
+Use `hooks` when setup/teardown is procedural (for example generating dynamic fixtures, initializing local state, or collecting artifacts).
+
+- `hooks.before_run`: setup scripts, run sequentially before model execution
+- `hooks.after_run`: teardown/collection scripts, run sequentially after model execution attempt
+
+Hook entries support:
+
+- `script` (required): path relative to the skill root
+- `args` (optional): argument array
+- `timeout_seconds` (optional): defaults to 30
+- `name` (optional): defaults to script basename
+
+Execution contract for functional hooks:
+
+- Each run starts in a fresh disposable workspace
+- Starting content is only runner-managed runtime skill injection + hydrated eval-declared files
+- No git, beads, or project-specific state is present unless hooks create it
+- Hook cwd is the workspace root used for skill execution
+- Per-hook env overrides are not supported in v1
+- Standard env vars are injected: `EVAL_ID`, `EVAL_NAME`, `EVAL_PHASE`, `EVAL_WORKSPACE`, `EVAL_ARTIFACTS_DIR`, `EVAL_SKILL_ROOT`
+
+Failure semantics:
+
+- `before_run` executes in listed order; first failure/timeout stops remaining `before_run`, skips model execution, records setup failure, and still runs `after_run`
+- `after_run` always runs in listed order even after setup/model failure; any `after_run` failure fails the eval
+
+The runner cleans up the disposable workspace after `after_run` finishes and artifacts are captured.
+
 ## Running and evaluating test cases
 
 This section is one continuous sequence — don't stop partway through. Do NOT use `/skill-test` or any other testing skill.
@@ -368,6 +400,14 @@ This is optional, requires subagents, and most users won't need it. The human re
 ---
 
 ## Description Optimization
+
+This section is for **trigger evals only**.
+
+- Trigger eval schema: `trigger-evals.json`
+- Trigger eval runner: `scripts/run_eval.py` (and `scripts/run_loop.py`)
+- Functional eval schema: `evals/evals.json`
+- Functional eval execution uses a dedicated functional runner
+- Do not mix trigger and functional schemas in one command; no auto-detection in v1
 
 The description field in SKILL.md frontmatter is the primary mechanism that determines whether the AI assistant invokes a skill. After creating or improving a skill, offer to optimize the description for better triggering accuracy.
 

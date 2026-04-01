@@ -6,7 +6,14 @@ This document defines the JSON schemas used by skill-creator.
 
 ## evals.json
 
-Defines the evals for a skill. Located at `evals/evals.json` within the skill directory.
+Defines **functional evals** for a skill. Located at `evals/evals.json` within the skill directory.
+
+Use this schema only with the dedicated functional eval runner.
+
+- Trigger evals are defined in `trigger-evals.json`
+- Trigger eval automation stays on `scripts/run_eval.py`
+- Functional evals use `evals/evals.json` and a dedicated functional runner
+- The framework does **not** auto-detect or mix trigger + functional schemas in one command
 
 ```json
 {
@@ -17,6 +24,21 @@ Defines the evals for a skill. Located at `evals/evals.json` within the skill di
       "prompt": "User's example prompt",
       "expected_output": "Description of expected result",
       "files": ["evals/files/sample1.pdf"],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "initialize project",
+            "script": "scripts/setup/init_project.sh",
+            "args": ["--mode", "quick"],
+            "timeout_seconds": 30
+          }
+        ],
+        "after_run": [
+          {
+            "script": "scripts/teardown/collect_artifacts.sh"
+          }
+        ]
+      },
       "expectations": [
         "The output includes X",
         "The skill used script Y"
@@ -32,7 +54,54 @@ Defines the evals for a skill. Located at `evals/evals.json` within the skill di
 - `evals[].prompt`: The task to execute
 - `evals[].expected_output`: Human-readable description of success
 - `evals[].files`: Optional list of input file paths (relative to skill root)
+- `evals[].hooks`: Optional hook configuration for functional setup/teardown
+  - `hooks.before_run`: Optional array of setup hooks (executed in listed order)
+  - `hooks.after_run`: Optional array of teardown/collection hooks (executed in listed order)
+  - Hook entry fields:
+    - `script` (required): Script path, resolved relative to the skill root
+    - `args` (optional): Array of positional arguments
+    - `timeout_seconds` (optional): Per-hook timeout override; defaults to `30`
+    - `name` (optional): Display label; defaults to the `script` basename
 - `evals[].expectations`: List of verifiable statements
+
+### Functional eval workspace + hook lifecycle contract
+
+Each functional eval run executes in a fresh disposable workspace owned by the runner.
+
+Starting workspace state:
+
+- The workspace starts with runner-managed runtime skill injection plus hydrated eval-declared files
+- Eval `files` are hydrated **before any hooks run**
+- No git, beads, or other project-specific state is present by default unless hooks create it
+
+Execution environment and paths:
+
+- Hook `script` paths are resolved relative to the skill root (`EVAL_SKILL_ROOT`)
+- Hook process cwd is the eval workspace root (`EVAL_WORKSPACE`), same root used for skill execution
+- No per-hook env override fields are supported in v1
+- Runner-injected env vars available to hooks:
+  - `EVAL_ID`
+  - `EVAL_NAME`
+  - `EVAL_PHASE`
+  - `EVAL_WORKSPACE`
+  - `EVAL_ARTIFACTS_DIR`
+  - `EVAL_SKILL_ROOT`
+
+Failure semantics:
+
+- `before_run` hooks execute sequentially in listed order
+- On first `before_run` failure or timeout:
+  - stop remaining `before_run` hooks
+  - skip model execution
+  - record setup failure
+  - still execute `after_run`
+- `after_run` hooks always execute sequentially, even after setup or model failure
+- Runner records every `after_run` result
+- Any `after_run` failure marks the eval as failed
+
+Cleanup ownership:
+
+- Runner owns workspace cleanup after `after_run` completes and artifacts are captured
 
 ---
 

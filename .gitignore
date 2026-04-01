@@ -55,5 +55,6 @@ private/
 
 # Skill-creator generated artifacts
 ai-resources/skills/opencode-coder-workspace/
+ai-resources/skills/*/eval-artifacts/
 ai-resources/skills/opencode-coder-skill-creator/scripts/__pycache__/
 ai-resources/skills/opencode-coder-skill-creator/scripts/*.pyc

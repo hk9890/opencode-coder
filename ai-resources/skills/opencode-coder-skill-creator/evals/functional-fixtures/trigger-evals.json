@@ -1,0 +1,6 @@
+[
+  {
+    "query": "Tell me a joke about bicycles.",
+    "should_trigger": false
+  }
+]

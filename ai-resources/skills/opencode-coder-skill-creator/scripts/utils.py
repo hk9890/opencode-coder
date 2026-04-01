@@ -1,5 +1,6 @@
 """Shared utilities for skill-creator scripts."""
 
+import re
 from pathlib import Path
 
 
@@ -118,3 +119,49 @@ def replace_frontmatter_description(skill_markdown: str, new_description: str) -
 
     rebuilt = ["---", *out_frontmatter, "---", *body]
     return "\n".join(rebuilt).rstrip() + "\n"
+
+
+def ensure_dir(path: Path) -> None:
+    """Create a directory path if needed."""
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def json_default(value):
+    """JSON serializer fallback for non-serializable objects."""
+    if isinstance(value, Path):
+        return str(value)
+    return str(value)
+
+
+def sanitize_label(value: str) -> str:
+    """Return a filesystem-safe label for artifact names."""
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "-", value).strip("-._")
+    return cleaned or "unnamed"
+
+
+def resolve_relative_path(
+    base_dir: Path, relative_path: str, label: str = "path"
+) -> Path:
+    """Resolve a relative path safely under ``base_dir``.
+
+    Raises ValueError when the path is absolute or escapes ``base_dir``.
+    """
+
+    rel = Path(relative_path)
+    if rel.is_absolute():
+        raise ValueError(f"{label} must be relative: {relative_path}")
+
+    resolved = (base_dir / rel).resolve()
+    base_resolved = base_dir.resolve()
+    if base_resolved != resolved and base_resolved not in resolved.parents:
+        raise ValueError(f"{label} escapes skill root: {relative_path}")
+
+    return resolved
+
+
+def hook_display_name(hook: dict) -> str:
+    """Resolve display name for a hook entry."""
+    explicit = hook.get("name")
+    if explicit and str(explicit).strip():
+        return str(explicit).strip()
+    return Path(str(hook.get("script", "hook"))).name

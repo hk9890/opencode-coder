@@ -5,7 +5,23 @@
       "id": 0,
       "prompt": "I need to build a search endpoint for my webshop. I have a markdown file at docs/search-spec.md that summarizes the details: it needs full-text search over products, faceted filtering by category and price range, and pagination. Please create an epic and tasks for this work, and if anything still needs discussion before a developer can start, handle that properly.",
       "expected_output": "A beads plan with epic, child tasks, acceptance review task, numeric priorities, and proper handling of ambiguous items via needs:discussion.",
-      "files": [],
+      "files": [
+        "evals/files/docs/search-spec.md"
+      ],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "setup local planning workspace",
+            "script": "evals/hooks/setup-local-planning-workspace.sh"
+          }
+        ],
+        "after_run": [
+          {
+            "name": "capture local beads proof",
+            "script": "evals/hooks/capture-local-beads-proof.sh"
+          }
+        ]
+      },
       "expectations": [
         "Uses an epic plus child tasks plus an acceptance review task rather than a native gate issue",
         "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
@@ -19,6 +35,20 @@
       "prompt": "A customer reported that the checkout flow crashes when the cart has more than 50 items. They sent a screenshot and a rough repro. Please capture this properly as a bug in beads with the right labels and linked follow-up work.",
       "expected_output": "A beads bug with source:external label, concrete repro details, expected versus actual, and a linked post-mortem task.",
       "files": [],
+      "hooks": {
+        "before_run": [
+          {
+            "name": "setup local planning workspace",
+            "script": "evals/hooks/setup-local-planning-workspace.sh"
+          }
+        ],
+        "after_run": [
+          {
+            "name": "capture local beads proof",
+            "script": "evals/hooks/capture-local-beads-proof.sh"
+          }
+        ]
+      },
       "expectations": [
         "Creates a bug rather than a generic task",
         "Uses the source:external label for the customer-reported bug",
