@@ -296,7 +296,7 @@ Prefer this kind of guidance:
 - "Edit `src/index.ts` for startup orchestration changes."
 - "See `tests/integration/plugin.test.ts` for plugin registration and gating expectations."
 - "See `tests/unit/service/*.test.ts` for service-level test patterns."
-- "See `docs/design/how-to-write-commands.md` for command-authoring conventions."
+- "See `docs/user-guide/how-to-write-commands.md` for command-authoring conventions."
 
 Avoid:
 

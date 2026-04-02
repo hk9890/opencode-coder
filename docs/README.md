@@ -28,10 +28,11 @@ These are useful supporting docs, but they are not the default operating layer f
 
 | Path | Purpose |
 |---|---|
-| `user-guide/` | End-user setup and usage guidance |
+| `user-guide/` | Setup, usage, and focused how-to guidance |
 | `user-guide/project-setup.md` | Recommended project-doc structure |
 | `user-guide/project-doc-guidelines.md` | What each canonical project doc should contain |
-| `design/how-to-write-commands.md` | Active contributor reference for command-authoring conventions |
+| `user-guide/how-to-write-commands.md` | Active contributor reference for command-authoring conventions |
+| `user-guide/how-to-write-skills.md` | Active contributor reference for runtime skill-authoring boundaries and layering |
 | `design/*-skill-design.md` | Design notes or planning references for specific skills |
 
 Use these when the task specifically needs deeper context.

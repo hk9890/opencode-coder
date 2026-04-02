@@ -15,6 +15,19 @@ The manual launcher also supports `--project-path <dir>` for reproducing behavio
 
 Each fixture intentionally keeps content minimal. Scenario-specific files can be added later with the same disposable fixture-copy model.
 
+### `/simplify` validation note for `existing-active-project`
+
+`existing-active-project` is not a committed full Phase 2 resource mirror. In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
+
+For reproducible semantic validation without manual file copying:
+
+1. `bun run test:manual -- --mode=shell --fixture=existing-active-project --plugin-source=local-build`
+2. inside shell:
+   - `aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources`
+   - `aimgr install package/opencode-coder`
+   - do not run `aimgr init` for this fixture (`ai.package.yaml` is already committed)
+3. run OpenCode and validate `/simplify`
+
 ## Shared support fixtures
 
 - `_shared/opencode-config/opencode.json` — committed snapshot of the OpenCode config seeded into each isolated `OPENCODE_CONFIG_DIR` during manual and e2e runs. Update this file intentionally when the test baseline should change; tests do not read your live `~/.config/opencode/opencode.json`.

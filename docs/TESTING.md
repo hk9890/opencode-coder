@@ -253,6 +253,39 @@ Recommended pattern:
 2. rerun the same scenario with `--plugin-source=local-build`
 3. compare outcomes and plugin load proof
 
+### Scenario G — Isolated `/simplify` semantic validation (no manual copying)
+
+Use when:
+- you need reproducible `/simplify` semantic validation in an isolated workspace
+- you want to avoid ad hoc copying of command/skill files into `.opencode/`
+
+Why this is needed:
+- `existing-active-project` is an active-startup fixture baseline, but it does not commit full Phase 2 resource surfaces.
+- A stock isolated run can therefore start in bootstrap phase, where `/simplify` is not exposed yet.
+
+Reproducible path:
+
+1. Launch isolated shell on the fixture using local build:
+
+   ```bash
+   bun run test:manual -- --mode=shell --fixture=existing-active-project --plugin-source=local-build
+   ```
+
+2. In that shell, bootstrap resources through `aimgr` (repo-supported path):
+
+   ```bash
+   # existing-active-project already includes ai.package.yaml, so do not run `aimgr init` here
+   aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
+   aimgr install package/opencode-coder
+   ```
+
+3. Start OpenCode from the same shell and run `/simplify ...` for semantic validation.
+
+Notes:
+- This replaces manual file copying with a repeatable package install flow.
+- `aimgr install package/opencode-coder` requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
+- If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in isolated mode.
+
 ## Testing Skills, Commands, and Agents
 
 This is the critical policy for AI-facing resources in this repo:

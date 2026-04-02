@@ -115,7 +115,8 @@ If a command and a skill cover the same workflow:
 - `SKILL.md` = workflow routing
 - reference docs = durable detail
 
-See [`docs/design/how-to-write-commands.md`](design/how-to-write-commands.md).
+See [`docs/user-guide/how-to-write-commands.md`](user-guide/how-to-write-commands.md).
+For runtime skill content boundaries, see [`docs/user-guide/how-to-write-skills.md`](user-guide/how-to-write-skills.md).
 
 ### 6. Respect canonical + synced doc pairs
 
@@ -163,7 +164,8 @@ Also inspect:
 
 - `tests/integration/plugin.test.ts`
 - `tests/e2e/opencode.test.ts`
-- `docs/design/how-to-write-commands.md`
+- `docs/user-guide/how-to-write-commands.md`
+- `docs/user-guide/how-to-write-skills.md`
 - user docs if user-facing behavior changed
 
 Good rule: do not copy large workflow logic into command wrappers when the skill should own it.
@@ -248,7 +250,8 @@ Good rule: keep routing docs short and move deep detail into focused docs.
 - `tests/integration/manual-launcher.test.ts` — manual launcher/harness integration behavior
 - `tests/e2e/opencode.test.ts` — real CLI startup and runtime exposure
 - `tests/unit/service/*.test.ts` — service-level unit patterns
-- `docs/design/how-to-write-commands.md` — command-authoring conventions
+- `docs/user-guide/how-to-write-commands.md` — command-authoring conventions
+- `docs/user-guide/how-to-write-skills.md` — runtime skill-authoring boundaries
 - `docs/README.md` — documentation taxonomy and canonical doc map
 
 If you change behavior that a maintainer would need to remember later, update the matching canonical doc in the same change.

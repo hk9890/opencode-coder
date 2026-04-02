@@ -1,17 +1,7 @@
 ---
 name: opencode-coder
-description: "Reference hub for opencode-coder planning, setup, project-doc guidance, simplify, debugging, and support workflows. Use this skill when the AI assistant needs to plan beads work, set up project docs, run the /simplify workflow, install or initialize bd or opencode-coder, switch stealth/team modes, check health, analyze logs, troubleshoot plugin behavior, generate AGENTS.md guidance, or help report opencode-coder bugs."
+description: "Use this skill when the AI assistant needs to plan beads work, set up project docs, run the /simplify workflow, install or initialize bd or opencode-coder, switch stealth/team modes for project, check plugin health, analyze plugin logs, troubleshoot plugin behavior, generate AGENTS.md guidance, or help report opencode-coder bugs."
 ---
-
-`opencode-coder` is the canonical workflow hub for the opencode-coder command set.
-
-Command files should stay thin wrappers that only:
-
-1. load this skill
-2. pass meaningful `$ARGUMENTS` when needed
-3. ask this skill to run the matching workflow
-
-Command bodies should not enumerate reference files. Reference routing is owned here.
 
 ## Command-backed workflow contract
 
@@ -34,10 +24,3 @@ Command bodies should not enumerate reference files. Reference routing is owned 
 | Understand docs setup model and project-doc content boundaries | [references/project-setup.md](references/project-setup.md) |
 | Analyze plugin logs and debugging signals | [references/debugging-logs.md](references/debugging-logs.md) |
 | Generate AGENTS.md structure/content skeleton | [references/agents-md-template.md](references/agents-md-template.md) |
-
-## Ownership boundary
-
-For `/simplify`, this skill is authoritative and routes to `references/simplify.md`.
-The command file `ai-resources/commands/simplify.md` must remain a thin wrapper and must not duplicate simplify workflow steps.
-
-For project-doc lifecycle orchestration, this skill is authoritative. Route to `references/project-docs-lifecycle.md`.

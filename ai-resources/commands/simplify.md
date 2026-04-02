@@ -2,16 +2,10 @@
 description: Simplify recently changed files with the opencode-coder workflow
 ---
 
-# Simplify Recent Changes
+Load the `opencode-coder` skill.
 
-Thin wrapper: load the `opencode-coder` skill and ask it to run the simplify workflow.
+Treat the following as optional simplify focus guidance:
 
-Use the skill tool:
+$ARGUMENTS
 
-```javascript
-skill({ name: "opencode-coder" })
-```
-
-Then run the simplify workflow routed by `ai-resources/skills/opencode-coder/SKILL.md`.
-
-Treat `$ARGUMENTS` as optional focus guidance for the simplify pass.
+Run the simplify workflow.
