@@ -156,23 +156,22 @@ The distinction between "machine-enforced" and "human-enforced" is the key insig
 
 ### 3. Automated Doc Gardening (`oc-aqyl`)
 
-**The gap**: The fix-documentation skill handles on-demand fixes (typos, grammar, project-wide sync), but there's no automated way to detect stale documentation, validate cross-links, or check coverage.
+**The gap**: The current docs workflows handle on-demand documentation fixes and lifecycle updates, but there's no automated way to detect stale documentation, validate cross-links, or check coverage.
 
 OpenAI's approach: dedicated linters and CI jobs validate the knowledge base. Recurring "doc-gardening" agent scans for stale/obsolete docs. Opens fix-up PRs automatically.
 
 Key quote: "A monolithic manual turns into a graveyard of stale rules. Agents can't tell what's still true."
 
 **Current state**:
-- `fix-documentation` skill has three workflows: fix single doc, fix project docs (README/CONTRIBUTING/AGENTS sync), fix AGENTS.md
-- The skill verifies file paths mentioned in docs and tests documented commands
+- Project docs work is handled through the `opencode-coder` docs lifecycle workflow
+- The workflow verifies file paths mentioned in docs and tests documented commands when applicable
 - No freshness detection, no cross-link validation, no coverage analysis
-- The skill's reference files (`references/fix-single-document.md`, etc.) don't exist yet — the skill is partially a skeleton
 
 **What we could do (focused on AGENTS.md freshness — our core artifact)**:
 
 **1. AGENTS.md validation command**
 
-A `/doc-validate` command (or extending fix-documentation) that checks:
+A `/doc-validate` command (or extending the docs lifecycle workflow) that checks:
 
 - **Path validation**: All file paths referenced in AGENTS.md exist
 - **Command validation**: All build/test/lint commands in AGENTS.md actually work
@@ -192,9 +191,9 @@ A `/doc-validate` command (or extending fix-documentation) that checks:
 - Detect documented features that no longer exist in code
 - Flag TODOs/FIXMEs in documentation files
 
-**Recommended approach**: Start with AGENTS.md validation (it's our core artifact and most likely to go stale). Add a validation step to the fix-documentation skill workflow. Cross-doc consistency and coverage analysis can come later.
+**Recommended approach**: Start with AGENTS.md validation (it's our core artifact and most likely to go stale). Add a validation step to the docs lifecycle workflow. Cross-doc consistency and coverage analysis can come later.
 
-**Implementation**: This could be a validation checklist added to the fix-documentation skill's reference files, or a standalone validation script that agents can run.
+**Implementation**: This could be a validation checklist added to the docs lifecycle reference files, or a standalone validation script that agents can run.
 
 ---
 

@@ -6,14 +6,12 @@ This reference owns the lifecycle phases for project docs and AGENTS routing.
 `/opencode-coder/docs` should stay a thin dispatcher that calls into this file.
 `/opencode-coder/improve-doc` should also stay a thin dispatcher that calls into this file's incident-improvement section.
 
-## Ownership and Non-Overlap Policy
+## Ownership Policy
 
 This file is the canonical source for **project documentation lifecycle** in this repo.
 
 - Includes: project-doc synchronization, AGENTS lifecycle maintenance, lifecycle verification/audit checks.
 - Excludes: single-file editorial cleanup that is not lifecycle orchestration.
-
-When overlap exists with older guidance (for example prior `fix-documentation` project-wide workflows), this reference wins and should be treated as the source of truth.
 
 ## Phase 1 — Inspect
 

@@ -41,5 +41,3 @@ For `/simplify`, this skill is authoritative and routes to `references/simplify.
 The command file `ai-resources/commands/simplify.md` must remain a thin wrapper and must not duplicate simplify workflow steps.
 
 For project-doc lifecycle orchestration, this skill is authoritative. Route to `references/project-docs-lifecycle.md`.
-
-`fix-documentation` is only for narrow single-file editorial cleanup (typos/grammar/clarity), not project-wide lifecycle orchestration.
