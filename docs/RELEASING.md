@@ -2,9 +2,9 @@
 
 Start every release from `/opencode-coder-dev/release` or by loading the **github-releases** skill.
 
-This file is intentionally incomplete on its own. It only records the **repo-specific** checks, commands, and publishing quirks for `opencode-coder`.
-
 Do not use this document as a standalone release checklist; the skill owns the generic workflow, validation structure, and recovery flow.
+
+Use this companion for the **repo-specific** checks, commands, and publishing quirks for `opencode-coder`.
 
 ## Supported Entrypoints
 

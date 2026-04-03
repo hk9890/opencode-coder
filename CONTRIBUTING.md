@@ -44,24 +44,7 @@ For targeted test levels (unit, integration, e2e), use the commands in [`docs/TE
 
 ## Where To Put Commands and Agents
 
-### `ai-resources/` (published with the plugin)
-
-Use for reusable resources that should ship to every plugin user:
-
-- Generic commands
-- Generic agents
-- Shared skills
-- Generic documentation
-
-### `.opencode/` (project-local, not published)
-
-Use for repository-specific development workflows:
-
-- Commands for maintaining this plugin
-- Internal tooling/configuration
-- Project-specific helper instructions
-
-Rule of thumb: if it only makes sense while developing `opencode-coder`, keep it in `.opencode/`.
+For published-vs-local resource placement, see [`docs/CODING.md`](docs/CODING.md#4-keep-published-and-local-resources-separate).
 
 ## Questions
 

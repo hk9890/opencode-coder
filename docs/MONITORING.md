@@ -1,7 +1,7 @@
 # Monitoring & Analysis Guide
 
 Use the **observability-triage** skill for generic monitoring triage patterns.
-This file is the **canonical repository-specific workflow** for analyzing
+Use this guide for the repository-specific workflow for analyzing
 opencode-coder/OpenCode behavior in this repo.
 
 ## Canonical Evidence Sources

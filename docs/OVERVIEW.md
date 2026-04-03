@@ -54,6 +54,7 @@ For implementation details, conventions, and architecture rules, see the focused
 - [Release companion](./RELEASING.md)
 - [Monitoring and triage](./MONITORING.md)
 - [Pull request workflow](./PULL-REQUESTS.md)
-- [Project setup guide](./user-guide/getting-started.md)
+- [Getting started guide](./user-guide/getting-started.md)
+- [Project doc structure guide](./user-guide/project-setup.md)
 
 For end-user plugin usage and feature highlights, see the [README](../README.md).

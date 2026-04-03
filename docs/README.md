@@ -29,8 +29,10 @@ These are useful supporting docs, but they are not the default operating layer f
 | Path | Purpose |
 |---|---|
 | `user-guide/` | Setup, usage, and focused how-to guidance |
+| `user-guide/getting-started.md` | Plugin install, `/opencode-coder/init`, and project enablement |
 | `user-guide/project-setup.md` | Recommended project-doc structure |
 | `user-guide/project-doc-guidelines.md` | What each canonical project doc should contain |
+| `user-guide/project-doc-review-guidelines.md` | Reviewer checklist for canonical project docs |
 | `user-guide/how-to-write-commands.md` | Active contributor reference for command-authoring conventions |
 | `user-guide/how-to-write-skills.md` | Active contributor reference for runtime skill-authoring boundaries and layering |
 | `design/*-skill-design.md` | Design notes or planning references for specific skills |

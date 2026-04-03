@@ -3,7 +3,7 @@
 For contributor workflow, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).  
 For test selection and commands, see [`TESTING.md`](TESTING.md).
 
-This file is about **how to change this repo safely**.
+Use this guide when changing this repo.
 
 ## Build & Development Commands
 
@@ -115,25 +115,30 @@ If a command and a skill cover the same workflow:
 - `SKILL.md` = workflow routing
 - reference docs = durable detail
 
-See [`docs/user-guide/how-to-write-commands.md`](user-guide/how-to-write-commands.md).
-For runtime skill content boundaries, see [`docs/user-guide/how-to-write-skills.md`](user-guide/how-to-write-skills.md).
+See [`user-guide/how-to-write-commands.md`](user-guide/how-to-write-commands.md).
+For runtime skill content boundaries, see [`user-guide/how-to-write-skills.md`](user-guide/how-to-write-skills.md).
 
 ### 6. Respect canonical + synced doc pairs
 
-Some user-guide docs are synced copies of canonical skill references.
+Some user-guide docs track canonical skill references.
+
+In this repo:
+
+- `docs/user-guide/project-setup.md` is a symlink to the canonical source
+- `docs/user-guide/project-doc-guidelines.md` is a synced regular file copy
+- `docs/user-guide/project-doc-review-guidelines.md` is a synced regular file copy
 
 When you change one of these areas:
 
 1. update the canonical source under `ai-resources/skills/opencode-coder/references/`
-2. mirror the repo-local copy under `docs/user-guide/`
+2. refresh the matching entry under `docs/user-guide/` (follow the existing symlink or update the copied file)
 3. keep both in the same change
 
 Examples:
 
-- `ai-resources/skills/opencode-coder/references/project-setup.md`
-- `docs/user-guide/project-setup.md`
-- `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md`
-- `docs/user-guide/project-doc-guidelines.md`
+- `ai-resources/skills/opencode-coder/references/project-setup.md` ↔ `docs/user-guide/project-setup.md`
+- `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md` ↔ `docs/user-guide/project-doc-guidelines.md`
+- `ai-resources/skills/opencode-coder/references/project-doc-review-guidelines.md` ↔ `docs/user-guide/project-doc-review-guidelines.md`
 
 ## How to Change This Repo Safely
 
@@ -243,6 +248,7 @@ Good rule: keep routing docs short and move deep detail into focused docs.
 | `scripts/validate-isolated-pins.ts` or harness setup | `docs/TESTING.md`, `tests/unit/validate-isolated-pins.test.ts`, `tests/integration/manual-launcher.test.ts` |
 | `ai-resources/skills/opencode-coder/references/project-setup.md` | `docs/user-guide/project-setup.md` |
 | `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md` | `docs/user-guide/project-doc-guidelines.md` |
+| `ai-resources/skills/opencode-coder/references/project-doc-review-guidelines.md` | `docs/user-guide/project-doc-review-guidelines.md` |
 
 ## Representative References
 

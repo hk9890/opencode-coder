@@ -199,6 +199,14 @@ Skills extend the agent's capabilities with specialized workflows and domain exp
 |-------|-------------|
 | `opencode-coder` | Core workflow hub for planning, setup, troubleshooting, and the `/simplify` cleanup workflow. |
 
+### Release and Development Skills
+
+| Skill | Description |
+|-------|-------------|
+| `github-releases` | Release workflow for versioning, quality gates, and GitHub release creation. |
+| `opencode-coder-dev` | Internal development workflow for this repository, including release, log analysis, bug fixing, and task import. |
+| `opencode-coder-skill-creator` | Authoring workflow for creating, adapting, testing, and packaging OpenCode skills. |
+
 ### Task Synchronization Skills
 
 Bidirectional sync between beads and external task systems (GitHub, Jira, etc.).
