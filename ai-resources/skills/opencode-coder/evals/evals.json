@@ -98,10 +98,11 @@
     },
     {
       "id": 5,
-      "prompt": "My project is set up in team mode and I want opencode-coder to generate or update AGENTS.md and the standard topic docs. Some topics like releases are fully handled by an installed skill and I do not want hollow docs for those. Walk me through what should be created versus what should just route to skills.",
-      "expected_output": "A doc generation response that treats AGENTS as a routing table, creates docs only for project-specific content, and routes skill-only topics to skills.",
+      "prompt": "My project is set up in team mode and I want opencode-coder to generate or update AGENTS.md and the standard topic docs. Some topics like releases are fully handled by an installed skill and I do not want hollow docs for those. Walk me through what should be created versus what should just route to skills, and tell me exactly which internal references you use for setup flow versus doc content standards.",
+      "expected_output": "A doc generation response that uses project-setup plus project-doc-guidelines together, treats AGENTS as routing, creates docs only for project-specific content, and routes skill-only topics to skills.",
       "files": [],
       "expectations": [
+        "Uses project-setup.md for workflow sequencing and project-doc-guidelines.md for content standards instead of treating them as interchangeable",
         "Treats AGENTS as a routing table rather than a handbook",
         "Creates standard docs only when they contain real project-specific guidance",
         "Routes skill-only topics to reusable skills instead of creating hollow docs",
@@ -176,11 +177,12 @@
     },
     {
       "id": 11,
-      "prompt": "Yesterday an engineer followed docs/RELEASING.md and cut a bad release because our project had moved to the github-releases skill months ago. Please run /opencode-coder/improve-doc to fix this so the same incident does not repeat.",
-      "expected_output": "An incident-driven improve-doc response that identifies stale guidance, updates routing to the canonical skill, and defines verification steps.",
+      "prompt": "Yesterday an engineer followed docs/RELEASING.md and cut a bad release because our project had moved to the github-releases skill months ago. Please run /opencode-coder/improve-doc to fix this so the same incident does not repeat. Here is the bad sample we currently have:\n\n# RELEASING\nThis document explains how our release system is designed end to end and why we selected semantic versioning.\n\n## Long-term roadmap\nOver the next two quarters we will evolve our release process to support mono-repo trains and automated canary pipelines.\n\n## Generic release checklist\n1. Run tests\n2. Bump version\n3. Publish release\n\nPlease review this sample directly in your response.",
+      "expected_output": "An incident-driven improve-doc response that critiques the bad RELEASING sample for wrong scope/style, routes release workflow to github-releases, and defines concrete verification steps.",
       "files": [],
       "expectations": [
         "Classifies the incident as stale or misrouted docs rather than generic user error",
+        "Explicitly criticizes the sample for at least one of these anti-patterns: self-description, design explanation, roadmap language, or standalone generic workflow scope",
         "Proposes concrete AGENTS and project-doc updates that route release work to github-releases skill",
         "Avoids creating hollow duplicate release docs when skill routing is sufficient",
         "Includes verification step (for example docs lifecycle verify/audit) after applying updates",
@@ -190,11 +192,13 @@
     {
       "id": 12,
       "prompt": "I ran /opencode-coder/docs verify and it found two issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
-      "expected_output": "A docs lifecycle verification follow-up that fixes stale links, removes hollow docs where skill routing applies, and re-validates.",
+      "expected_output": "A docs lifecycle verification follow-up that requires draft/update edits, reviewer pass, factual verification, and re-validation after fixing stale links and hollow docs.",
       "files": [],
       "expectations": [
         "Treats stale AGENTS links as a must-fix verification failure",
         "Replaces hollow topic docs with explicit routing to installed skills when appropriate",
+        "Requires a draft/update phase plus reviewer pass before considering the lifecycle work complete",
+        "Requires factual verification against real project state and current skill coverage rather than accepting assumptions",
         "Preserves project-specific content while slimming only duplicated generic sections",
         "Calls for re-running verify/audit after edits to confirm clean state",
         "Describes concrete file-level outcomes rather than generic advice"

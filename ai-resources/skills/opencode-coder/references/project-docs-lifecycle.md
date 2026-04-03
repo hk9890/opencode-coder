@@ -6,13 +6,6 @@ This reference owns the lifecycle phases for project docs and AGENTS routing.
 `/opencode-coder/docs` should stay a thin dispatcher that calls into this file.
 `/opencode-coder/improve-doc` should also stay a thin dispatcher that calls into this file's incident-improvement section.
 
-## Ownership Policy
-
-This file is the canonical source for **project documentation lifecycle** in this repo.
-
-- Includes: project-doc synchronization, AGENTS lifecycle maintenance, lifecycle verification/audit checks.
-- Excludes: single-file editorial cleanup that is not lifecycle orchestration.
-
 ## Phase 1 — Inspect
 
 1. Load `project-structure.md` and resolve active mode/paths.
@@ -74,6 +67,76 @@ Use when baseline exists and needs normal maintenance.
 3. Avoid blind recreation of files; preserve custom sections and existing project-specific content.
 4. Keep docs-skill boundaries clear (project-specific in docs, reusable flow in skills).
 
+## Phase 3.5 — Canonical Doc Authoring Loop (MANDATORY when canonical docs change)
+
+> **This loop is mandatory for canonical doc creation/update work.** Do not stop after drafting.
+
+### Scope
+
+This loop is required when canonical docs are created or updated through:
+
+- `/opencode-coder/docs`
+- `/opencode-coder/improve-doc`
+
+This is also the expected standard for any broader opencode-coder-guided canonical doc work, even when entered through another command or nested workflow.
+
+### Required loop
+
+1. **Draft/update pass**
+   - Create or update the target canonical doc.
+2. **Reviewer pass against `project-doc-review-guidelines.md`**
+   - Run a rule-based review using `project-doc-guidelines.md` for authoring rules, `project-setup.md` for file-role boundaries, and `project-doc-review-guidelines.md` for reviewer workflow and file-specific checklists.
+3. **Factual verification pass**
+   - Verify repository facts for the edited guidance:
+     - links
+     - file paths
+     - anchors
+     - workflows/entrypoints
+     - scripts
+     - documented commands
+4. **Fix pass**
+   - Apply fixes for all blocker findings.
+5. **Repeat**
+   - Re-run review + factual verification until blocker issues are gone.
+
+### Reviewer output contract
+
+The reviewer must return actionable findings in this structure:
+
+`[SEVERITY] <file>:<section> — <rule-id> — <violation> — <evidence> — <suggested fix>`
+
+- `SEVERITY` must be one of `BLOCKER`, `MAJOR`, `MINOR`.
+- `rule-id` should use guideline IDs (for example `R1`, `P2`, `V1`).
+- `evidence` must point to concrete text, path, or command mismatch.
+- `suggested fix` must be specific enough to apply without guessing.
+
+### Factual verifier contract
+
+The factual verifier must check:
+
+1. Referenced local paths exist.
+2. Referenced links and anchors resolve.
+3. Mentioned scripts/entrypoints exist at documented locations.
+4. Documented workflows still match the current repository structure and routing.
+5. Documented commands are valid under the safety policy below.
+
+### Command safety policy (for factual verification)
+
+- **Tier A (safe/read-only):** execute normally.
+- **Tier B (expensive but safe):** execute when required to verify a claim.
+- **Tier C (destructive/irreversible):** **must not be executed** during doc verification.
+
+For Tier C claims, verify indirectly by checking script/workflow presence, parameter contracts, preconditions, and rollback/safety notes.
+
+### Orchestration model
+
+This loop may be:
+
+- **main-agent-led** (single agent performs review + factual checks), or
+- **nested-subagent-assisted** (review/verification delegated)
+
+In either model, the orchestrating/main agent is accountable for enforcing the mandatory loop, consolidating findings, applying fixes, and proving blocker-free completion before handoff.
+
 ## Phase 4 — Audit / Repair
 
 Use for documentation health cleanup.
@@ -109,6 +172,13 @@ Treat AGENTS as one lifecycle phase, not a standalone command family.
 
 > **This phase is not optional.** Every docs lifecycle run MUST end with verification. Skipping it is the most common failure mode — the baseline often catches stale references and broken links that skill users miss because they stop after Phase 6.
 
+For runs that create/update canonical docs, Phase 7 is **fed by Phase 3.5 outputs** and remains the final lifecycle gate. It is not replaced. Instead:
+
+- Phase 3.5 enforces iterative doc-authoring review/factual checks during authoring.
+- Phase 7 confirms lifecycle-wide integrity after all edits (including AGENTS routing and cross-doc consistency).
+
+Completion requires both: (1) Phase 3.5 blocker-free loop for canonical doc edits, and (2) Phase 7 final verification/report.
+
 Before completion, verify:
 
 1. **File paths** — all referenced local file paths exist (glob or ls each path mentioned in AGENTS and docs)
@@ -119,6 +189,7 @@ Before completion, verify:
 6. **Cross-reference links and anchors** — links and anchors across lifecycle-touched docs resolve correctly
 7. **No stale references** — no references remain to retired routes, renamed files, or removed skills
 8. **Skill-backed docs are not standalone traps** — when a topic depends on an installed skill (for example `RELEASING.md`), the doc clearly says to start with the skill or command entrypoint and does not read like a complete generic workflow
+9. **Canonical-doc loop completion** — if canonical docs were created/updated, include reviewer + factual-verifier results and confirm no `BLOCKER` findings remain
 
 Final report should include:
 
@@ -167,9 +238,10 @@ The command should combine both sources when available.
     - For skill-backed topics, prefer explicit "start here" entrypoints and clear warnings against standalone use.
 
 5. **Apply/prepare updates with lifecycle consistency**
-   - Reuse the same mode/path and verification rules from phases above.
-   - Ensure AGENTS references only real docs/skills.
-   - Ensure updated guidance clearly indicates when a step is required.
+    - Reuse the same mode/path and verification rules from phases above.
+    - If canonical docs are created/updated, run the full Phase 3.5 loop before completion.
+    - Ensure AGENTS references only real docs/skills.
+    - Ensure updated guidance clearly indicates when a step is required.
 
 6. **Report prevention outcome**
    - Summarize incident input used, mapped destination(s), root cause, and proposed/applied changes.

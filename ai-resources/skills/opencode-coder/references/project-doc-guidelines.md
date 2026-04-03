@@ -1,17 +1,16 @@
 # Project Doc Guidelines
 
-This guide explains how to write project documents that help both humans and coding agents.
+Canonical authoring standard for project docs.
 
-Use it together with [project-setup.md](project-setup.md):
+Use it together with these companion references:
 
-- `project-setup.md` explains **which files should exist** and how they relate to each other.
-- this guide explains **what each file should contain** and how to write it well.
+- [project-setup.md](project-setup.md) explains which canonical docs should exist, what each one owns, and when an agent should load them.
 
-## Core Writing Rules
+## Authoring goals
 
 ### 1. Write for action, not narration
 
-Project docs should help someone decide what to do next.
+Project docs should help a human or agent decide what to do next.
 
 Prefer:
 
@@ -21,9 +20,9 @@ Prefer:
 - decision tables
 - short rationale for non-obvious rules
 
-Avoid long prose that explains the same point three different ways.
+Avoid long prose that explains the same point multiple times.
 
-### 2. Optimize for token efficiency
+### 2. Optimize for selective loading
 
 Agents often load docs into context. Expensive docs are noisy docs.
 
@@ -39,16 +38,20 @@ Bad signs:
 
 - repeated definitions
 - generic advice that could apply to any repo
-- large pasted code samples when a file link would do
+- large pasted code samples when a file pointer would do
 
-### 3. Be specific and local
+### 3. Describe how to achieve something in this project
 
-Every important instruction should answer at least one of these:
+Operational docs should describe how to do the work in the current repository.
+
+They should answer questions such as:
 
 - which command should be run?
 - which file should be edited?
 - which test should be used?
-- which workflow file or reference shows the real pattern?
+- which workflow or script is the real entrypoint?
+
+They should not drift into generic explanations such as why releases or tests exist in principle.
 
 Use real repository facts:
 
@@ -74,21 +77,21 @@ Good:
 
 Bad:
 
-- pasting 80 lines from those files into the doc
+- pasting large excerpts from those files into the doc
 
 ### 5. Keep boundaries strict
 
-Each document should own one topic.
+Each document should stay on its own topic.
 
-- `AGENTS.md` routes
-- `OVERVIEW.md` explains the project
-- `CODING.md` explains safe implementation patterns
-- `TESTING.md` explains how to verify changes
-- `RELEASING.md` explains repo-specific release rules
+- `TESTING.md` should explain how to verify changes.
+- `CODING.md` should explain implementation constraints.
+- `RELEASING.md` should explain current repository-specific release work.
 
-When a rule belongs in another file, link to that file instead of duplicating it.
+Link to another doc only when the reader must leave the current topic to continue correctly. Do not cross-link by habit.
 
-### 6. Document local rules, not reusable baseline workflow
+### 6. Adapt docs to installed skills
+
+Before writing or updating project docs, inspect which reusable skills or workflows are installed for the repository.
 
 If a reusable skill already covers the generic workflow, the project doc should add only:
 
@@ -98,314 +101,177 @@ If a reusable skill already covers the generic workflow, the project doc should 
 - local failure modes
 - local acceptance rules
 
-Do not restate a whole generic workflow unless this repo truly differs.
+Do not restate a full generic workflow unless this repository truly differs.
 
-### 7. Make scanning easy
+## Hard rules for canonical docs
 
-Use markdown that is easy to skim:
+All canonical docs MUST follow these rules.
 
-- clear headings
-- bullet lists
-- short tables
-- fenced commands
-- concise callouts
+### Required quality
 
-Avoid dense walls of text.
+1. Every actionable rule MUST include at least one repo-local anchor:
+   - command
+   - file path
+   - test path
+   - workflow or entrypoint path
+2. Sections MUST be scan-first: short heading, bullets, tables, or checklists first; rationale only when needed.
+3. Cross-topic content MUST be linked rather than duplicated.
+4. Skill-backed topics MUST state local deltas and local constraints; they MUST NOT restate the full generic workflow.
+5. Examples SHOULD be minimal. Prefer file pointers over pasted code.
 
-### 8. Mark non-canonical docs clearly
+### Hard prohibitions
 
-Not every markdown file should be treated as operating guidance.
+Canonical docs MUST NOT include:
 
-Make the distinction clear between:
+- self-descriptive openings (`"This file is..."`, `"This document explains..."`)
+- audience declarations that only restate the filename's purpose
+- design history or system history inside operational docs
+- roadmap or temporal planning language (`v1`, `first rollout`, `later we plan`, `future phase`)
+- generic advice without repo commands or paths (`"follow best practices"`, `"test thoroughly"`)
+- large pasted code blocks when a path reference is enough
+- skill-backed docs that read as standalone generic runbooks
 
-- canonical operating docs
-- secondary reference docs
-- brainstorming notes
-- design history
-- test evidence or reports
-
-Agents should not have to guess which files are policy and which are archive.
-
-## Markdown Style That Helps Agents
-
-### Prefer these shapes
-
-#### Good section shape
-
-```md
-## Startup change checklist
-
-- Edit `src/index.ts` for startup orchestration changes.
-- Update related service behavior under `src/service/`.
-- Run `bun run typecheck`.
-- Run `bun test tests/integration/plugin.test.ts`.
-```
-
-#### Good reference shape
-
-```md
-See `tests/unit/service/aimgr-service.test.ts` for service-level test patterns.
-```
-
-#### Good decision table shape
-
-```md
-| Change type | Minimum checks |
-|---|---|
-| Service logic | unit tests + typecheck |
-| Plugin startup | integration tests + typecheck |
-```
-```
-
-### Avoid these shapes
-
-- long essays before the actionable rule appears
-- repeated background in every section
-- giant copied code blocks from the repo
-- vague statements like "test thoroughly" without commands
-- vague statements like "follow best practices"
-
-## Doc Taxonomy
-
-Use a clear separation like this:
-
-| Category | Purpose | Typical examples |
-|---|---|---|
-| Canonical operating docs | Default guidance for working in the repo | `AGENTS.md`, `docs/OVERVIEW.md`, `docs/CODING.md`, `docs/TESTING.md`, `docs/RELEASING.md`, `docs/MONITORING.md`, `docs/PULL-REQUESTS.md`, `CONTRIBUTING.md`, `README.md` |
-| Secondary reference docs | Helpful deeper guidance, not always default context | targeted design notes, command-writing guides, user guides |
-| Notes / artifacts | Useful evidence or thinking history, not default instructions | brainstorming docs, smoke-test reports, archived design exploration |
-
-If a file is not canonical operating guidance, say so explicitly.
-
-## File-by-File Guidance
+## Canonical scope contracts (per file)
 
 ### `README.md`
 
-**Purpose**: first stop for users deciding what this project is and how to start using it.
+MUST:
 
-Include:
+- explain what the project is and what it is for
+- provide high-level usage or entrypoint information when applicable
+- link to the main deeper docs for contributors or operators
 
-- what the project does
-- who it is for
-- install / enablement steps
-- the shortest useful documentation map
-- high-level feature summary
+MUST NOT:
 
-Avoid:
-
-- deep contributor workflow details
-- internal architecture walkthroughs
-- long release/debugging instructions
-- exhaustive internal catalogs unless they truly help first-time users
-
-Good supporting links:
-
-- `docs/OVERVIEW.md`
-- `CONTRIBUTING.md`
-- user-guide docs when present
+- become the full contributor setup guide
+- duplicate detailed coding, testing, or release procedures
 
 ### `AGENTS.md`
 
-**Purpose**: routing layer for agents.
+MUST:
 
-Include:
+- route tasks to the right canonical docs and skills
+- include short project summary, tech stack, and routing map
+- include critical session-end and issue-tracking rules when the project needs them
 
-- one-sentence project summary
-- tech stack
-- links to canonical docs by task
-- critical session-end rules
-- issue-tracking rules if relevant
-- optional note that brainstorming, archive, or evidence docs are not default task guidance
+MUST NOT:
 
-Avoid:
-
-- handbook-style detail
-- full testing or release procedures
-- duplicated content from topic docs
-- long reference catalogs that belong elsewhere
-
-Good shape:
-
-- short
-- easy to scan
-- mostly pointers
+- duplicate full coding, testing, release, or monitoring procedures
+- become a long handbook
 
 ### `docs/OVERVIEW.md`
 
-**Purpose**: explain what the project is and how it is organized.
+MUST:
 
-Include:
+- define project identity and core concepts
+- explain high-level architecture
+- provide a high-level repo map that helps an agent find the right area quickly
+- include relevant external references when they are important for understanding the project
 
-- project identity and intended users
-- key concepts and domain language
-- high-level architecture
-- repository map
-- "where to go next" links
-- optional "common change areas" section when the repo has distinct subsystems
+MUST NOT:
 
-Avoid:
-
-- detailed coding rules
-- detailed test commands
-- release checklists
-- exhaustive API or class inventories
-
-### `CONTRIBUTING.md`
-
-**Purpose**: onboard contributors quickly.
-
-Include:
-
-- prerequisites
-- local setup
-- baseline commands to run before opening a PR
-- contributor workflow from issue to PR
-- links to `docs/CODING.md`, `docs/TESTING.md`, and `docs/PULL-REQUESTS.md`
-- common contribution paths if the repo has very different kinds of work
-
-Avoid:
-
-- deep architecture details already covered in `docs/CODING.md`
-- long restatements of testing strategy
-- user-facing installation details better suited for `README.md`
+- include operational checklists that belong in other docs
+- include detailed source listings or large code excerpts
 
 ### `docs/CODING.md`
 
-**Purpose**: help contributors make safe code changes in this repo.
+MUST:
 
-Include:
+- define repository-specific implementation constraints and invariants
+- provide build and typecheck commands when relevant
+- map common change types to edit locations and related files or tests
 
-- build and typecheck commands
-- architecture boundaries and invariants
-- repository structure with why it is split that way
-- change guidance: where to edit for common change types
-- files that usually change together
-- links to real source files and tests that demonstrate patterns
-- repo-specific coding conventions and gotchas
+MUST NOT:
 
-Prefer this kind of guidance:
-
-- "Edit `src/index.ts` for startup orchestration changes."
-- "See `tests/integration/plugin.test.ts` for plugin registration and gating expectations."
-- "See `tests/unit/service/*.test.ts` for service-level test patterns."
-- "See `docs/user-guide/how-to-write-commands.md` for command-authoring conventions."
-
-Avoid:
-
-- large copied code samples
-- long class inventories without explaining how to change them safely
-- generic TypeScript advice that is not local to the repo
+- provide generic language or framework tutorials
+- paste large code excerpts from source files
 
 ### `docs/TESTING.md`
 
-**Purpose**: help contributors choose the right level of verification and run it correctly.
+MUST:
 
-Include:
+- define test levels and test-selection rules
+- include exact commands and prerequisites
+- map change types to minimum checks
+- explain manual testing, setup resources, parallelism, or side effects when those matter in this repo
 
-- test levels and when to use each one
-- exact commands
-- prerequisites and environment limits
-- change-type-to-test matrix
-- where artifacts and failure evidence appear
-- debugging tips for common failures
-- links to representative tests and harnesses
+MUST NOT:
 
-Good supporting references in this repo can include:
-
-- `tests/integration/plugin.test.ts`
-- `tests/integration/manual-launcher.test.ts`
-- `tests/unit/docs-lifecycle-contract.test.ts`
-- `tests/unit/service/*.test.ts`
-
-Avoid:
-
-- vague guidance like "run relevant tests"
-- repeating contributor workflow already in `CONTRIBUTING.md`
-- abstract testing philosophy without commands
+- rely on vague directives such as `run relevant tests`
+- duplicate contributor onboarding workflow
 
 ### `docs/RELEASING.md`
 
-**Purpose**: repo-specific release companion to the generic release workflow.
+MUST:
 
-When a release skill owns the generic flow, this doc should make that dependency obvious and should not read like a complete standalone runbook.
+- document current repository-specific release constraints, files, automation, and checks
+- reference the required skill or command entrypoint when a reusable baseline exists
+- focus on what must be done now, not on future plans for the release system
 
-Include:
+MUST NOT:
 
-- exact pre-release checks for this repo
-- workflow file or automation entrypoint used here
-- version files and changelog rules
-- publishing target and auth quirks
-- accepted gaps or manual follow-ups
-- rollback / hotfix rules that are specific to this repo
-
-Good supporting references in this repo can include:
-
-- `.github/workflows/release.yml`
-- `package.json`
-- `CHANGELOG.md`
-
-Avoid:
-
-- long generic explanations of release theory
-- generic SemVer tutorial content beyond what is needed locally
-- repeating the whole release skill inside the project doc
-- wording that makes the doc look safe to follow without first loading the release skill or repo release command
+- read as a full generic release tutorial
+- include roadmap language or release-system design discussion unless the file is explicitly a design doc
+- imply safe release execution without the required skill or automation path
 
 ### `docs/MONITORING.md`
 
-**Purpose**: help contributors debug incidents with the fastest evidence path.
+MUST:
 
-Include:
+- provide the fastest evidence path for this repository
+- include concrete commands, paths, dashboards, queries, or correlation keys
+- explain how to access the monitoring data used by this project, including production and development variants when both matter
 
-- evidence sources in priority order
-- fast triage checklist
-- exact commands for logs and diagnostics
-- artifact locations
-- correlation keys such as timestamps, session IDs, or process IDs
-- privacy or redaction reminders when evidence may be shared
+MUST NOT:
 
-Avoid:
-
-- generic observability theory
-- tool explanations without concrete repo paths or commands
+- include generic observability theory without repo-local action
 
 ### `docs/PULL-REQUESTS.md`
 
-**Purpose**: define collaboration rules for branches, PRs, review, and merge.
+MUST:
 
-Include:
+- define branch naming, PR expectations, review standards, and merge policy
+- explain the rules an agent or contributor should follow when creating or updating a PR
 
-- branch naming rules
-- PR title / description expectations
-- size guidance
-- testing expectations before review
-- review checklist and reviewer priorities
-- merge strategy
+MUST NOT:
 
-Avoid:
+- duplicate full test command catalogs
+- include generic git training material
 
-- generic git tutorials
-- duplicated test commands already listed in `docs/TESTING.md`
-- duplicated contributor setup already in `CONTRIBUTING.md`
+### `CONTRIBUTING.md`
 
-### Choosing whether to create `docs/RELEASING.md`, `docs/MONITORING.md`, or `docs/PULL-REQUESTS.md`
+MUST:
 
-Create one of these docs only when the project has real local guidance.
+- define onboarding prerequisites and local setup
+- define the contributor flow from first checkout to first PR
+- route to `docs/CODING.md`, `docs/TESTING.md`, and `docs/PULL-REQUESTS.md` when those deeper docs exist
 
-If the topic is fully handled by a reusable skill and the repo adds nothing local, let `AGENTS.md` route to the skill instead.
+MUST NOT:
 
-## Maintenance Rules
+- duplicate deep architecture rules from `docs/CODING.md`
+- duplicate full testing strategy from `docs/TESTING.md`
 
-When project behavior changes, update the matching doc in the same change whenever possible.
+## Validation basics for authors
 
-At minimum, review docs when you change:
+Before finalizing a canonical doc change:
+
+1. Confirm that the commands, paths, tests, workflows, and links you wrote are real.
+2. Run safe verification commands when possible.
+3. For destructive or irreversible commands, validate indirectly by checking scripts, workflow files, parameter contracts, and prerequisites instead of executing them.
+4. If a topic is skill-backed, confirm that the local doc really adds repository-specific value.
+
+For full reviewer workflow, severity rules, and per-file review checklists, use [project-doc-review-guidelines.md](project-doc-review-guidelines.md).
+
+## Maintenance requirements
+
+When behavior changes, update matching canonical docs in the same change when feasible.
+
+At minimum, review affected docs when changing:
 
 - commands
 - file paths
 - directory structure
-- build/test/release workflow
-- startup behavior
-- monitoring or diagnostics flow
-- PR or merge policy
+- coding, testing, release, monitoring, or PR workflows
+- installed skill coverage for the topic
 
-If a recurring mistake appears, add the fix to the document that should have prevented it.
+If a repeated failure mode appears in writing or review, add an explicit rule here.
