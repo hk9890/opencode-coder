@@ -29,7 +29,7 @@ docs/
   TESTING.md
   RELEASING.md
   MONITORING.md
-  PULL-REQUESTS.md
+  CHANGE-WORKFLOW.md
 ```
 
 These are standard slots, not required files. A valid minimal setup can be:
@@ -89,17 +89,17 @@ docs/
 - Explains where logs, dashboards, traces, queries, or other monitoring data live and how to access them for this project.
 - Load for incident investigation, monitoring analysis, or operational debugging.
 
-### `docs/PULL-REQUESTS.md`
+### `docs/CHANGE-WORKFLOW.md`
 
-- Repository-specific branch, pull-request, review, and merge expectations.
-- Covers naming rules, PR requirements, and collaboration steps the agent should follow when opening or updating a PR.
-- Load when preparing branches, creating PRs, responding to review, or checking merge rules.
+- Repository-specific change-landing expectations for direct-to-main and branch-based flows.
+- Covers commit/push policy, branch creation, pull-request rules when used, review expectations, and merge behavior.
+- Load when deciding commit, push, branch, PR, review, or merge actions.
 
 ### `CONTRIBUTING.md`
 
 - Contributor onboarding and local development setup flow.
-- Covers prerequisites, workspace setup, and the path from first checkout to first contribution.
-- Links to `docs/CODING.md`, `docs/TESTING.md`, and `docs/PULL-REQUESTS.md` when those deeper docs exist.
+- Covers prerequisites, workspace setup, and the path from first checkout to first landed change.
+- Links to `docs/CODING.md`, `docs/TESTING.md`, and `docs/CHANGE-WORKFLOW.md` when those deeper docs exist.
 - Load when setting up the project for development or helping a contributor get started.
 
 ## Skills vs project docs
@@ -123,7 +123,7 @@ Typical routing examples:
 - `AGENTS.md` → `docs/OVERVIEW.md` for project research and architecture context
 - `AGENTS.md` → `docs/CODING.md` for implementation work
 - `AGENTS.md` → `docs/TESTING.md` for validation work
-- `AGENTS.md` → `docs/PULL-REQUESTS.md` for branch/PR work
+- `AGENTS.md` → `docs/CHANGE-WORKFLOW.md` for commit/push/branch/PR/review/merge decisions
 - `AGENTS.md` → skill + matching local topic doc when both apply
 
 This keeps shared default context small while preserving durable local guidance in focused files.

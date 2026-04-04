@@ -85,7 +85,7 @@ Use these file names under the active docs directory:
 | Testing | `TESTING.md` | Create only if relevant |
 | Releases | `RELEASING.md` | Create only if relevant |
 | Monitoring | `MONITORING.md` | Create only if relevant |
-| Pull Requests | `PULL-REQUESTS.md` | Create only if relevant |
+| Change workflow | `CHANGE-WORKFLOW.md` | Create only if relevant |
 
 **Create a standard doc only when it has real project-specific content.**
 

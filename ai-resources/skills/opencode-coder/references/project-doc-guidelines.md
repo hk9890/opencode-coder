@@ -226,12 +226,13 @@ MUST NOT:
 
 - include generic observability theory without repo-local action
 
-### `docs/PULL-REQUESTS.md`
+### `docs/CHANGE-WORKFLOW.md`
 
 MUST:
 
-- define branch naming, PR expectations, review standards, and merge policy
-- explain the rules an agent or contributor should follow when creating or updating a PR
+- define how changes land for both direct-to-main and branch/PR paths
+- define commit/push policy, branch creation rules, review expectations, and merge behavior
+- explain what an agent or contributor should do for commit, push, branch, PR, review, and merge decisions
 
 MUST NOT:
 
@@ -243,8 +244,8 @@ MUST NOT:
 MUST:
 
 - define onboarding prerequisites and local setup
-- define the contributor flow from first checkout to first PR
-- route to `docs/CODING.md`, `docs/TESTING.md`, and `docs/PULL-REQUESTS.md` when those deeper docs exist
+- define the contributor flow from first checkout to first landed change
+- route to `docs/CODING.md`, `docs/TESTING.md`, and `docs/CHANGE-WORKFLOW.md` when those deeper docs exist
 
 MUST NOT:
 
@@ -271,7 +272,7 @@ At minimum, review affected docs when changing:
 - commands
 - file paths
 - directory structure
-- coding, testing, release, monitoring, or PR workflows
+- coding, testing, release, monitoring, or change-workflow expectations
 - installed skill coverage for the topic
 
 If a repeated failure mode appears in writing or review, add an explicit rule here.

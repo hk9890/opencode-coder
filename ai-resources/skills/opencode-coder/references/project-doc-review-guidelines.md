@@ -133,7 +133,7 @@ Questions for the reviewer:
 - Does it explain the project, domain language, and high-level architecture clearly?
 - Does it help an agent find the right area of the repo quickly?
 - Are any linked external references genuinely useful for understanding the project?
-- Does it avoid drifting into implementation checklists or release/PR policy?
+- Does it avoid drifting into implementation checklists or release/change-workflow policy?
 
 ### `docs/CODING.md`
 
@@ -176,13 +176,13 @@ Questions for the reviewer:
 - Is it clear how to access production and development monitoring data when both matter?
 - Does it explain how investigation should proceed in this repository rather than giving generic observability advice?
 
-### `docs/PULL-REQUESTS.md`
+### `docs/CHANGE-WORKFLOW.md`
 
 Questions for the reviewer:
 
-- Are branch naming and PR creation rules clear?
-- Are review expectations and merge rules explicit?
-- Does it explain what an agent should do when opening or updating a PR?
+- Does it clearly cover both direct-to-main and branch/PR landing paths?
+- Are commit/push policy, branch creation rules, review expectations, and merge behavior explicit?
+- Does it explain what an agent should do when deciding commit, push, branch, PR, review, or merge actions?
 - Does it avoid generic git training or duplicated test catalogs?
 
 ### `CONTRIBUTING.md`
@@ -191,8 +191,8 @@ Questions for the reviewer:
 
 - Is the local development setup flow clear and complete?
 - Are prerequisites, credentials, local services, and environment assumptions explicit?
-- Is the path from first checkout to first contribution clear?
-- Does it route deeper coding, testing, and PR details to the right files instead of duplicating them?
+- Is the path from first checkout to first landed change clear?
+- Does it route deeper coding, testing, and change-workflow details to the right files instead of duplicating them?
 
 ## Final pass before approval
 
