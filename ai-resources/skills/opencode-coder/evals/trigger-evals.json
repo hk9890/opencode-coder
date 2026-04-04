@@ -24,6 +24,10 @@
     "should_trigger": true
   },
   {
+    "query": "I want to set up change workflow documentation for how we land changes in this repo, including when we go direct to main versus branch and PR.",
+    "should_trigger": true
+  },
+  {
     "query": "My project is in stealth mode and there is already a committed root AGENTS.md from the team. When opencode-coder refreshes docs, what should it write where so it doesn't overwrite the shared files?",
     "should_trigger": true
   },
