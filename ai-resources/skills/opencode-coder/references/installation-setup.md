@@ -20,7 +20,7 @@ Startup no longer creates project-local opencode-coder files automatically for f
 | Tool | Purpose | Install |
 |------|---------|---------|
 | `bd` | Beads issue tracking CLI | `npm install -g beads` |
-| `aimgr` *(optional)* | AI resource discovery | See: https://github.com/hk9890/ai-config-manager |
+| `aimgr` *(optional)* | AI resource discovery | See: https://github.com/dynatrace-oss/ai-config-manager |
 
 ### Manual Install
 

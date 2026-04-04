@@ -33,8 +33,8 @@ bd where >"${hook_artifacts_dir}/bd-where.txt"
 bd status >"${hook_artifacts_dir}/bd-status.txt"
 bd list --status open >"${hook_artifacts_dir}/bd-open-issues-after.txt"
 
-if [ -f .beads/tasks.jsonl ]; then
-  cp .beads/tasks.jsonl "${hook_artifacts_dir}/workspace-tasks.jsonl"
+if [ -f .beads/issues.jsonl ]; then
+  cp .beads/issues.jsonl "${hook_artifacts_dir}/workspace-issues.jsonl"
 fi
 
 if command -v git >/dev/null 2>&1; then

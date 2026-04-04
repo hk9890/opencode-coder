@@ -13,7 +13,7 @@ Complete guide to enabling debug logging and analyzing OpenCode logs for trouble
    - [Analyzing Log Files](#analyzing-log-files)
    - [Useful Log Analysis Commands](#useful-log-analysis-commands)
    - [What to Look For](#what-to-look-for)
-    - [Disabling Debug Logging](#disabling-debug-logging)
+   - [Disabling Debug Logging](#disabling-debug-logging)
 
 ---
 
