@@ -36,7 +36,7 @@ Load [troubleshooting-installation-init.md](troubleshooting-installation-init.md
 
 - `bd` not found
 - npm permission errors
-- `bd init` git-repo failures
+- `bd init --skip-agents` / `bd init --stealth --skip-agents` git-repo failures
 - hooks missing right after setup
 - stealth/team switching issues
 - stealth marker or excluded-file detection issues

@@ -42,7 +42,7 @@ npm install -g beads
 sudo npm install -g beads
 ```
 
-## `bd init` fails with "not a git repository"
+## `bd init --skip-agents` fails with "not a git repository"
 
 **Fix**:
 
@@ -50,10 +50,12 @@ sudo npm install -g beads
 git init
 git add .
 git commit -m "Initial commit"
-bd init --stealth
+bd init --stealth --skip-agents
 ```
 
 **Why**: beads requires an initialized git repository.
+
+**Boundary**: use `--skip-agents` for direct/manual init in this workflow. Manual beads init is only for tracker/hooks setup and must not be treated as project markdown/doc generation.
 
 For mode/layout rules, see [project-structure.md](project-structure.md).
 

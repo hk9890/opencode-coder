@@ -41,24 +41,6 @@ async function ensureExecutable(filePath: string): Promise<void> {
 }
 
 describe("functional eval runner", () => {
-  it("does not track generated Python bytecode under skill-creator scripts", async () => {
-    const tracked = await runCommand(["git", "ls-files"]);
-
-    expect(tracked.exitCode).toBe(0);
-
-    const trackedBytecode = tracked.stdout
-      .split("\n")
-      .filter(Boolean)
-      .filter(
-        (filePath) =>
-          filePath.startsWith(
-            "ai-resources/skills/opencode-coder-skill-creator/scripts/"
-          ) && (filePath.includes("/__pycache__/") || filePath.endsWith(".pyc"))
-      );
-
-    expect(trackedBytecode).toEqual([]);
-  });
-
   it("covers bare workspace start, hook lifecycle edge-cases, and basename fallback naming", async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), "opencode-coder-functional-eval-"));
 

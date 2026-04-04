@@ -109,13 +109,15 @@ Option 1: Navigate to beads project directory
   cd /path/to/beads/project
 
 Option 2: Initialize beads in current directory
-  bd init
+  bd init --skip-agents
 
 Verify:
   bd stats
 ```
 
 **Resolution**: Ensure in beads project, then retry
+
+**Boundary**: direct/manual `bd init ... --skip-agents` is beads-state/hooks setup only. It does not own markdown/project-doc generation or refresh.
 
 ### Repository Not Detected
 

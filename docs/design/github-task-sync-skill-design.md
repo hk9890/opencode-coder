@@ -213,7 +213,7 @@ fi
 if ! bd stats &> /dev/null; then
     echo "❌ Not available"
     echo ""
-    echo "Error: bd stats failed. Are you in a beads project? Run: bd init"
+    echo "Error: bd stats failed. Are you in a beads project? Run: bd init --skip-agents"
     exit 1
 fi
 echo "✅ Available"
@@ -450,8 +450,10 @@ Check: bd doctor
 ```
 Error: bd stats failed - no .beads directory
 Cause: Not in a beads-initialized project
-Solution: Run bd init
+Solution: Run bd init --skip-agents
 ```
+
+Manual/direct beads init in this workflow is tracker/hooks setup only. It must not be treated as project markdown generation or refresh.
 
 **Error: bd create failed**
 ```

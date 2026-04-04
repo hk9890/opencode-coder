@@ -248,7 +248,8 @@ Common error scenarios and resolutions:
 ### bd CLI Errors
 
 - **Not found**: Install beads CLI
-- **Not in beads project**: Run `bd init` or navigate to beads project
+- **Not in beads project**: Run `bd init --skip-agents` (or `bd init --stealth --skip-agents`) or navigate to a beads project
+- **Boundary**: Direct/manual beads init is tracker/hooks setup only. It must not be used to create or refresh project markdown docs (`AGENTS.md`, `README`, etc.); that remains the opencode-coder docs-lifecycle responsibility.
 - **Create failed**: Check bead parameters and .beads/ permissions
 
 ### Sync Errors

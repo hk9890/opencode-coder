@@ -1,6 +1,34 @@
-# Pull Requests & Branching
+# Direct-to-Main Changes and Optional Pull Requests
+
+## Default Workflow
+
+This repository normally lands work by committing and pushing directly to `main`.
+
+- Do **not** create a branch or PR by default.
+- Use a branch and PR only when the user explicitly asks for one or when an external review flow specifically requires it.
+- Keep each change small, scoped, and easy to review from the final commit diff.
+
+Before pushing to `main`:
+
+1. Run the relevant checks from [`TESTING.md`](TESTING.md).
+2. Review the final diff you plan to ship.
+3. Rebase onto the latest remote state:
+
+   ```bash
+   git pull --rebase
+   ```
+
+4. Push the finished commit:
+
+   ```bash
+   git push
+   ```
+
+If the working tree contains unrelated local edits, do not mix them into the same commit.
 
 ## Branching Strategy
+
+Use this section only when a branch is explicitly needed.
 
 ### Branch Naming
 
@@ -24,10 +52,12 @@ Rules:
 ### Base Branch
 
 - All branches start from `main`
-- Merge back to `main` via pull request
+- Merge back to `main` via pull request when the PR flow is in use
 - No long-lived feature branches — keep PRs small and focused
 
 ## Pull Request Guidelines
+
+Use this section only when a PR is explicitly requested.
 
 ### Creating a PR
 
@@ -87,6 +117,7 @@ Guidelines:
 
 ## Merge Strategy
 
-- **Squash and merge** to `main` (keeps history clean)
+- Default path for this repo: direct commits to `main`
+- If a PR is used, **squash and merge** to `main`
 - The squash commit message should follow conventional commits: `feat:`, `fix:`, `chore:`, etc.
 - Delete the branch after merge

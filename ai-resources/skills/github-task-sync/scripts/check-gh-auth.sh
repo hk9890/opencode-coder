@@ -48,7 +48,8 @@ if ! bd stats &> /dev/null; then
     echo ""
     echo "Error: bd stats failed. Are you in a beads project?"
     echo ""
-    echo "If not in a beads project, run: bd init"
+    echo "If not in a beads project, run: bd init --skip-agents"
+    echo "Manual beads init only sets up beads state/hooks; it does not create project markdown docs."
     echo "Then retry this command."
     exit 1
 fi

@@ -78,16 +78,18 @@ If you only want beads itself and are **not** trying to activate the full openco
 
 ```bash
 npm install -g beads
-bd init
+bd init --skip-agents
 ```
 
 For local-only usage, use stealth mode instead:
 
 ```bash
-bd init --stealth
+bd init --stealth --skip-agents
 ```
 
-Important: manual `bd init` / `bd init --stealth` is beads-only setup. It is not the documented plugin activation path. To explicitly enable opencode-coder for the project, use `/opencode-coder/init` so the saved plugin mode state is written correctly.
+Important: manual `bd init --skip-agents` / `bd init --stealth --skip-agents` is beads-only setup. It is not the documented plugin activation path. To explicitly enable opencode-coder for the project, use `/opencode-coder/init` so the saved plugin mode state is written correctly.
+
+Boundary note: manual beads init with `--skip-agents` only sets up beads tracker state/hooks. It does not own project markdown/doc generation or refresh (`AGENTS.md`, `README`, etc.); those docs remain under the opencode-coder docs lifecycle.
 
 ## Troubleshooting
 

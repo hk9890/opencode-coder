@@ -69,7 +69,9 @@ Beads integration is optional. You can use the plugin without beads at all.
 
 If you want the full opencode-coder project workflow, use `/opencode-coder/init` to enable the project first and let the command drive the correct mode setup.
 
-If you are only setting up beads itself, you can still initialize beads manually with `bd init` or `bd init --stealth`, but that is beads-only setup — it is **not** the documented way to activate opencode-coder for a project.
+If you are only setting up beads itself, you can still initialize beads manually with `bd init --skip-agents` or `bd init --stealth --skip-agents`, but that is beads-only setup — it is **not** the documented way to activate opencode-coder for a project.
+
+Manual `bd init ... --skip-agents` only creates/updates beads tracker state and hooks. It must not be used to create or refresh project markdown guidance (such as `AGENTS.md`, `README`, or other docs); project-doc lifecycle remains the opencode-coder docs responsibility.
 
 ### Stealth Mode (Recommended default)
 
@@ -77,7 +79,7 @@ If you are only setting up beads itself, you can still initialize beads manually
 - Won't affect git history or other team members
 - Perfect for: personal use, OSS contributions, teams not using beads yet
 - `/opencode-coder/init` configures this mode for plugin-managed setup
-- `bd init --stealth` is only the manual beads command underneath that setup
+- `bd init --stealth --skip-agents` is only the manual beads command underneath that setup
 
 ### Team Mode
 
@@ -85,7 +87,7 @@ If you are only setting up beads itself, you can still initialize beads manually
 - Enables multi-device sync and team collaboration
 - Perfect for: teams adopting beads together
 - `/opencode-coder/init` configures this mode for plugin-managed setup
-- `bd init` is only the manual beads command underneath that setup
+- `bd init --skip-agents` is only the manual beads command underneath that setup
 
 
 ## aimgr Integration (Optional)
@@ -234,7 +236,7 @@ Sync tasks bidirectionally
 
 **Prerequisites:**
 - GitHub CLI (`gh`) authenticated: `gh auth login`
-- Beads initialized: `bd init`
+- Beads initialized: `bd init --skip-agents` (or `bd init --stealth --skip-agents` for local-only mode)
 
 For detailed workflow documentation, see the skills at `.opencode/skills/task-sync/` and `.opencode/skills/github-task-sync/`.
 

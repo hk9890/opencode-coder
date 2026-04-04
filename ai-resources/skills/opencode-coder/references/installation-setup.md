@@ -96,7 +96,7 @@ When legacy active state is inferred, the plugin should write `.coder/opencode-c
 ```bash
 mkdir -p .coder
 printf 'mode: stealth\n' > .coder/opencode-coder.yaml
-bd init --stealth && bd hooks install
+bd init --stealth --skip-agents && bd hooks install
 mkdir -p .coder/docs
 
 if ! grep -q "# opencode-coder stealth mode" .git/info/exclude 2>/dev/null; then
@@ -116,9 +116,11 @@ fi
 ```bash
 mkdir -p .coder
 printf 'mode: team\n' > .coder/opencode-coder.yaml
-bd init && bd hooks install
+bd init --skip-agents && bd hooks install
 grep -qF '.coder/' .gitignore 2>/dev/null || echo '.coder/' >> .gitignore
 ```
+
+Manual `bd init ... --skip-agents` is beads infrastructure setup only (tracker state + hooks). Markdown/project-doc generation or refresh (`AGENTS.md`, `README`, and related docs) is not owned by `bd init`; keep that in the opencode-coder docs lifecycle.
 
 #### Saved disabled mode
 

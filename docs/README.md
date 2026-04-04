@@ -12,13 +12,13 @@ These are the default project-memory docs for day-to-day work.
 |---|---|---|
 | `../AGENTS.md` | Agent routing and critical session rules | Starting any task in the repo |
 | `../README.md` | User-facing project overview and install path | Understanding plugin usage or entrypoints |
-| `../CONTRIBUTING.md` | Contributor setup and baseline workflow | Onboarding or preparing a PR |
+| `../CONTRIBUTING.md` | Contributor setup and baseline workflow | Onboarding or preparing a change |
 | `OVERVIEW.md` | Project identity, concepts, repo map | Understanding what the repo does |
 | `CODING.md` | Safe change guidance and architecture boundaries | Editing code, resources, or repo workflows |
 | `TESTING.md` | Test selection and execution guidance | Verifying any change |
 | `RELEASING.md` | Repo-specific release companion, not a standalone runbook | After starting the release workflow |
 | `MONITORING.md` | Logs, diagnostics, and evidence workflow | Debugging incidents or runtime behavior |
-| `PULL-REQUESTS.md` | Branch, PR, review, and merge rules | Opening or reviewing a PR |
+| `PULL-REQUESTS.md` | Direct-to-main policy plus optional branch/PR rules | Preparing to push to `main` or when a PR is explicitly requested |
 
 These files should stay concise, current, and strongly scoped.
 
