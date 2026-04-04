@@ -23,7 +23,9 @@ Standard topic set:
 - `TESTING.md`
 - `RELEASING.md`
 - `MONITORING.md`
-- `PULL-REQUESTS.md`
+- `CHANGE-WORKFLOW.md`
+
+For change-landing guidance, `CHANGE-WORKFLOW.md` is the canonical output target. Legacy PR-named docs (for example `PULL-REQUESTS.md`) are compatibility inputs during inspection/migration, not the new generated baseline.
 
 ## User Communication During Docs Setup
 
@@ -219,11 +221,12 @@ The command should combine both sources when available.
    - If information is insufficient, ask concise follow-up questions before proposing doc changes.
 
 2. **Map the guidance gap destination**
-   - Determine whether the missing/weak guidance belongs in:
-     - project docs (mode-correct active docs path)
-     - AGENTS routing (mode-correct AGENTS file)
-     - opencode-coder skill/reference content
-     - or a combination
+    - Determine whether the missing/weak guidance belongs in:
+      - project docs (mode-correct active docs path)
+      - AGENTS routing (mode-correct AGENTS file)
+      - opencode-coder skill/reference content
+      - or a combination
+    - For change-landing gaps (commit/branch/merge/PR flow), map canonical project-doc updates to `CHANGE-WORKFLOW.md` while treating legacy PR-named files as migration inputs only.
 
 3. **Analyze why prevention failed**
    - Identify the specific failure mode, for example:
