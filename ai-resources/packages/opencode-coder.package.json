@@ -14,7 +14,6 @@
     "command/opencode-coder/improve-doc",
     "command/opencode-coder/report-bug",
     "command/opencode-coder/status",
-    "skill/opencode-coder",
-    "skill/ai-resource-manager"
+    "skill/opencode-coder"
   ]
 }

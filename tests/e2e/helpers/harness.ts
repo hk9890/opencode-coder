@@ -686,6 +686,8 @@ async function createWorkspaceFromSource(
   await cp(workspaceSource.sourceDir, workdir, { recursive: true });
 
   await $`git init --quiet`.cwd(workdir).quiet();
+  await $`git config user.name "opencode-coder-test"`.cwd(workdir).quiet();
+  await $`git config user.email "test@opencode-coder.local"`.cwd(workdir).quiet();
 
   return {
     fixtureName: workspaceSource.kind === "fixture" ? workspaceSource.fixtureName : undefined,
