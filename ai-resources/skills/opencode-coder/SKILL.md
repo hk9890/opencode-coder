@@ -1,6 +1,6 @@
 ---
 name: opencode-coder
-description: "Use this skill when the AI assistant needs to plan beads work, set up project docs, run the /simplify workflow, install or initialize bd or opencode-coder, switch stealth/team modes for project, check plugin health, analyze plugin logs, troubleshoot plugin behavior, generate AGENTS.md guidance, or help report opencode-coder bugs."
+description: "Use this skill when the AI assistant needs to create epics, tasks, or bugs with bd for structured planning, set up or bootstrap project docs, run the /simplify workflow, install or initialize bd or opencode-coder, switch stealth/team modes, run /opencode-coder/status or /opencode-coder/doctor for health checks, export a session with /opencode-coder/dump-session, analyze opencode-coder plugin logs for troubleshooting, generate AGENTS.md guidance, or help report opencode-coder plugin bugs with /opencode-coder/report-bug. Do NOT use this skill for GitHub releases, external task sync (GitHub issues, Jira), or observability triage of production logs."
 ---
 
 ## Command-backed workflow contract
