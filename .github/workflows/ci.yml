@@ -24,7 +24,12 @@ jobs:
 
       - name: Install beads CLI
         run: |
-          npm install -g @beads/bd
+          set -euo pipefail
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+          curl -fsSL "https://github.com/gastownhall/beads/releases/download/v1.0.0/beads_1.0.0_linux_amd64.tar.gz" -o "$tmp_dir/beads.tar.gz"
+          tar -xzf "$tmp_dir/beads.tar.gz" -C "$tmp_dir"
+          install -m 0755 "$tmp_dir/bd" /usr/local/bin/bd
           command -v bd
           bd --version
 
