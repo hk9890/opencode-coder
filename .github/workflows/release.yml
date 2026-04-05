@@ -45,6 +45,10 @@ jobs:
       - name: Install beads CLI
         run: |
           npm install -g beads
+          NPM_GLOBAL_BIN="$(npm bin -g)"
+          echo "$NPM_GLOBAL_BIN" >> "$GITHUB_PATH"
+          export PATH="$NPM_GLOBAL_BIN:$PATH"
+          command -v bd
           bd --version
 
       - name: Type check
