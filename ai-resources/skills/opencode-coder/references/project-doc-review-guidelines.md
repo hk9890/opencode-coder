@@ -160,7 +160,7 @@ Questions for the reviewer:
 
 Questions for the reviewer:
 
-- Do it describe how to do a release
+- Does it describe how to do a release?
 - Does it describe the current repository-specific release work rather than release-system philosophy?
 - Is the required skill, command, or workflow entrypoint clear?
 - Are irreversible steps and safety checks explicit?

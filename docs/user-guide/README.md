@@ -8,4 +8,4 @@ This folder contains setup, usage, and focused how-to documentation for the open
 - [Project Doc Review Guidelines](project-doc-review-guidelines.md) — reviewer-only checklist and validation guidance for checking canonical project docs against repo reality
 - [How to Write Commands](how-to-write-commands.md) — contributor reference for keeping commands thin and skill-backed
 - [How to Write Skills](how-to-write-skills.md) — contributor reference for runtime-vs-authoring content boundaries
-- `docs/OVERVIEW.md` is now included in the recommended structure as the main project overview document
+- See also: [Project Overview](../OVERVIEW.md) for the main project identity and repository map.

@@ -18,7 +18,7 @@ These are the default project-memory docs for day-to-day work.
 | `TESTING.md` | Test selection and execution guidance | Verifying any change |
 | `RELEASING.md` | Repo-specific release companion, not a standalone runbook | After starting the release workflow |
 | `MONITORING.md` | Logs, diagnostics, and evidence workflow | Debugging incidents or runtime behavior |
-| `PULL-REQUESTS.md` | Direct-to-main policy plus optional branch/PR rules | Preparing to push to `main` or when a PR is explicitly requested |
+| `CHANGE-WORKFLOW.md` | Direct-to-main policy plus optional branch/PR rules | Preparing to commit, push, branch, or open a PR |
 
 These files should stay concise, current, and strongly scoped.
 

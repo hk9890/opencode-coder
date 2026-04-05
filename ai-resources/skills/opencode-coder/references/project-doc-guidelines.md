@@ -5,6 +5,7 @@ Canonical authoring standard for project docs.
 Use it together with these companion references:
 
 - [project-setup.md](project-setup.md) explains which canonical docs should exist, what each one owns, and when an agent should load them.
+- [project-doc-review-guidelines.md](project-doc-review-guidelines.md) is the reviewer-only companion for evaluating finished docs against the authoring standard and repository reality.
 
 ## Authoring goals
 

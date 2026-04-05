@@ -30,9 +30,9 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 - Load the **observability-triage** skill for logs, metrics, and incident triage.
 - Read [`docs/MONITORING.md`](docs/MONITORING.md) for repo-specific evidence sources and analysis workflow.
 
-### Pull Requests
+### Change Workflow
 
-- Read [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md) for branch naming, PR expectations, and review conventions.
+- Read [`docs/CHANGE-WORKFLOW.md`](docs/CHANGE-WORKFLOW.md) for direct-to-main flow, optional branch/PR rules, and review conventions.
 
 ### Issue Tracking (beads)
 

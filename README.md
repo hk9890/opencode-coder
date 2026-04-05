@@ -14,7 +14,7 @@ Focused guides under `docs/`:
 
 - [`docs/CODING.md`](docs/CODING.md)
 - [`docs/TESTING.md`](docs/TESTING.md)
-- [`docs/PULL-REQUESTS.md`](docs/PULL-REQUESTS.md)
+- [`docs/CHANGE-WORKFLOW.md`](docs/CHANGE-WORKFLOW.md)
 - [`docs/RELEASING.md`](docs/RELEASING.md)
 - [`docs/MONITORING.md`](docs/MONITORING.md)
 
@@ -110,10 +110,7 @@ Fresh or saved-disabled projects skip these startup side effects until explicitl
 
 To use this feature, install aimgr:
 
-```bash
-# See installation instructions
-https://github.com/hk9890/ai-config-manager
-```
+- See the install instructions at <https://github.com/hk9890/ai-config-manager>.
 
 ### Disabling or suppressing startup behavior
 
@@ -153,9 +150,9 @@ bd close <id>
 
 ## Available Commands
 
-### Plugin Commands
+### Published Plugin Commands
 
-These commands are provided by this plugin and available in OpenCode:
+These commands are published with `@dynatrace-oss/opencode-coder` and available when the packaged plugin is installed:
 
 | Command | Description |
 |---------|-------------|
@@ -167,6 +164,13 @@ These commands are provided by this plugin and available in OpenCode:
 | `/opencode-coder/dump-session` | Export current session data |
 | `/opencode-coder/docs` | Run docs lifecycle (inspect, bootstrap, refresh, audit, slim, verify) |
 | `/opencode-coder/improve-doc` | Turn an incident into targeted doc/routing fixes to prevent recurrence |
+ 
+### Repository-local Development Commands
+
+These commands exist in this repository for plugin development workflows:
+
+| Command | Description |
+|---------|-------------|
 | `/opencode-coder-dev/analyze-logs` | Analyze OpenCode logs for errors (dev use) |
 | `/opencode-coder-dev/fix-bugs` | Triage and fix bugs from logs (dev use) |
 | `/opencode-coder-dev/import-tasks` | Import tasks from GitHub issues (dev use) |
@@ -189,7 +193,6 @@ The following are **not plugin commands** — they are commands from the [beads 
 | `bd export` | Export issues to JSONL |
 | `bd dep` | Manage dependencies |
 | `bd epic` | Create an epic with tasks |
-| `bd template` | Manage issue templates |
 
 ## Available Skills
 
@@ -238,7 +241,7 @@ Sync tasks bidirectionally
 - GitHub CLI (`gh`) authenticated: `gh auth login`
 - Beads initialized: `bd init --skip-agents` (or `bd init --stealth --skip-agents` for local-only mode)
 
-For detailed workflow documentation, see the skills at `.opencode/skills/task-sync/` and `.opencode/skills/github-task-sync/`.
+For detailed workflow documentation, see `ai-resources/skills/task-sync/` and `ai-resources/skills/github-task-sync/`.
 
 ## Available Agents
 

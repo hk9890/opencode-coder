@@ -53,7 +53,7 @@ For implementation details, conventions, and architecture rules, see the focused
 - [Testing guide](./TESTING.md)
 - [Release companion](./RELEASING.md)
 - [Monitoring and triage](./MONITORING.md)
-- [Pull request workflow](./PULL-REQUESTS.md)
+- [Change workflow](./CHANGE-WORKFLOW.md)
 - [Getting started guide](./user-guide/getting-started.md)
 - [Project doc structure guide](./user-guide/project-setup.md)
 
