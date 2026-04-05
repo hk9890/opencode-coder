@@ -15,6 +15,21 @@ For detailed authoring standards, see
 - Create a topic doc only when it has real repository-specific rules to preserve.
 - If a reusable skill already covers a topic and the project has no local additions, route to the skill instead of creating a duplicate project doc.
 
+## Steering-doc policy (canonical layer)
+
+Use this policy when creating or updating canonical steering docs (`AGENTS.md`, `CONTRIBUTING.md`, and standard topic docs under `docs/`).
+
+| Rule | Default |
+|---|---|
+| Primary audience | Agent-first. Maintainers/contributors are expected to work through agents that load and follow these docs. |
+| Writing style | Scan-first, action-first. Prefer checklists, decision tables, commands, and concrete paths. |
+| Compatibility artifacts | Do **not** keep or create backward-compatible redirect files by default for steering docs. |
+| Legacy/non-standard docs | Treat as consolidation candidates; keep only with explicit scoped justification. |
+
+When legacy steering files are discovered, migrate to canonical docs or remove stale files unless the user explicitly requests a compatibility artifact.
+
+Consolidation outcomes are defined in [project-docs-lifecycle.md](project-docs-lifecycle.md): keep (justified), merge, split, or delete.
+
 ## Standard file set
 
 Use these names when the project actually needs each topic:

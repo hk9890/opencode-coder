@@ -17,6 +17,19 @@ Use it together with these companion references:
 
 ## Authoring goals
 
+## Steering-doc defaults (canonical layer)
+
+Apply these defaults to canonical steering docs (`AGENTS.md`, `CONTRIBUTING.md`, and standard topic docs under `docs/`):
+
+| Rule | Requirement |
+|---|---|
+| Primary audience | Agent-first. Maintainers/contributors are expected to execute workflows through agents. |
+| Authoring style | Scan-first + action-first by default (checklists, decision tables, commands, file paths). |
+| Compatibility goal | Backward-compatible redirect files are **not** a default goal for steering docs. |
+| Legacy steering docs | Non-standard filenames are consolidation candidates; keep only with explicit scoped justification. |
+
+For keep/merge/split/delete execution details and evidence requirements, follow [project-docs-lifecycle.md](project-docs-lifecycle.md).
+
 ### 1. Write for action, not narration
 
 Project docs should help a human or agent decide what to do next.
@@ -127,6 +140,7 @@ All canonical docs MUST follow these rules.
 3. Cross-topic content MUST be linked rather than duplicated.
 4. Skill-backed topics MUST state local deltas and local constraints; they MUST NOT restate the full generic workflow.
 5. Examples SHOULD be minimal. Prefer file pointers over pasted code.
+6. Consolidation guidance MUST be decision-oriented (table/checklist) and MUST include explicit evidence criteria before keep/merge/split/delete decisions.
 
 ### Hard prohibitions
 
@@ -139,6 +153,7 @@ Canonical docs MUST NOT include:
 - generic advice without repo commands or paths (`"follow best practices"`, `"test thoroughly"`)
 - large pasted code blocks when a path reference is enough
 - skill-backed docs that read as standalone generic runbooks
+- compatibility redirect-file instructions as a default expectation for steering docs
 
 ## Canonical scope contracts (per file)
 

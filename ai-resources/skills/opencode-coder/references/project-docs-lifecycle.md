@@ -6,6 +6,15 @@ This reference owns the lifecycle phases for project docs and AGENTS routing.
 `/opencode-coder/docs` should stay a thin dispatcher that calls into this file.
 `/opencode-coder/improve-doc` should also stay a thin dispatcher that calls into this file's incident-improvement section.
 
+## Lifecycle defaults (apply in every phase)
+
+| Rule | Default behavior |
+|---|---|
+| Canonical steering audience | Agent-first. Canonical steering docs are optimized for agents; maintainers/contributors are expected to work through agents. |
+| Compatibility policy | Backward-compatible redirect files are **not** a default goal for steering docs. |
+| Legacy steering files | Treat non-standard files as consolidation candidates and decide keep/merge/split/delete before refresh work. |
+| Completion bar | No stale links/routes and no duplicate/conflicting operating guidance across canonical and retained non-standard docs. |
+
 ## Phase 1 — Inspect
 
 1. Load `project-structure.md` and resolve active mode/paths.
@@ -15,6 +24,7 @@ This reference owns the lifecycle phases for project docs and AGENTS routing.
    - **doc-backed**: project-specific local doc exists
    - **skill-only**: no local doc, but a matching reusable skill/workflow is installed under `.opencode/skills/`
    - **neither**: no local doc and no relevant skill signal
+5. Inventory non-standard docs (anything outside canonical steering filenames) as explicit consolidation candidates.
 
 Standard topic set:
 
@@ -25,7 +35,56 @@ Standard topic set:
 - `MONITORING.md`
 - `CHANGE-WORKFLOW.md`
 
-For change-landing guidance, `CHANGE-WORKFLOW.md` is the canonical output target. Legacy PR-named docs (for example `PULL-REQUESTS.md`) are compatibility inputs during inspection/migration, not the new generated baseline.
+For change-landing guidance, `CHANGE-WORKFLOW.md` is the canonical output target. Treat any non-standard change-workflow docs discovered during inspection as consolidation/removal candidates, not generated baseline outputs.
+
+### Phase 1 output contract (required before consolidation)
+
+For each non-standard candidate doc, capture:
+
+- path and primary topic(s)
+- current role: operating guidance vs notes/history/reference
+- overlap with canonical docs
+- overlap with installed skills
+- initial migration risk (links/routes likely affected)
+
+## Phase 1.5 — Non-standard Doc Consolidation (MANDATORY when candidates exist)
+
+Run this phase **before** Bootstrap/Refresh edits when non-standard docs are present.
+
+### Step A — Gather evidence (required)
+
+For each non-standard doc, collect this checklist:
+
+- [ ] topic fit to canonical taxonomy (`OVERVIEW`, `CODING`, `TESTING`, `RELEASING`, `MONITORING`, `CHANGE-WORKFLOW`, `CONTRIBUTING`, `AGENTS`)
+- [ ] repo-specific operational value (commands/paths/constraints that are still true)
+- [ ] overlap with canonical docs (none/partial/heavy)
+- [ ] overlap with installed skills (none/partial/heavy)
+- [ ] durability (stable operating guidance vs transient notes)
+- [ ] content type (operational guidance vs notes/history/archive)
+
+Do not choose keep/merge/split/delete without this evidence.
+
+### Step B — Decision model (keep / merge / split / delete)
+
+| Outcome | Choose when | Required action |
+|---|---|---|
+| **Keep (justified)** | File is not canonical steering guidance but has durable scoped value (for example archive, design-history, or narrow reference) that should remain separate | Keep file, label scope explicitly, ensure AGENTS/routes do not present it as canonical steering doc |
+| **Merge** | Most useful operating content maps to one canonical file | Move content into one canonical target, remove duplicate sections from source, delete source when fully absorbed |
+| **Split** | Useful operating content belongs in multiple canonical files | Distribute content by topic into canonical targets, leave source only if justified residual scope remains; otherwise delete |
+| **Delete** | Redundant, obsolete, generic, historical-only, or fully absorbed content | Remove file and clean stale references/links/routes |
+
+### Step C — Compatibility rule during execution
+
+- Do not create backward-compatible redirect files by default for steering docs.
+- Only keep compatibility artifacts if the user explicitly asks for them.
+
+### Step D — Execution checklist
+
+- [ ] canonical targets selected per decision
+- [ ] migrated content rewritten into scan-first action-first canonical style
+- [ ] duplicate/conflicting guidance removed
+- [ ] AGENTS/README/CONTRIBUTING routes updated to canonical targets
+- [ ] stale links to removed legacy docs cleaned
 
 ## User Communication During Docs Setup
 
@@ -68,6 +127,7 @@ Use when baseline exists and needs normal maintenance.
 2. Update routing links and topic coverage in AGENTS.
 3. Avoid blind recreation of files; preserve custom sections and existing project-specific content.
 4. Keep docs-skill boundaries clear (project-specific in docs, reusable flow in skills).
+5. Apply Phase 1.5 consolidation decisions before considering refresh complete.
 
 ## Phase 3.5 — Canonical Doc Authoring Loop (MANDATORY when canonical docs change)
 
@@ -148,6 +208,8 @@ Use for documentation health cleanup.
 3. Detect duplicated guidance where skill baseline and project doc repeat the same generic workflow.
 4. Repair links/references and tighten routing so AGENTS points to canonical current sources.
 5. For README/CONTRIBUTING/AGENTS synchronization, validate cross-doc consistency (commands, path references, and routing terminology) before applying broad edits.
+6. Confirm non-standard retained docs have explicit scoped justification and are not treated as canonical steering docs.
+7. Confirm migrated/split content landed in the intended canonical files.
 
 ## Phase 5 — Slim / Split
 
@@ -192,6 +254,9 @@ Before completion, verify:
 7. **No stale references** — no references remain to retired routes, renamed files, or removed skills
 8. **Skill-backed docs are not standalone traps** — when a topic depends on an installed skill (for example `RELEASING.md`), the doc clearly says to start with the skill or command entrypoint and does not read like a complete generic workflow
 9. **Canonical-doc loop completion** — if canonical docs were created/updated, include reviewer + factual-verifier results and confirm no `BLOCKER` findings remain
+10. **Canonicality and exceptions** — canonical steering docs are the operating layer; any retained non-standard doc has explicit scoped justification
+11. **Consolidation correctness** — merge/split outcomes landed in the correct canonical files with no conflicting duplicate guidance
+12. **Migration cleanup** — removed legacy files have no stale routes, broken links, or compatibility redirects unless explicitly requested by the user
 
 Final report should include:
 
@@ -226,7 +291,7 @@ The command should combine both sources when available.
       - AGENTS routing (mode-correct AGENTS file)
       - opencode-coder skill/reference content
       - or a combination
-    - For change-landing gaps (commit/branch/merge/PR flow), map canonical project-doc updates to `CHANGE-WORKFLOW.md` while treating legacy PR-named files as migration inputs only.
+    - For change-landing gaps (commit/branch/merge/PR flow), map canonical project-doc updates to `CHANGE-WORKFLOW.md` and consolidate or remove non-standard change-workflow docs.
 
 3. **Analyze why prevention failed**
    - Identify the specific failure mode, for example:

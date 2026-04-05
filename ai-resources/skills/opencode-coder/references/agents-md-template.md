@@ -41,6 +41,14 @@ Each section can map to a standard file in `{docs}` when project-specific guidan
 
 **Always detect mode first and use the correct path throughout all subsequent steps.**
 
+## Steering-doc defaults (for AGENTS generation)
+
+- Canonical steering docs are **agent-first**. Optimize routing clarity for agent execution.
+- Maintainers/contributors are expected to work through agents that load canonical docs.
+- Non-standard steering docs are consolidation candidates, not default routing targets.
+- Do **not** create backward-compatible redirect files by default for steering docs.
+- Keep a non-standard file only with explicit scoped justification.
+
 ---
 
 ## Workflow
@@ -54,12 +62,12 @@ Spawn an **explore agent** with the following prompt:
 > 1. **Project identity** — Name, one-sentence description, tech stack
 > 2. **Build & test commands** — How to build, test, lint, type-check (extract from project config files and scripts)
 > 3. **Directory structure** — Top-level directories with one-line purpose each
-> 4. **Existing docs** — List ALL files in `docs/` directory AND `.coder/docs/` directory (if either exists). Also check for `CONTRIBUTING.md`, `CODING.md`, `TESTING.md`, `RELEASING.md`, `MONITORING.md`, `CHANGE-WORKFLOW.md`, `PULL-REQUESTS.md` in project root. Check for `.coder/AGENTS.md` (stealth mode AGENTS.md). Report full paths.
+> 4. **Existing docs** — List ALL files in `docs/` directory AND `.coder/docs/` directory (if either exists). Also check for `CONTRIBUTING.md`, `CODING.md`, `TESTING.md`, `RELEASING.md`, `MONITORING.md`, `CHANGE-WORKFLOW.md` in project root. Check for `.coder/AGENTS.md` (stealth mode AGENTS.md). Report full paths.
 > 5. **Coding conventions** — Are there any files that describe coding conventions, guidelines, or architecture? Check: `CONTRIBUTING.md`, `docs/coding-guidelines.md`, `docs/CODING.md`, `.editorconfig`, or similar. Report filenames only.
 > 6. **Testing docs** — Are there files that describe testing patterns, test setup, or test conventions? Report filenames only.
 > 7. **Release docs** — Are there files that describe the release process? Report filenames only.
 > 8. **Monitoring docs** — Are there files that describe monitoring, observability, or log analysis? Report filenames only.
-> 9. **Change-workflow docs** — Are there files that describe change-landing workflow (direct-to-main or PR), commit policy, branching strategy, merge policy, or code review guidelines? Report filenames only. Prefer `CHANGE-WORKFLOW.md` as canonical when present, but include legacy PR-named files for compatibility inventory.
+> 9. **Change-workflow docs** — Are there files that describe change-landing workflow (direct-to-main or PR), commit policy, branching strategy, merge policy, or code review guidelines? Report filenames only. Prefer `CHANGE-WORKFLOW.md` as canonical when present, and flag any non-standard change-workflow doc names for consolidation/removal planning.
 > 10. **Installed skills** — List all skills in `.opencode/skills/` directory with their descriptions
 > 11. **Beads status** — Is `bd` CLI available? Is `.beads/` directory present?
 >
@@ -77,7 +85,7 @@ From the explore output, map every discovered doc file to a section:
 | Testing | `docs/TESTING.md`, `.coder/docs/TESTING.md`, `docs/testing-guide.md`, `docs/test-patterns.md` |
 | Releases | `docs/RELEASING.md`, `.coder/docs/RELEASING.md`, `docs/release-process.md`, `RELEASING.md` |
 | Monitoring | `docs/MONITORING.md`, `.coder/docs/MONITORING.md`, `docs/observability.md`, `docs/logging.md` |
-| Change Workflow | `docs/CHANGE-WORKFLOW.md`, `.coder/docs/CHANGE-WORKFLOW.md`, `docs/PULL-REQUESTS.md`, `.coder/docs/PULL-REQUESTS.md`, `docs/branching.md`, `docs/code-review.md`, `docs/pr-conventions.md` |
+| Change Workflow | `docs/CHANGE-WORKFLOW.md`, `.coder/docs/CHANGE-WORKFLOW.md`, `docs/branching.md`, `docs/code-review.md`, `docs/pr-conventions.md` |
 
 Also map installed skills to sections:
 - Skills matching "release", "publish", "ship" → Releases
@@ -87,37 +95,44 @@ Also map installed skills to sections:
 
 A section is **active** if it has at least one matching project doc file OR one matching skill/workflow.
 
-### Step 3: Migration Decision
+### Step 3: Consolidation Decision for Non-standard Docs
 
-Check if any active section has docs under **non-standard names**.
+If any active section has docs under non-standard names, run this model before AGENTS routing.
 
-If non-standard names are found, ask the user **once**:
+#### Step 3A — Gather evidence per non-standard file
 
-> "This plugin uses a standard documentation structure where each topic has a dedicated file in `{docs}`:
+- [ ] primary topic fit to canonical docs
+- [ ] repo-specific operational value still valid
+- [ ] overlap with canonical docs
+- [ ] overlap with installed skills
+- [ ] durability (stable guidance vs notes/history)
+- [ ] content type (operational guidance vs archive/reference)
+
+#### Step 3B — Propose keep / merge / split / delete once
+
+Ask the user once with a concrete table, for example:
+
+> "I found non-standard docs and prepared consolidation outcomes:
 >
-> | Topic | Standard File |
-> |-------|--------------|
-> | Coding | `{docs}CODING.md` |
-> | Testing | `{docs}TESTING.md` |
-> | Releases | `{docs}RELEASING.md` |
-> | Monitoring | `{docs}MONITORING.md` |
-> | Change Workflow | `{docs}CHANGE-WORKFLOW.md` |
+> | File | Proposed outcome | Canonical target(s) | Reason |
+> |---|---|---|---|
+> | `docs/development-guide.md` | split | `{docs}CODING.md`, `{docs}TESTING.md`, `{docs}CHANGE-WORKFLOW.md` | mixed operating guidance across topics |
+> | `docs/release-notes-history.md` | keep (justified) | n/a | historical archive, not a steering doc |
+> | `docs/branching.md` | merge | `{docs}CHANGE-WORKFLOW.md` | overlapping change-landing rules |
 >
-> I found existing docs that could be migrated into this structure:
->
-> - `docs/coding-guidelines.md` → `{docs}CODING.md`
-> - `CONTRIBUTING.md` (coding conventions) → `{docs}CODING.md` (CONTRIBUTING.md would reference it)
-> - *(list all proposed moves)*
->
-> Would you like to adopt the standard structure?"
+> Do you want me to apply this consolidation plan?"
 
-**If yes:**
-1. Create the standard files in `{docs}` and move/consolidate content
-2. If `CONTRIBUTING.md` had coding conventions mixed with contribution process, split them: coding conventions go to `{docs}CODING.md`, `CONTRIBUTING.md` keeps the contribution process and adds a reference to `{docs}CODING.md`
-3. Reference the new standard paths in AGENTS.md
+#### Step 3C — Apply approved outcomes
 
-**If no:**
-- Reference the existing file paths as-is in AGENTS.md
+- **Keep (justified):** retain file with scoped purpose; do not route it as canonical steering guidance.
+- **Merge:** move useful operating content into one canonical doc; delete source if fully absorbed.
+- **Split:** distribute useful operating content across canonical docs; delete source unless justified residual scope remains.
+- **Delete:** remove redundant/obsolete/generic/historical-only file and clean stale routes.
+
+Compatibility rule during execution:
+
+- Do not create backward-compatible redirect files by default for steering docs.
+- Keep compatibility artifacts only when the user explicitly requests them.
 
 ### Step 4: Create Missing Standard Files
 
@@ -226,6 +241,9 @@ After generating, confirm:
 - [ ] Conditional sections only appear when relevant docs/skills exist
 - [ ] Landing the Plane only appears if beads is installed
 - [ ] No duplicated content from referenced files
+- [ ] Canonical steering docs remain primary routes; retained non-standard docs are referenced only when explicitly justified
+- [ ] No stale links/routes remain after merge/split/delete consolidation actions
+- [ ] No backward-compatible redirect files were added by default for steering docs
 - [ ] Total size is under 60 lines
 - [ ] Mode-specific paths match `project-structure.md`
 

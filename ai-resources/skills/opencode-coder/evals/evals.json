@@ -108,7 +108,7 @@
         "Routes skill-only topics to reusable skills instead of creating hollow docs",
         "Uses docs/CHANGE-WORKFLOW.md as the canonical generated topic file for project change-landing guidance in team mode",
         "Maps both direct-to-main and branch/PR guidance into CHANGE-WORKFLOW.md within the same taxonomy",
-        "Does not present docs/PULL-REQUESTS.md as the canonical standard output for new projects",
+        "Does not present non-standard change-workflow filenames as canonical standard output for new projects",
         "Uses team-mode file locations like docs/ and root AGENTS.md",
         "Includes verification of links or paths or stale references before completion"
       ]
@@ -194,13 +194,13 @@
     },
     {
       "id": 12,
-      "prompt": "I ran /opencode-coder/docs verify and it found three issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, AGENTS.md still routes change-landing work to legacy docs/PULL-REQUESTS.md, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
-      "expected_output": "A docs lifecycle verification follow-up that requires draft/update edits, reviewer pass, factual verification, and re-validation after fixing stale links, migrating legacy PULL-REQUESTS routing, and removing hollow docs.",
+      "prompt": "I ran /opencode-coder/docs verify and it found three issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, AGENTS.md still routes change-landing work to a non-standard legacy change-workflow doc, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
+      "expected_output": "A docs lifecycle verification follow-up that requires draft/update edits, reviewer pass, factual verification, and re-validation after fixing stale links, consolidating non-standard change-workflow routing to CHANGE-WORKFLOW.md, and removing hollow docs.",
       "files": [],
       "expectations": [
         "Treats stale AGENTS links as a must-fix verification failure",
         "Replaces hollow topic docs with explicit routing to installed skills when appropriate",
-        "Treats docs/PULL-REQUESTS.md as legacy migration input and updates canonical change-landing routing to docs/CHANGE-WORKFLOW.md",
+        "Treats non-standard change-workflow docs as consolidation/removal targets and updates canonical change-landing routing to docs/CHANGE-WORKFLOW.md",
         "Ensures docs/CHANGE-WORKFLOW.md (or AGENTS routing to it) covers both direct-to-main and branch/PR change-landing paths",
         "Requires a draft/update phase plus reviewer pass before considering the lifecycle work complete",
         "Requires factual verification against real project state and current skill coverage rather than accepting assumptions",
@@ -250,15 +250,43 @@
     },
     {
       "id": 16,
-      "prompt": "I want to set up change workflow documentation for how we land changes in this repo. We have mixed policy: urgent hotfixes can go direct to main, but normal work must go through branch + PR review. We also still have an old docs/PULL-REQUESTS.md from before. What should /opencode-coder/docs create or update as canonical output?",
-      "expected_output": "A change-workflow docs response that makes CHANGE-WORKFLOW.md canonical, maps both direct-to-main and branch/PR guidance into that taxonomy, and treats legacy PULL-REQUESTS.md as migration input.",
+      "prompt": "I want to set up change workflow documentation for how we land changes in this repo. We have mixed policy: urgent hotfixes can go direct to main, but normal work must go through branch + PR review. We also still have an old non-standard change-workflow doc from before. What should /opencode-coder/docs create or update as canonical output?",
+      "expected_output": "A change-workflow docs response that makes CHANGE-WORKFLOW.md canonical, maps both direct-to-main and branch/PR guidance into that taxonomy, and treats non-standard legacy change-workflow docs as consolidation/removal inputs.",
       "files": [],
       "expectations": [
         "Selects docs/CHANGE-WORKFLOW.md as the canonical output for change-landing guidance in new or refreshed project docs",
         "Maps direct-to-main exceptions and branch/PR default flow into the same CHANGE-WORKFLOW taxonomy",
-        "Treats docs/PULL-REQUESTS.md as legacy migration input (to absorb or redirect), not canonical output",
-        "Does not present docs/PULL-REQUESTS.md as the canonical standard output for new projects",
+        "Treats non-standard legacy change-workflow docs as consolidation/removal inputs, not canonical output",
+        "Does not present non-standard change-workflow filenames as canonical standard output for new projects",
         "Keeps AGENTS routing consistent with the canonical change-workflow document"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "Our docs folder has non-standard files from older runs: docs/development-guide.md mixes coding, testing, and merge policy guidance; docs/testing-playbook.md overlaps heavily with docs/TESTING.md. We also already have docs/CODING.md, docs/TESTING.md, and docs/CHANGE-WORKFLOW.md. What should /opencode-coder/docs do under the lifecycle before it refreshes AGENTS?",
+      "expected_output": "A consolidation-first response that gathers evidence and applies merge/split decisions into canonical docs before AGENTS refresh.",
+      "files": [],
+      "expectations": [
+        "Runs evidence gathering per non-standard file before deciding outcomes (topic fit, repo-specific value, overlap with canonical docs and skills, durability, operating guidance vs notes/history)",
+        "Chooses split for mixed-topic docs like development-guide.md into the correct canonical targets (for example CODING.md, TESTING.md, CHANGE-WORKFLOW.md)",
+        "Chooses merge for overlapping single-topic docs when one canonical target is appropriate",
+        "Treats canonical steering docs as agent-first operating layer rather than preserving legacy filenames as defaults",
+        "Does not create backward-compatible redirect files for removed steering docs unless the user explicitly requests compatibility artifacts",
+        "Requires stale-link and stale-route cleanup after migration before lifecycle completion"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "I have a non-standard file docs/release-retrospectives.md with historical incident notes and post-release lessons. It is useful for context but it is not operating guidance. We also use the github-releases skill and docs/RELEASING.md already points to that skill. Should /opencode-coder/docs keep this file, and if so how should it be handled?",
+      "expected_output": "A justified-retention response that keeps a non-standard historical file with scoped rationale while preserving canonical steering routing.",
+      "files": [],
+      "expectations": [
+        "Allows keep-with-justification for non-standard files that are durable history/reference rather than canonical steering docs",
+        "Makes explicit that canonical steering docs remain the operating layer and AGENTS should route to canonical docs/skills by default",
+        "Ensures retained non-standard file is scoped as archive/reference and not presented as canonical workflow guidance",
+        "Checks for duplicate or conflicting operating guidance and removes or migrates any overlap",
+        "Confirms no default redirect-file compatibility requirement for steering docs",
+        "Includes verification of routing/link correctness after the keep decision"
       ]
     }
   ]

@@ -28,6 +28,17 @@ A project-doc review should confirm that the doc:
 - is factually correct against the repository state
 - is concise enough for selective loading
 
+## Canonicality + consolidation checks (required)
+
+Include this checklist in every steering-doc review pass:
+
+- [ ] Canonical steering docs are treated as the operating layer and are written for agents as the primary audience.
+- [ ] Any retained non-standard doc has explicit scoped justification and is not treated as a canonical steering route.
+- [ ] No duplicate or conflicting operating guidance remains between canonical docs, retained non-standard docs, and installed skill guidance.
+- [ ] Merge/split migrations landed in the correct canonical targets.
+- [ ] Removed/renamed legacy docs have stale-link and stale-route cleanup in AGENTS/README/CONTRIBUTING and related docs.
+- [ ] No backward-compatible redirect files were added by default for steering docs (unless explicitly requested by the user).
+
 ## Required review workflow
 
 1. Load the target doc.
@@ -70,8 +81,10 @@ Rule IDs:
 - `P4` no generic advice without commands or paths
 - `P5` no large pasted code blocks when a pointer is enough
 - `P6` no standalone generic workflow in a skill-backed doc
+- `P7` no default redirect-file compatibility policy for steering docs
 - `V1` correct validation tier used
 - `V2` repository reality checked
+- `V3` consolidation evidence and decision correctness verified
 
 ## Validation safety tiers
 
@@ -210,4 +223,5 @@ Before passing a reviewed doc:
 2. Confirm installed skills were considered and the local doc is not duplicating a reusable baseline.
 3. Confirm the repo-local commands, paths, workflows, and tests are real.
 4. Confirm the doc tells the reader how to do the work in this repository.
-5. Confirm no `BLOCKER` findings remain.
+5. Confirm canonicality + consolidation checks pass (justified retention, migration correctness, no stale legacy routing).
+6. Confirm no `BLOCKER` findings remain.
