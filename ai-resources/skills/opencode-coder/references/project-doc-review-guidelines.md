@@ -25,6 +25,7 @@ A project-doc review should confirm that the doc:
 Include this checklist in every steering-doc review pass:
 
 - [ ] Canonical steering docs are treated as the operating layer and are written for agents as the primary audience.
+- [ ] `AGENTS.md` owns top-level routing to standard canonical docs; standard canonical docs do not contain self-load guidance and do not act as sibling routing tables for one another.
 - [ ] Any retained non-standard doc has explicit scoped justification and is not treated as a canonical steering route.
 - [ ] No duplicate or conflicting operating guidance remains between canonical docs, retained non-standard docs, and installed skill guidance.
 - [ ] Merge/split migrations landed in the correct canonical targets.
@@ -74,6 +75,7 @@ Rule IDs:
 - `P5` no large pasted code blocks when a pointer is enough
 - `P6` no standalone generic workflow in a skill-backed doc
 - `P7` no default redirect-file compatibility policy for steering docs
+- `P8` no self-load guidance or sibling-routing tables in standard canonical docs
 - `V1` correct validation tier used
 - `V2` repository reality checked
 - `V3` consolidation evidence and decision correctness verified
@@ -135,6 +137,7 @@ Questions for the reviewer:
 Questions for the reviewer:
 
 - Does it route clearly to the right docs and skills for the main task types?
+- Does it own the top-level routing to standard canonical docs instead of pushing that routing into the topic docs themselves?
 - Is it small enough to be safe as default context?
 - Does it avoid duplicating full procedures from topic docs?
 - Are the listed paths, skills, and routing targets real?
@@ -155,6 +158,7 @@ Questions for the reviewer:
 - Is it clear where common changes should be made in this repository?
 - Are the build, typecheck, and development commands accurate?
 - Does it capture repository-specific invariants and implementation constraints?
+- Does it avoid self-load text such as `Load this doc when ...` and avoid routing to sibling canonical docs as peer alternatives?
 - Does it avoid generic language or framework tutorial content?
 
 ### `docs/TESTING.md`
@@ -162,11 +166,12 @@ Questions for the reviewer:
 Questions for the reviewer:
 
 - Is it clear how to trigger the different tests?
-- Is it clear when the agent should run which tests?
+- Is it clear which tests to run once the doc is loaded, without turning the doc into a top-level router?
 - Are the different test types in the project described properly?
 - Is it clear how to do manual testing when manual checks are required?
 - Is it clear how to set up resources or dependencies for tests?
 - Is it clear whether tests can run in parallel and whether they produce side effects?
+- Does it avoid self-load text such as `Load this doc when ...` and avoid routing to sibling canonical docs as peer alternatives?
 - Do the documented test commands and paths actually exist?
 
 ### `docs/RELEASING.md`
@@ -195,7 +200,7 @@ Questions for the reviewer:
 
 - Does it clearly cover both direct-to-main and branch/PR landing paths?
 - Are commit/push policy, branch creation rules, review expectations, and merge behavior explicit?
-- Does it explain what an agent should do when deciding commit, push, branch, PR, review, or merge actions?
+- Once loaded, does it explain the change-landing workflow itself rather than adding self-load text or re-routing to sibling canonical docs?
 - Does it avoid generic git training or duplicated test catalogs?
 
 ### `CONTRIBUTING.md`
