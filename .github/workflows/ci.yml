@@ -24,11 +24,7 @@ jobs:
 
       - name: Install beads CLI
         run: |
-          npm install -g beads
-          NPM_GLOBAL_PREFIX="$(npm config get prefix)"
-          NPM_GLOBAL_BIN="${NPM_GLOBAL_PREFIX}/bin"
-          echo "$NPM_GLOBAL_BIN" >> "$GITHUB_PATH"
-          export PATH="$NPM_GLOBAL_BIN:$PATH"
+          npm install -g @beads/bd
           command -v bd
           bd --version
 
