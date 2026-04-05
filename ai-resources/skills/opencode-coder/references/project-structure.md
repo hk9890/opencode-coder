@@ -30,6 +30,19 @@ If no saved mode or legacy active markers are found:
 - startup must not create `.coder/`
 - startup must expose only `/opencode-coder/init`
 
+### Runtime phase threshold (bootstrap vs normal)
+
+For active startup, runtime phase is gated by a minimal core threshold:
+
+- `command/opencode-coder/init`
+- `skill/opencode-coder`
+
+If both surfaces are present, runtime can enter normal mode.
+
+`resource/opencode-coder` is a collapsed readiness signal for this minimal threshold only. It does **not** mean every `opencode-coder` command/reference surface is present.
+
+Other surfaces (for example docs-lifecycle commands/references and optional agents) can still be missing while phase is normal, and those features should remain unavailable until installed.
+
 ### Hard-disable rule
 
 `OPENCODE_CODER_DISABLED=true` is outside the saved mode model.

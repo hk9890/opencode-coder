@@ -39,9 +39,9 @@ export interface ProjectDetectionOptions {
 export type RuntimePhase = "bootstrap" | "normal";
 
 export interface RuntimePhaseClassification {
-  /** Runtime phase based on actual required resource surfaces available on disk. */
+  /** Runtime phase based on minimal core resource surfaces available on disk. */
   phase: RuntimePhase;
-  /** Missing required high-level resource surfaces for Phase 2. */
+  /** Missing required high-level resource surfaces for minimal core threshold. */
   missingRequiredSurfaces: string[];
   /** Whether runtime should register bootstrap /opencode-coder/init in this session. */
   shouldExposeBootstrapInit: boolean;
@@ -367,7 +367,8 @@ export class ProjectDetectorService {
   /**
    * Detect runtime phase using resource surfaces as source-of-truth.
    *
-   * Phase 2 = all required markdown command + skill surfaces exist on disk,
+   * Normal mode = minimal core surfaces exist on disk,
+   * specifically opencode-coder init command + opencode-coder skill marker,
    * regardless of whether they arrived via `aimgr install package/opencode-coder`
    * or equivalent manual copying.
    *
@@ -405,11 +406,9 @@ export class ProjectDetectorService {
 
     const opencodeCoderSkillMarkerAvailable = Object.values(skillSurfaceAvailability).every(Boolean);
 
-    const requiredSurfacesComplete = [
-      ...Object.values(commandSurfaceAvailability),
-      ...Object.values(skillSurfaceAvailability),
-      ...Object.values(skillReferenceAvailability),
-    ].every(Boolean);
+    const requiredSurfacesComplete =
+      commandSurfaceAvailability["command/opencode-coder/init"] === true &&
+      skillSurfaceAvailability["skill/opencode-coder"] === true;
 
     const optionalAgentsComplete = Object.values(rawOptionalAgentAvailability).every(Boolean);
 

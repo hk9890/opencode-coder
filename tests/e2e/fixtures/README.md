@@ -17,7 +17,7 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 ### `/simplify` validation note for `existing-active-project`
 
-`existing-active-project` is not a committed full Phase 2 resource mirror. In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
+`existing-active-project` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
 
 For reproducible semantic validation without manual file copying:
 

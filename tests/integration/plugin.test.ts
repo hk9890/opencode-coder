@@ -323,6 +323,63 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
+    it("keeps improve-doc in output config when runtime phase is normal and init-or-update-docs is absent", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verifyResult: { status: "ok", issues: [] },
+        resourcesHealthy: true,
+        repairAttempted: false,
+        repairSucceeded: false,
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({
+          runtimePhase: {
+            ...createProjectContext().runtimePhase,
+            phase: "normal",
+            shouldExposeBootstrapInit: false,
+            shouldUseResourceBackedCommands: true,
+            missingRequiredSurfaces: [],
+            requiredSurfaceAvailability: {
+              ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
+              "resource/opencode-coder": true,
+            },
+          },
+        })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const cfg: Record<string, any> = {
+        command: {
+          "opencode-coder/init": {
+            description: "resource-backed init",
+            template: "resource init template",
+          },
+          "opencode-coder/improve-doc": {
+            description: "incident improvement",
+            template: "improve template",
+          },
+          [LEGACY_DOCS_COMMAND]: {
+            description: "legacy docs command",
+            template: "legacy template",
+          },
+        },
+      };
+
+      await hooks.config?.(cfg as any);
+
+      expect(cfg.command?.["opencode-coder/improve-doc"]).toBeDefined();
+      expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe("incident improvement");
+      expect(cfg.command?.["opencode-coder/init-or-update-docs"]).toBeUndefined();
+      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
     it("keeps docs lifecycle commands for active stealth mode when runtime resources are healthy", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);

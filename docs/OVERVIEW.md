@@ -39,10 +39,10 @@ For implementation details, conventions, and architecture rules, see the focused
 
 - **Startup and mode behavior** — `src/index.ts`, `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`
 - **Published commands, skills, and agents** — `ai-resources/`
-- **Project-local plugin-dev resources** — `.opencode/`
+- **Installed runtime resources (inspect only; do not edit directly)** — `.opencode/`
 - **Diagnostics and log tooling** — `src/core/opencode-log-paths.ts`, `scripts/log-analyzer/`, `scripts/collect-diagnostics/`
 - **Testing harness and fixtures** — `tests/`, `scripts/manual-test/`, `docs/TESTING.md`
-- **Docs lifecycle and project-doc guidance** — `ai-resources/skills/opencode-coder/references/`, `docs/user-guide/`
+- **Docs lifecycle and project-doc guidance** — canonical references in `ai-resources/skills/opencode-coder/references/`, the published skill entrypoint at `ai-resources/skills/opencode-coder/SKILL.md`, and symlinked user-guide entrypoints in `docs/user-guide/`
 
 ## Where to go next
 

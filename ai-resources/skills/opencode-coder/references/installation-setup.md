@@ -47,6 +47,17 @@ The plugin now has three persisted project modes stored in `.coder/opencode-code
 
 Fresh projects without a saved mode are **not yet enabled**. That is distinct from saved `disabled`.
 
+### Runtime bootstrap threshold
+
+Startup classifies sessions as `bootstrap` vs `normal` for command gating.
+
+Normal mode requires the minimal core surfaces:
+
+- `command/opencode-coder/init`
+- `skill/opencode-coder`
+
+`resource/opencode-coder` is the collapsed readiness signal for that minimal core threshold. It does not assert that every command/reference surface is installed.
+
 ### Hard override
 
 `OPENCODE_CODER_DISABLED=true` is different from saved `disabled` mode:

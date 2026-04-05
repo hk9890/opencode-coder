@@ -157,6 +157,29 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder"), skillTargetDir, { recursive: true });
   };
 
+  const seedMinimalNormalThresholdResources = async (workspaceDir: string) => {
+    const commandsTargetDir = join(workspaceDir, ".opencode", "commands", "opencode-coder");
+    const skillTargetDir = join(workspaceDir, ".opencode", "skills", "opencode-coder");
+
+    await mkdir(commandsTargetDir, { recursive: true });
+    await mkdir(skillTargetDir, { recursive: true });
+
+    await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "init.md"),
+      join(commandsTargetDir, "init.md")
+    );
+    await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "improve-doc.md"),
+      join(commandsTargetDir, "improve-doc.md")
+    );
+    await rm(join(commandsTargetDir, "init-or-update-docs.md"), { force: true });
+
+    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder", "SKILL.md"), join(skillTargetDir, "SKILL.md"));
+    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder", "references"), join(skillTargetDir, "references"), {
+      recursive: true,
+    });
+  };
+
   describe("real startup scenario coverage", () => {
     it("scenario 1: should load once in existing real-server startup path", async () => {
       await withScenarioLogging("scenario 1", async () => {
@@ -322,6 +345,53 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(0);
           expect(pluginSignals.commandNames).toContain("opencode-coder/init");
           expectNoDocsLifecycleCommands(pluginSignals.commandNames);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      });
+    }, 120000);
+
+    it("scenario 4b: should enter normal mode with init+skill threshold and expose improve-doc only", async () => {
+      await withScenarioLogging("scenario 4b", async () => {
+        const workspace = await createFixtureWorkspace("local-startup-parity-project");
+        try {
+          await seedMinimalNormalThresholdResources(workspace.workdir);
+          await rm(join(workspace.workdir, "ai.package.yaml"), { force: true });
+
+          await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
+          const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+          const result = await runLoggedOpencodeCli("scenario 4b", ["run", "--command", "pwd", "--format", "json"], {
+            cwd: workspace.workdir,
+            env: isolatedPaths.env,
+            timeoutMs: 120000,
+          });
+
+          if (result.exitCode !== 0 || result.timedOut) {
+            const artifactPath = await writeFailureArtifacts({
+              artifactDir: ARTIFACT_DIR,
+              testName: "scenario-4b-minimal-normal-threshold",
+              command: result.command,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              notes: result.timedOut ? "Minimal threshold command timed out" : "Minimal threshold command failed",
+              isolationPaths: isolatedPaths,
+            });
+
+            throw new Error(`Minimal threshold command failed. Artifacts: ${artifactPath}`);
+          }
+
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
+          const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+
+          expect(result.exitCode).toBe(0);
+          expect(projectYamlAfter).toContain("phase: normal");
+          expect(pluginSignals.commandNames).toContain("opencode-coder/improve-doc");
+          expect(pluginSignals.commandNames).not.toContain("opencode-coder/init-or-update-docs");
+
+          const today = new Date().toISOString().slice(0, 10);
+          const startupLog = await readIfExists(join(workspace.workdir, ".coder", "logs", `coder-${today}.log`));
+          expect(startupLog).toContain("Runtime phase already normal from required resource surfaces; skipping startup bootstrap");
         } finally {
           await cleanupFixtureWorkspace(workspace);
         }

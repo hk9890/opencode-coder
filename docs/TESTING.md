@@ -260,8 +260,8 @@ Use when:
 - you want to avoid ad hoc copying of command/skill files into `.opencode/`
 
 Why this is needed:
-- `existing-active-project` is an active-startup fixture baseline, but it does not commit full Phase 2 resource surfaces.
-- A stock isolated run can therefore start in bootstrap phase, where `/simplify` is not exposed yet.
+- `existing-active-project` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill).
+- A stock isolated run can therefore still start in bootstrap phase, where `/simplify` is not exposed yet.
 
 Reproducible path:
 

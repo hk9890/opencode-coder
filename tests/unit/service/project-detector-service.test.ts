@@ -430,12 +430,13 @@ describe("ProjectDetectorService", () => {
   });
 
   describe("classifyRuntimePhase", () => {
-    it("classifies Phase 2 normal when required command and skill surfaces exist without aimgr", () => {
+    it("classifies normal when init surface and skill surface exist", () => {
       const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
         const normalized = String(p);
-        if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/init.md")) return true;
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return false;
         if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
-        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return false;
         if (normalized.endsWith("/.opencode/agents/orchestrator.md")) return false;
         if (normalized.endsWith("/.opencode/agents/tasker.md")) return false;
         if (normalized.endsWith("/.opencode/agents/reviewer.md")) return false;
@@ -455,6 +456,7 @@ describe("ProjectDetectorService", () => {
       expect(result.shouldUseResourceBackedCommands).toBe(true);
       expect(result.shouldExposeBootstrapInit).toBe(false);
       expect(result.missingRequiredSurfaces).toEqual([]);
+      expect(result.requiredSurfaceAvailability["resource/opencode-coder"]).toBe(true);
       expect(result.optionalAgentAvailability["resource/opencode-coder/optional-agents"]).toBe(false);
       expect(result.diagnostics.aimgrAvailable).toBe(false);
       expect(result.diagnostics.coderPackageInstalled).toBe(false);
@@ -464,47 +466,12 @@ describe("ProjectDetectorService", () => {
       execSyncSpy.mockRestore();
     });
 
-    it("classifies Phase 1 bootstrap when required surfaces are missing even if aimgr package is installed", () => {
+    it("classifies bootstrap when init surface is missing but skill surface exists", () => {
       const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
         const normalized = String(p);
-        if (normalized.endsWith("/.opencode/commands/opencode-coder/init-or-update-docs.md")) return false;
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/init.md")) return false;
         if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
         if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
-        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
-        if (normalized.endsWith("/ai.package.yaml")) return true;
-        return false;
-      });
-
-      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
-        if (cmd === "command -v aimgr") return "/usr/bin/aimgr" as any;
-        if (cmd === 'aimgr list "package/opencode-coder" --format json') {
-          return JSON.stringify([{ type: "package", name: "opencode-coder" }]) as any;
-        }
-        if (cmd === "aimgr verify --format json") {
-          return JSON.stringify({ status: "ok", issues: [] }) as any;
-        }
-        throw new Error(`unexpected command: ${cmd}`);
-      });
-
-      const result = service.classifyRuntimePhase();
-
-      expect(result.phase).toBe("bootstrap");
-      expect(result.shouldUseResourceBackedCommands).toBe(false);
-      expect(result.shouldExposeBootstrapInit).toBe(true);
-      expect(result.missingRequiredSurfaces).toContain("resource/opencode-coder");
-      expect(result.diagnostics.aimgrAvailable).toBe(true);
-      expect(result.diagnostics.coderPackageInstalled).toBe(true);
-
-      existsSyncSpy.mockRestore();
-      execSyncSpy.mockRestore();
-    });
-
-    it("classifies Phase 1 bootstrap when a required skill reference surface is missing", () => {
-      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
-        const normalized = String(p);
-        if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
-        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
-        if (normalized.endsWith("/.opencode/skills/opencode-coder/references/status-health.md")) return false;
         if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
         if (normalized.endsWith("/ai.package.yaml")) return false;
         return false;
@@ -520,7 +487,63 @@ describe("ProjectDetectorService", () => {
       expect(result.phase).toBe("bootstrap");
       expect(result.shouldUseResourceBackedCommands).toBe(false);
       expect(result.shouldExposeBootstrapInit).toBe(true);
-      expect(result.missingRequiredSurfaces).toContain("resource/opencode-coder");
+      expect(result.missingRequiredSurfaces).toEqual(["resource/opencode-coder"]);
+      expect(result.requiredSurfaceAvailability["resource/opencode-coder"]).toBe(false);
+      expect(result.diagnostics.aimgrAvailable).toBe(false);
+      expect(result.diagnostics.coderPackageInstalled).toBe(false);
+
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+    });
+
+    it("classifies bootstrap when init surface exists but skill surface is missing", () => {
+      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
+        const normalized = String(p);
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/init.md")) return true;
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return false;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return false;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;
+        if (normalized.endsWith("/ai.package.yaml")) return false;
+        return false;
+      });
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v aimgr") throw new Error("aimgr missing");
+        throw new Error(`unexpected command: ${cmd}`);
+      });
+
+      const result = service.classifyRuntimePhase();
+
+      expect(result.phase).toBe("bootstrap");
+      expect(result.shouldUseResourceBackedCommands).toBe(false);
+      expect(result.shouldExposeBootstrapInit).toBe(true);
+      expect(result.missingRequiredSurfaces).toEqual(["resource/opencode-coder"]);
+
+      existsSyncSpy.mockRestore();
+      execSyncSpy.mockRestore();
+    });
+
+    it("keeps normal phase when non-init command and skill-reference surfaces are missing", () => {
+      const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
+        const normalized = String(p);
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/init.md")) return true;
+        if (normalized.includes("/.opencode/commands/opencode-coder/")) return false;
+        if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
+        if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return false;
+        if (normalized.endsWith("/ai.package.yaml")) return false;
+        return false;
+      });
+
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v aimgr") throw new Error("aimgr missing");
+        throw new Error(`unexpected command: ${cmd}`);
+      });
+
+      const result = service.classifyRuntimePhase();
+
+      expect(result.phase).toBe("normal");
+      expect(result.shouldUseResourceBackedCommands).toBe(true);
+      expect(result.missingRequiredSurfaces).toEqual([]);
 
       existsSyncSpy.mockRestore();
       execSyncSpy.mockRestore();

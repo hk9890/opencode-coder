@@ -40,6 +40,13 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 - Load the **opencode-coder** skill for issue-tracking, planning, setup, and beads workflow guidance.
 - Keep issue descriptions, dependencies, and status aligned with the current plan.
 
+### Docs Lifecycle Work
+
+- Edit canonical docs-lifecycle references under `ai-resources/skills/opencode-coder/references/`.
+- Edit `ai-resources/skills/opencode-coder/SKILL.md` when the published opencode-coder skill entrypoint itself must change.
+- Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are aimgr-managed installed runtime surfaces, not authoring sources.
+- Treat `docs/user-guide/project-setup.md`, `docs/user-guide/project-doc-guidelines.md`, and `docs/user-guide/project-doc-review-guidelines.md` as symlinked entrypoints to the canonical skill references; edit the `ai-resources/` source only.
+
 ## Landing the Plane (Session Completion)
 
 When ending a work session, complete all steps:

@@ -21,10 +21,10 @@ Use this guide when changing this repo.
 | Startup or mode behavior | `src/index.ts` | `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`, `docs/OVERVIEW.md` if behavior changes | `bun run typecheck`, unit tests for touched services, `bun test tests/integration/plugin.test.ts` |
 | Service or helper logic | `src/service/`, `src/core/`, `src/config/` | matching unit tests under `tests/unit/` | `bun run typecheck`, targeted `bun test tests/unit/...` |
 | Published commands / skills / agents | `ai-resources/` | matching skill references, command wrappers, and user docs if behavior changed | `bun run typecheck`, `bun test tests/integration/plugin.test.ts`, targeted e2e/manual coverage |
-| Project-local dev resources | `.opencode/` | matching published docs or references only if they intentionally mirror each other | targeted tests for the affected workflow |
+| Installed runtime resources under `.opencode/` | Do **not** edit `.opencode/` directly; update the owning source in `ai-resources/`, `src/`, or test fixtures instead | only inspect `.opencode/` to verify runtime/install state after updating the real source | targeted tests for the affected workflow |
 | `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests | `bun run typecheck`, targeted unit tests |
 | Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests | targeted unit/integration tests, `bun run validate:isolated-pins` when harness pins change |
-| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` | synced copies under `docs/user-guide/` in the same change | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
+| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` (and `ai-resources/skills/opencode-coder/SKILL.md` when the skill entrypoint itself changes) | symlinked `docs/user-guide/project-setup.md`, `project-doc-guidelines.md`, and `project-doc-review-guidelines.md` should stay pointed at the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
 
 ## Repository Structure
 
@@ -102,10 +102,10 @@ Keep public exports explicit and keep implementation details private.
 ### 4. Keep published and local resources separate
 
 - `ai-resources/` ships with the plugin
-- `.opencode/` exists for developing this repository itself
+- `.opencode/` contains aimgr-managed installed runtime resources for this repository
 
 If a change should affect plugin users, edit `ai-resources/`.
-If it only helps maintain this repo, keep it under `.opencode/`.
+Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly.
 
 ### 5. Keep commands thin and workflow logic in skills/references
 
@@ -118,21 +118,29 @@ If a command and a skill cover the same workflow:
 See [`user-guide/how-to-write-commands.md`](user-guide/how-to-write-commands.md).
 For runtime skill content boundaries, see [`user-guide/how-to-write-skills.md`](user-guide/how-to-write-skills.md).
 
-### 6. Respect canonical + synced doc pairs
+### 6. Respect canonical doc sources and symlinked user-guide entrypoints
 
-Some user-guide docs track canonical skill references.
+Docs lifecycle work in this repo has one authoring source plus user-guide entrypoints:
+
+- published canonical references under `ai-resources/skills/opencode-coder/references/`
+- the published skill entrypoint at `ai-resources/skills/opencode-coder/SKILL.md`
+- contributor-facing symlinks under `docs/user-guide/`
+
+The published references are the source of truth for docs-lifecycle content. If the opencode-coder skill entrypoint itself must change, edit `ai-resources/skills/opencode-coder/SKILL.md`.
+
+Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are installed runtime surfaces derived from the published sources.
 
 In this repo:
 
 - `docs/user-guide/project-setup.md` is a symlink to the canonical source
-- `docs/user-guide/project-doc-guidelines.md` is a synced regular file copy
-- `docs/user-guide/project-doc-review-guidelines.md` is a synced regular file copy
+- `docs/user-guide/project-doc-guidelines.md` is a symlink to the canonical source
+- `docs/user-guide/project-doc-review-guidelines.md` is a symlink to the canonical source
 
 When you change one of these areas:
 
 1. update the canonical source under `ai-resources/skills/opencode-coder/references/`
-2. refresh the matching entry under `docs/user-guide/` (follow the existing symlink or update the copied file)
-3. keep both in the same change
+2. keep the matching `docs/user-guide/` symlink in place
+3. do not edit the symlink target through `docs/user-guide/`; edit the canonical `ai-resources/` file directly
 
 Examples:
 
@@ -227,7 +235,7 @@ Good rule: if a change affects isolated harness behavior or pins, run `bun run v
 Edit here first:
 
 - `ai-resources/skills/opencode-coder/references/`
-- `docs/user-guide/` when the file is a synced local copy
+- `ai-resources/skills/opencode-coder/SKILL.md` when the published skill entrypoint wording changes
 
 Also inspect:
 
@@ -235,7 +243,7 @@ Also inspect:
 - `docs/README.md`
 - `AGENTS.md`
 
-Good rule: keep routing docs short and move deep detail into focused docs.
+Good rule: keep routing docs short, move deep detail into focused docs, and never edit the `.opencode/` installed runtime copies.
 
 ## Files That Often Change Together
 
