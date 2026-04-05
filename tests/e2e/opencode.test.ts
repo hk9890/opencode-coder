@@ -73,7 +73,7 @@ async function runLoggedOpencodeCli(
 
 describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
-  const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
+  const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
   const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";
   const COPILOT_MODEL_ENV = "E2E_COPILOT_MODEL";
   const DEFAULT_COPILOT_MODEL = "github-copilot/gpt-5.3-codex";

@@ -136,7 +136,7 @@ const STEALTH_MARKER = "# opencode-coder stealth mode";
 
 const PHASE2_REQUIRED_COMMAND_SURFACES = [
   "opencode-coder/init",
-  "opencode-coder/docs",
+  "opencode-coder/init-or-update-docs",
   "opencode-coder/improve-doc",
   "opencode-coder/doctor",
   "opencode-coder/status",

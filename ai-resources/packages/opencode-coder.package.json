@@ -10,7 +10,7 @@
     "command/simplify",
     "command/opencode-coder/doctor",
     "command/opencode-coder/dump-session",
-    "command/opencode-coder/docs",
+    "command/opencode-coder/init-or-update-docs",
     "command/opencode-coder/improve-doc",
     "command/opencode-coder/report-bug",
     "command/opencode-coder/status",

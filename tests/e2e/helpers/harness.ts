@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { constants, existsSync } from "fs";
-import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
 import { dirname, join } from "path";
@@ -614,15 +614,26 @@ export async function findAvailablePort(): Promise<number> {
 }
 
 /**
- * Ensures dist/opencode-coder.js exists by running `bun run build` if required.
+ * Ensures dist/opencode-coder.js exists and is fresh enough for e2e runs.
  */
 export async function ensurePluginBuilt(projectRoot: string): Promise<string> {
   const pluginPath = join(projectRoot, "dist", "opencode-coder.js");
+  const sourceRoots = [join(projectRoot, "src"), join(projectRoot, "ai-resources")];
+
+  const newestSourceMtimeMs = await getNewestMtimeMsForPaths([
+    ...sourceRoots,
+    join(projectRoot, "package.json"),
+  ]);
+
+  let pluginMtimeMs = Number.NEGATIVE_INFINITY;
 
   try {
-    await access(pluginPath);
-    return pluginPath;
+    pluginMtimeMs = (await stat(pluginPath)).mtimeMs;
   } catch {
+    // Build below when artifact is missing.
+  }
+
+  if (pluginMtimeMs < newestSourceMtimeMs) {
     const result = await $`bun run build`.cwd(projectRoot).quiet();
     if (result.exitCode !== 0) {
       throw new Error(`Failed to build plugin:\n${result.stderr.toString()}`);
@@ -631,6 +642,53 @@ export async function ensurePluginBuilt(projectRoot: string): Promise<string> {
 
   await access(pluginPath);
   return pluginPath;
+}
+
+async function getNewestMtimeMsForPaths(paths: string[]): Promise<number> {
+  let newestMtimeMs = Number.NEGATIVE_INFINITY;
+
+  for (const targetPath of paths) {
+    let targetStat;
+    try {
+      targetStat = await stat(targetPath);
+    } catch {
+      continue;
+    }
+
+    if (targetStat.isDirectory()) {
+      const newestInDir = await getNewestMtimeMsForDirectory(targetPath);
+      newestMtimeMs = Math.max(newestMtimeMs, newestInDir);
+      continue;
+    }
+
+    newestMtimeMs = Math.max(newestMtimeMs, targetStat.mtimeMs);
+  }
+
+  return newestMtimeMs;
+}
+
+async function getNewestMtimeMsForDirectory(directory: string): Promise<number> {
+  let newestMtimeMs = Number.NEGATIVE_INFINITY;
+  const entries = await readdir(directory, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      const newestInChild = await getNewestMtimeMsForDirectory(fullPath);
+      newestMtimeMs = Math.max(newestMtimeMs, newestInChild);
+      continue;
+    }
+
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    const fileStat = await stat(fullPath);
+    newestMtimeMs = Math.max(newestMtimeMs, fileStat.mtimeMs);
+  }
+
+  return newestMtimeMs;
 }
 
 /**

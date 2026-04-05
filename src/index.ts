@@ -16,7 +16,7 @@ import { getInstallGuideTemplate } from "./templates";
 
 const PROJECT_CONTEXT_TIMEOUT_MS = 30_000;
 const PROJECT_CONTEXT_TIMEOUT = Symbol("project-context-timeout");
-const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/docs", "opencode-coder/improve-doc"] as const;
+const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
 const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md" as const;
 
 export const OpencodeCoder: Plugin = async ({ client, worktree }) => {

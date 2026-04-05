@@ -1,10 +1,18 @@
 # Project Docs Lifecycle Workflow
 
-Canonical workflow logic for `/opencode-coder/docs` and `/opencode-coder/improve-doc`.
+Canonical workflow logic for `/opencode-coder/init-or-update-docs` and `/opencode-coder/improve-doc`.
 
 This reference owns the lifecycle phases for project docs and AGENTS routing.
-`/opencode-coder/docs` should stay a thin dispatcher that calls into this file.
-`/opencode-coder/improve-doc` should also stay a thin dispatcher that calls into this file's incident-improvement section.
+`/opencode-coder/init-or-update-docs` is the canonical initialize/update entrypoint and should stay a thin dispatcher that calls into this file.
+`/opencode-coder/improve-doc` should also stay a thin dispatcher that calls into this file's improvement workflows.
+
+## Command contract for `/opencode-coder/init-or-update-docs`
+
+This command keeps the same lifecycle scope as the prior generic docs command.
+
+- Scope is unchanged: **inspect → bootstrap/setup → refresh/update → audit/repair → slim/split → AGENTS refresh → verify/report**.
+- Optional `$ARGUMENTS` are treated only as **focus/weighting guidance** (for example: "prioritize testing docs" or "focus on routing cleanup first").
+- Optional `$ARGUMENTS` do **not** authorize widening lifecycle scope or skipping required phases.
 
 ## Lifecycle defaults (apply in every phase)
 
@@ -113,7 +121,7 @@ Use when active baseline is missing (no AGENTS and no lifecycle-aligned docs at 
 The docs step during init is optional. If the user skips it:
 
 - **AGENTS.md still works** — it will be created/refreshed with routing entries to whatever already exists (installed skills, existing docs).
-- **Docs can be created later** — the user can run `/opencode-coder/docs` at any time to revisit the docs lifecycle.
+- **Docs can be created later** — the user can run `/opencode-coder/init-or-update-docs` at any time to revisit the docs lifecycle.
 - **No loss of functionality** — beads tracking, mode selection, and all other plugin features work independently of the docs step.
 - **The skip is non-destructive** — existing docs are not modified or removed.
 
@@ -137,7 +145,7 @@ Use when baseline exists and needs normal maintenance.
 
 This loop is required when canonical docs are created or updated through:
 
-- `/opencode-coder/docs`
+- `/opencode-coder/init-or-update-docs`
 - `/opencode-coder/improve-doc`
 
 This is also the expected standard for any broader opencode-coder-guided canonical doc work, even when entered through another command or nested workflow.
@@ -266,17 +274,48 @@ Final report should include:
 - verification results (all checks passed, or specific failures found)
 - unresolved follow-ups (if any)
 
-## Incident-Driven Improvement (for `/opencode-coder/improve-doc`)
+## `/opencode-coder/improve-doc` workflow modes
 
-Use this flow when a failure happened because guidance was missing, unclear, stale, or routed to the wrong place.
+`/opencode-coder/improve-doc` supports two modes:
+
+1. **Incident-driven targeted improvement** (preserved): use when a failure happened because guidance was missing, unclear, stale, or routed to the wrong place.
+2. **Discussion-first improvement** (default when no strong incident context is provided): start with a docs-structure analysis before edits.
 
 ### Input model
 
-- optional free-text incident context
+- optional free-text incident/context input
 - optional issue/reference identifier
 - prompt fallback when input is missing or too vague
 
-The command should combine both sources when available.
+If strong incident context exists, run the incident-driven path.
+If no strong incident context exists, run the discussion-first path first.
+
+### Discussion-first default path (required without strong incident context)
+
+1. **Analyze current docs structure first**
+   - Inspect canonical docs, AGENTS routing, and notable non-standard docs.
+   - Report:
+     - current positives worth preserving
+     - current negatives or risk areas
+     - concrete improvement proposals
+
+2. **Ask before editing**
+   - Ask the user which proposals to pursue before making edits.
+   - Do not begin edits until user selection/confirmation is provided.
+
+3. **Require explicit confirmation for aggressive changes**
+   - Before removal, consolidation, or deletion actions, ask for explicit confirmation.
+   - Examples requiring confirmation: deleting non-standard files, collapsing multiple docs into one, removing substantial sections.
+
+4. **Execute selected improvements with lifecycle consistency**
+   - Reuse mode/path and verification rules from lifecycle phases.
+   - If canonical docs are created/updated, run the full Phase 3.5 loop before completion.
+
+### Incident-driven targeted path (preserved)
+
+Use this flow when a failure happened because guidance was missing, unclear, stale, or routed to the wrong place.
+
+The command should combine both incident text and issue/reference details when available.
 
 ### Workflow
 
@@ -305,15 +344,19 @@ The command should combine both sources when available.
     - Prioritize fixes that improve routing and decision points, not cosmetic edits.
     - For skill-backed topics, prefer explicit "start here" entrypoints and clear warnings against standalone use.
 
-5. **Apply/prepare updates with lifecycle consistency**
-    - Reuse the same mode/path and verification rules from phases above.
-    - If canonical docs are created/updated, run the full Phase 3.5 loop before completion.
-    - Ensure AGENTS references only real docs/skills.
-    - Ensure updated guidance clearly indicates when a step is required.
+5. **Ask/confirm before high-impact edits**
+   - Ask the user which proposed changes to apply.
+   - Require explicit confirmation before aggressive removals, consolidation, or deletion actions.
 
-6. **Report prevention outcome**
-   - Summarize incident input used, mapped destination(s), root cause, and proposed/applied changes.
-   - Explicitly state how the updates reduce recurrence risk.
+6. **Apply/prepare updates with lifecycle consistency**
+     - Reuse the same mode/path and verification rules from phases above.
+     - If canonical docs are created/updated, run the full Phase 3.5 loop before completion.
+     - Ensure AGENTS references only real docs/skills.
+     - Ensure updated guidance clearly indicates when a step is required.
+
+7. **Report prevention outcome**
+    - Summarize incident input used, mapped destination(s), root cause, and proposed/applied changes.
+    - Explicitly state how the updates reduce recurrence risk.
 
 ### Non-goal
 

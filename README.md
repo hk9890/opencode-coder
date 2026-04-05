@@ -162,7 +162,7 @@ These commands are published with `@dynatrace-oss/opencode-coder` and available 
 | `/opencode-coder/status` | Show plugin status |
 | `/opencode-coder/report-bug` | Report a bug with session context |
 | `/opencode-coder/dump-session` | Export current session data |
-| `/opencode-coder/docs` | Run docs lifecycle (inspect, bootstrap, refresh, audit, slim, verify) |
+| `/opencode-coder/init-or-update-docs` | Run docs lifecycle (inspect, bootstrap, refresh, audit, slim, verify); optional focus context can prioritize areas without changing lifecycle scope |
 | `/opencode-coder/improve-doc` | Turn an incident into targeted doc/routing fixes to prevent recurrence |
  
 ### Repository-local Development Commands

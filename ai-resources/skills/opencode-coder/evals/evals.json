@@ -154,7 +154,7 @@
     },
     {
       "id": 9,
-      "prompt": "I think this is an opencode-coder plugin bug. /opencode-coder/docs says docs are healthy, but /opencode-coder/improve-doc still reports stale routing for AGENTS.md in the same repo. Use /opencode-coder/report-bug and tell me what evidence you need before filing.",
+      "prompt": "I think this is an opencode-coder plugin bug. /opencode-coder/init-or-update-docs says docs are healthy, but /opencode-coder/improve-doc still reports stale routing for AGENTS.md in the same repo. Use /opencode-coder/report-bug and tell me what evidence you need before filing.",
       "expected_output": "A report-bug workflow response that requests missing evidence, distinguishes plugin defect from project-content issue, and proposes a concrete bug report package.",
       "files": [],
       "expectations": [
@@ -194,7 +194,7 @@
     },
     {
       "id": 12,
-      "prompt": "I ran /opencode-coder/docs verify and it found three issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, AGENTS.md still routes change-landing work to a non-standard legacy change-workflow doc, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
+      "prompt": "I ran /opencode-coder/init-or-update-docs verify and it found three issues: AGENTS.md links to docs/OPERATIONS.md which was deleted, AGENTS.md still routes change-landing work to a non-standard legacy change-workflow doc, and docs/RELEASING.md is basically a hollow duplicate of what the github-releases skill already covers. What should the verify follow-up do?",
       "expected_output": "A docs lifecycle verification follow-up that requires draft/update edits, reviewer pass, factual verification, and re-validation after fixing stale links, consolidating non-standard change-workflow routing to CHANGE-WORKFLOW.md, and removing hollow docs.",
       "files": [],
       "expectations": [
@@ -250,7 +250,7 @@
     },
     {
       "id": 16,
-      "prompt": "I want to set up change workflow documentation for how we land changes in this repo. We have mixed policy: urgent hotfixes can go direct to main, but normal work must go through branch + PR review. We also still have an old non-standard change-workflow doc from before. What should /opencode-coder/docs create or update as canonical output?",
+      "prompt": "I want to set up change workflow documentation for how we land changes in this repo. We have mixed policy: urgent hotfixes can go direct to main, but normal work must go through branch + PR review. We also still have an old non-standard change-workflow doc from before. What should /opencode-coder/init-or-update-docs create or update as canonical output?",
       "expected_output": "A change-workflow docs response that makes CHANGE-WORKFLOW.md canonical, maps both direct-to-main and branch/PR guidance into that taxonomy, and treats non-standard legacy change-workflow docs as consolidation/removal inputs.",
       "files": [],
       "expectations": [
@@ -263,7 +263,7 @@
     },
     {
       "id": 17,
-      "prompt": "Our docs folder has non-standard files from older runs: docs/development-guide.md mixes coding, testing, and merge policy guidance; docs/testing-playbook.md overlaps heavily with docs/TESTING.md. We also already have docs/CODING.md, docs/TESTING.md, and docs/CHANGE-WORKFLOW.md. What should /opencode-coder/docs do under the lifecycle before it refreshes AGENTS?",
+      "prompt": "Our docs folder has non-standard files from older runs: docs/development-guide.md mixes coding, testing, and merge policy guidance; docs/testing-playbook.md overlaps heavily with docs/TESTING.md. We also already have docs/CODING.md, docs/TESTING.md, and docs/CHANGE-WORKFLOW.md. What should /opencode-coder/init-or-update-docs do under the lifecycle before it refreshes AGENTS?",
       "expected_output": "A consolidation-first response that gathers evidence and applies merge/split decisions into canonical docs before AGENTS refresh.",
       "files": [],
       "expectations": [
@@ -277,7 +277,7 @@
     },
     {
       "id": 18,
-      "prompt": "I have a non-standard file docs/release-retrospectives.md with historical incident notes and post-release lessons. It is useful for context but it is not operating guidance. We also use the github-releases skill and docs/RELEASING.md already points to that skill. Should /opencode-coder/docs keep this file, and if so how should it be handled?",
+      "prompt": "I have a non-standard file docs/release-retrospectives.md with historical incident notes and post-release lessons. It is useful for context but it is not operating guidance. We also use the github-releases skill and docs/RELEASING.md already points to that skill. Should /opencode-coder/init-or-update-docs keep this file, and if so how should it be handled?",
       "expected_output": "A justified-retention response that keeps a non-standard historical file with scoped rationale while preserving canonical steering routing.",
       "files": [],
       "expectations": [
@@ -287,6 +287,32 @@
         "Checks for duplicate or conflicting operating guidance and removes or migrates any overlap",
         "Confirms no default redirect-file compatibility requirement for steering docs",
         "Includes verification of routing/link correctness after the keep decision"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "Run /opencode-coder/init-or-update-docs with focus context: \"prioritize testing docs and AGENTS routing cleanup first\". We still need full lifecycle integrity, but I want those areas weighted first. How should the workflow handle this?",
+      "expected_output": "A docs lifecycle response that treats focus context as weighting guidance while preserving full required lifecycle phases and completion checks.",
+      "files": [],
+      "expectations": [
+        "Interprets optional focus context as prioritization or ordering guidance rather than permission to skip lifecycle phases",
+        "Keeps lifecycle scope intact (inspect through verify/report) despite the focused request",
+        "Prioritizes testing docs and AGENTS routing analysis early in the run",
+        "Maintains canonical-vs-skill routing boundaries while applying focus context",
+        "Includes final verification expectations before completion"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "Please run /opencode-coder/improve-doc. I do not have a specific incident, but our docs feel uneven and hard to navigate. Start by evaluating the structure and propose options before touching files.",
+      "expected_output": "A discussion-first improve-doc response that begins with docs analysis and proposals, asks the user which changes to pursue, and avoids immediate edits without confirmation.",
+      "files": [],
+      "expectations": [
+        "Treats missing strong incident context as discussion-first mode",
+        "Starts with analysis of current positives, negatives, and concrete improvement proposals",
+        "Asks the user which proposals to pursue before editing",
+        "Requires explicit confirmation before aggressive removals, consolidation, or deletion",
+        "Preserves compatibility with incident-driven targeted improve-doc behavior as a distinct supported mode"
       ]
     }
   ]

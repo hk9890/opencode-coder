@@ -467,7 +467,7 @@ describe("ProjectDetectorService", () => {
     it("classifies Phase 1 bootstrap when required surfaces are missing even if aimgr package is installed", () => {
       const existsSyncSpy = spyOn(fs, "existsSync").mockImplementation((p: any) => {
         const normalized = String(p);
-        if (normalized.endsWith("/.opencode/commands/opencode-coder/docs.md")) return false;
+        if (normalized.endsWith("/.opencode/commands/opencode-coder/init-or-update-docs.md")) return false;
         if (normalized.includes("/.opencode/commands/opencode-coder/")) return true;
         if (normalized.endsWith("/.opencode/skills/opencode-coder/SKILL.md")) return true;
         if (normalized.includes("/.opencode/skills/opencode-coder/references/")) return true;

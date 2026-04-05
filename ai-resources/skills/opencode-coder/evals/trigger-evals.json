@@ -56,6 +56,14 @@
     "should_trigger": true
   },
   {
+    "query": "Please run /opencode-coder/init-or-update-docs and prioritize testing docs plus AGENTS routing cleanup first, but still keep full lifecycle verification.",
+    "should_trigger": true
+  },
+  {
+    "query": "Run /opencode-coder/improve-doc. No specific incident yet — analyze our docs structure first and propose options before making edits.",
+    "should_trigger": true
+  },
+  {
     "query": "A docs gap caused an incident yesterday. Run /opencode-coder/improve-doc so we update AGENTS routing and prevent this from happening again.",
     "should_trigger": true
   },
