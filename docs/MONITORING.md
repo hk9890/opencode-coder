@@ -10,7 +10,8 @@ Use these sources together (not in isolation):
 
 | Source | Purpose | Typical location / access |
 |---|---|---|
-| Project runtime context | Snapshot of detected mode/readiness and plugin version | `.coder/project.yaml` |
+| Saved plugin mode | Canonical saved mode intent (`team`, `stealth`, `disabled`) | `.coder/opencode-coder.yaml` |
+| Project runtime context | Active-session snapshot of detected mode/readiness and plugin version | `.coder/project.yaml` |
 | Project-local plugin logs | Repository-scoped plugin timeline (`opencode-coder` events) | `.coder/logs/coder-YYYY-MM-DD.log` |
 | OpenCode logs | Host/runtime-wide session/process log stream | auto-discovered by `scripts/log-analyzer` (Linux default: `~/.local/share/opencode/log/`) |
 | Session data access/export | Ground truth for message/tool timeline and token usage | `coder("session")`, `coder("list-sessions")`, `coder("session-export <path> [session-id]")`, `/opencode-coder/dump-session` |
@@ -23,7 +24,7 @@ the monitoring/analysis workflow.
 
 Follow this order for most plugin/runtime incidents:
 
-1. **Capture runtime context** from `.coder/project.yaml`.
+1. **Capture saved mode and runtime context** from `.coder/opencode-coder.yaml` and `.coder/project.yaml`.
 2. **Inspect project-local logs** for repository-scoped plugin events.
 3. **Query OpenCode logs** with `scripts/log-analyzer` (session/service filters).
 4. **Access/export session evidence** when behavior depends on tool-call/message flow.
@@ -32,9 +33,14 @@ Follow this order for most plugin/runtime incidents:
 
 This sequence stays general-purpose for local dev, manual repro, or automated runs.
 
-## 1) Runtime Context Evidence (`.coder/project.yaml`)
+## 1) Mode + Runtime Context Evidence (`.coder/opencode-coder.yaml`, `.coder/project.yaml`)
 
-Treat `.coder/project.yaml` as the current runtime snapshot for the project:
+Use the two `.coder/` YAML files for different questions:
+
+- `.coder/opencode-coder.yaml` is the saved mode source of truth used by startup mode resolution.
+- `.coder/project.yaml` is the active-startup project snapshot written during detection.
+
+Treat `.coder/project.yaml` as the runtime snapshot for the current project session:
 
 - mode (`stealth`, `team`, `uninitialized`)
 - readiness signals (`installReady`, `ecosystemReady`)
@@ -46,6 +52,8 @@ Use it to quickly answer:
 - Is the plugin running in the expected mode?
 - Were ecosystem prerequisites detected as healthy?
 - Does the observed plugin version match the scenario being analyzed?
+
+Use `.coder/opencode-coder.yaml` to answer whether the project was explicitly saved in `team`, `stealth`, or `disabled` mode, even if runtime context is missing or stale.
 
 ## 2) Project-Local Plugin Logs
 
