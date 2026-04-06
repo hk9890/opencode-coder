@@ -1,0 +1,7 @@
+{
+  "name": "coder-docs",
+  "description": "Standalone docs lifecycle package for project-doc setup, review, and AGENTS guidance",
+  "resources": [
+    "skill/coder-docs"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "skill_name": "coder-docs",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I'm setting up project docs from scratch. Please define the canonical docs taxonomy and explain which topics should be authored as project docs versus routed to installed skills.",
+      "expected_output": "A project-doc setup response that establishes taxonomy ownership and avoids hollow docs for skill-owned topics.",
+      "files": [],
+      "expectations": [
+        "Defines project-doc setup/taxonomy guidance as the primary workflow",
+        "Uses canonical docs taxonomy language rather than ad hoc file naming",
+        "Keeps AGENTS.md as a routing surface, not a long handbook",
+        "Routes skill-owned topics to installed skills instead of creating hollow duplicates",
+        "Stays within docs ownership without turning into tracker or debugging execution"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Run a docs lifecycle plan for this repo: init/update/audit/slim/verify. We have stale links and duplicated guidance. What sequence should we follow and what does done look like?",
+      "expected_output": "A docs lifecycle response with ordered phases, concrete file-level outcomes, and a verify rerun gate.",
+      "files": [],
+      "expectations": [
+        "Covers the lifecycle phases with a clear sequence",
+        "Requires evidence gathering before consolidation/removal decisions",
+        "Calls for stale-link and stale-route cleanup",
+        "Requires verify or audit rerun after edits",
+        "Frames completion with concrete outcomes, not generic prose"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "An incident happened because docs/RELEASING.md gave generic release steps while our repo should route release work to the github-releases skill. Use improve-doc behavior to prevent recurrence.",
+      "expected_output": "An incident-driven improve-doc response that removes misrouted/hollow release guidance and restores correct skill routing.",
+      "files": [],
+      "expectations": [
+        "Treats this as stale or misrouted docs incident",
+        "Routes release workflow to github-releases rather than duplicating full release instructions",
+        "Avoids preserving hollow generic RELEASING content",
+        "Includes AGENTS or canonical-doc routing updates as needed",
+        "Includes a post-change verification step"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Please improve our docs quality, but I do not have a specific incident. Start with analysis and options first.",
+      "expected_output": "A discussion-first improve-doc response that proposes options and asks for confirmation before major edits.",
+      "files": [],
+      "expectations": [
+        "Starts with strengths, gaps, and improvement proposals",
+        "Asks the user to choose proposals before broad edits",
+        "Requests explicit confirmation before destructive consolidation/removal",
+        "Keeps full lifecycle integrity after choices are made",
+        "Does not fabricate an incident when none was provided"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Generate AGENTS.md guidance for docs routing in team mode. What should AGENTS contain, and what should it avoid?",
+      "expected_output": "An AGENTS generation response that keeps AGENTS as concise routing guidance aligned to canonical docs taxonomy.",
+      "files": [],
+      "expectations": [
+        "Uses AGENTS generation/template guidance as owned scope",
+        "Keeps AGENTS focused on routing and ownership boundaries",
+        "Avoids turning AGENTS into full duplicate process documentation",
+        "Aligns AGENTS routes with canonical docs and installed skills",
+        "Includes checks for stale links/routes"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Review our project docs for quality and correctness. AGENTS links to a deleted file and change-landing still points to a legacy non-standard doc name.",
+      "expected_output": "A project-doc review response that identifies failures, prescribes file-level corrections, and requires re-verification.",
+      "files": [],
+      "expectations": [
+        "Flags stale links as verification failures",
+        "Consolidates non-standard change-landing routing to docs/CHANGE-WORKFLOW.md",
+        "Preserves project-specific content while removing duplicated generic sections",
+        "Requires reviewer-quality and repo-truth checks",
+        "Requires verify rerun after corrections"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Can you explain how change-landing guidance should be represented in docs when our policy allows urgent direct-to-main but defaults to branch plus PR review?",
+      "expected_output": "A change-landing response that uses CHANGE-WORKFLOW.md as canonical and captures both landing paths in one taxonomy.",
+      "files": [],
+      "expectations": [
+        "Uses docs/CHANGE-WORKFLOW.md as canonical output",
+        "Covers both direct-to-main exceptions and branch-plus-PR default",
+        "Avoids presenting non-standard change-workflow filenames as canonical",
+        "Keeps AGENTS routing aligned to CHANGE-WORKFLOW",
+        "Stays in docs guidance scope"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "While doing docs lifecycle work, I might need to file tracker follow-ups or gather diagnostics. How should those be handled relative to docs ownership?",
+      "expected_output": "A scoped response that treats tracker filing/diagnostics as optional companion references, not primary coder-docs ownership.",
+      "files": [],
+      "expectations": [
+        "Keeps primary execution centered on docs lifecycle ownership",
+        "Treats tracker filing and diagnostics as optional companion references only",
+        "Does not claim primary ownership of bug-reporting or debugging-log workflows",
+        "Returns to concrete docs outcomes and verification",
+        "Maintains standalone docs guidance without requiring other skill execution"
+      ]
+    }
+  ]
+}

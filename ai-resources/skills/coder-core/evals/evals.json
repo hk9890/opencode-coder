@@ -1,0 +1,125 @@
+{
+  "skill_name": "coder-core",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I am enabling opencode-coder in a repo for the first time. Explain what to check before setup, including how OPENCODE_CODER_DISABLED interacts with saved mode in .coder/opencode-coder.yaml.",
+      "expected_output": "A setup-first response that distinguishes hard-disable override from saved mode and gives concrete runtime checks.",
+      "files": [],
+      "expectations": [
+        "Explains that OPENCODE_CODER_DISABLED is a hard runtime override",
+        "Distinguishes hard-disable override from saved mode values in .coder/opencode-coder.yaml",
+        "Includes concrete prerequisite/runtime checks such as node/npm versions and env inspection",
+        "Keeps scope on plugin/runtime setup rather than beads tracker bootstrap"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "My project has mode: disabled saved in .coder/opencode-coder.yaml, but this shell also exports OPENCODE_CODER_DISABLED=true. Why are commands unavailable and what exact order should I debug in?",
+      "expected_output": "A mode/runtime explanation with ordered checks where env override precedence is explicit.",
+      "files": [],
+      "expectations": [
+        "States that hard-disable env override takes precedence over saved project mode",
+        "Provides ordered runtime diagnosis steps: env first, saved mode file second, then status/doctor troubleshooting",
+        "Clarifies command availability impact while hard-disable is active",
+        "Avoids conflating this with beads-specific health diagnostics"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Runtime looks unhealthy after setup. Give me a doctor-style triage flow for plugin/runtime scope only, and do not jump straight to mutating repairs.",
+      "expected_output": "A troubleshooting-first status/doctor flow focused on plugin/runtime checks and evidence before repair.",
+      "files": [],
+      "expectations": [
+        "Starts with diagnosis and evidence collection before proposing repair actions",
+        "Includes hard-disable, saved mode, and resource surface checks in an ordered flow",
+        "Routes to debugging/log analysis when unresolved",
+        "Excludes beads-owned bd doctor or hooks diagnostics from core doctor scope"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I ran simplify after touching three files. Two duplicate private helpers are in the same file; another cleanup would require cross-module import changes. What is safe to apply directly versus ask-first?",
+      "expected_output": "A simplify baseline response that allows local safe cleanup and classifies cross-module refactors as ask-first.",
+      "files": [],
+      "expectations": [
+        "Treats same-file private deduplication as a safe-path candidate",
+        "Treats cross-module import boundary changes as ask-first",
+        "Keeps scope anchored to recently changed files",
+        "Includes concise output summary structure: scope, applied changes, deferred ask-first items, validation"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I need plugin/runtime debug evidence. Tell me how to enable debug logging, where logs live on Linux/macOS, and how to filter for opencode-coder entries.",
+      "expected_output": "A debugging-logs response with exact env toggles, path guidance, and filtering commands.",
+      "files": [],
+      "expectations": [
+        "Includes OPENCODE_DEFAULT_OPTIONS and OPENCODE_CODER_DEBUG guidance",
+        "Provides platform log locations for Linux and macOS",
+        "Includes a concrete filter/search command for opencode-coder log lines",
+        "Mentions disabling/unsetting debug options after collection"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I suspect a plugin/runtime defect: startup mode handling seems inconsistent. What evidence package should I gather before filing a report?",
+      "expected_output": "A plugin/runtime bug-reporting checklist with reproducibility, environment, and log evidence.",
+      "files": [],
+      "expectations": [
+        "Requests expected vs actual behavior plus concise reproduction steps",
+        "Requests environment details including OS and runtime versions",
+        "Requests relevant debug log excerpts and optional session export context",
+        "Keeps focus on plugin/runtime defects rather than generic project-code bugs"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "I need to export a session for maintainers. Tell me the exact session dump steps, output location pattern, and privacy caveat before sharing.",
+      "expected_output": "A session-dump workflow with concrete commands/path and sensitive-data warning.",
+      "files": [],
+      "expectations": [
+        "Describes obtaining the session ID and exporting it with coder session-export",
+        "References private/session-dump/<session-id>/session.json as the expected output pattern",
+        "Requires confirming export success/path in report-back",
+        "Warns that exported data may contain sensitive content and should be reviewed before sharing"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Please walk me through bd doctor, hooks verification, and tracker diagnostics for .beads issues after startup.",
+      "expected_output": "A boundary-aware response that redirects beads-owned diagnostics to coder-beads instead of handling them as core scope.",
+      "files": [],
+      "expectations": [
+        "Explicitly marks bd doctor/hooks/tracker diagnostics as out of coder-core scope",
+        "Routes user to coder-beads for tracker-health workflows",
+        "Does not fabricate beads remediation steps as if they were core-owned",
+        "Keeps any retained advice limited to plugin/runtime checks only"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "I want AGENTS generation and docs lifecycle updates for CODING.md and CHANGE-WORKFLOW.md. Handle the full docs lifecycle for me.",
+      "expected_output": "A boundary-aware response that routes docs lifecycle and AGENTS generation work to coder-docs.",
+      "files": [],
+      "expectations": [
+        "Marks docs lifecycle and AGENTS generation as out-of-scope for coder-core",
+        "Routes to coder-docs for setup/update/review lifecycle guidance",
+        "Avoids claiming coder-core owns canonical docs lifecycle flows",
+        "Keeps guidance focused on runtime/plugin concerns if any overlap is discussed"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "I have two issues: plugin runtime looks disabled unexpectedly, and I also need help filing tracker follow-up tasks. Split what you can handle directly versus what should be delegated.",
+      "expected_output": "A split-ownership response that handles runtime diagnosis in-core and delegates tracker filing/follow-up to coder-beads.",
+      "files": [],
+      "expectations": [
+        "Handles plugin/runtime diagnosis as in-scope core work",
+        "Delegates tracker filing/follow-up workflows to coder-beads",
+        "Keeps ownership boundaries explicit without mixing instructions",
+        "Provides a practical next-step order that starts with runtime evidence collection"
+      ]
+    }
+  ]
+}

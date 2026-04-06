@@ -1,0 +1,66 @@
+[
+  {
+    "query": "Plan this backend feature in beads: create an epic with child tasks, include an acceptance review gate, and block unresolved decisions before coding starts.",
+    "should_trigger": true
+  },
+  {
+    "query": "A customer reported checkout fails above 50 cart items. Capture it as a beads bug with source:external, repro, expected vs actual, and follow-up work.",
+    "should_trigger": true
+  },
+  {
+    "query": "Show the right beads issue workflow for tasks that still have open questions and dependencies so execution agents do not guess.",
+    "should_trigger": true
+  },
+  {
+    "query": "Run execution orchestration guidance: start from bd ready, select safe parallel tasks, and explain mandatory pre-execution ticket review.",
+    "should_trigger": true
+  },
+  {
+    "query": "Describe beads acceptance review: what evidence is required, when to file follow-up bugs, and when epic closure is allowed.",
+    "should_trigger": true
+  },
+  {
+    "query": "I cannot run bd because command not found and hooks are missing after init. Give me beads setup troubleshooting and verification steps.",
+    "should_trigger": true
+  },
+  {
+    "query": "bd doctor shows runtime errors and task state drift. Provide beads runtime troubleshooting and escalation steps.",
+    "should_trigger": true
+  },
+  {
+    "query": "Give me a beads status and health check, including how to interpret ready vs blocked queues safely.",
+    "should_trigger": true
+  },
+  {
+    "query": "I need project docs cleanup: run init-or-update-docs and regenerate AGENTS.md routing with canonical topic docs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Use /opencode-coder/improve-doc to analyze stale links and rewrite documentation taxonomy.",
+    "should_trigger": false
+  },
+  {
+    "query": "Please run /opencode-coder/init and explain stealth vs team mode plus OPENCODE_CODER_DISABLED behavior.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run /simplify on my latest commit and classify safe-path versus ask-first cleanup opportunities.",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a GitHub release v1.4.0 and prepare release notes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Sync beads with GitHub issues and report import/export differences.",
+    "should_trigger": false
+  },
+  {
+    "query": "Analyze production logs and triage top failures into actionable bugs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a TypeScript helper and add unit tests for it.",
+    "should_trigger": false
+  }
+]

@@ -1,0 +1,66 @@
+[
+  {
+    "query": "I need first-time setup guidance for opencode-coder runtime, including prerequisites and what to check before enabling.",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain saved mode versus hard-disable behavior: .coder/opencode-coder.yaml says team but OPENCODE_CODER_DISABLED is set in this shell.",
+    "should_trigger": true
+  },
+  {
+    "query": "Give me a status/doctor style runtime triage flow for plugin health before any repair actions.",
+    "should_trigger": true
+  },
+  {
+    "query": "I just ran simplify and want the baseline safe-versus-ask-first guidance for local cleanup only.",
+    "should_trigger": true
+  },
+  {
+    "query": "How do I enable plugin debug logging and collect opencode-coder logs for runtime troubleshooting?",
+    "should_trigger": true
+  },
+  {
+    "query": "I suspect a plugin runtime bug. What evidence should I gather before reporting it?",
+    "should_trigger": true
+  },
+  {
+    "query": "Show me the session dump export workflow and privacy warnings before sharing diagnostics.",
+    "should_trigger": true
+  },
+  {
+    "query": "Runtime commands seem unavailable; help me debug env override, saved mode, and resource presence in order.",
+    "should_trigger": true
+  },
+  {
+    "query": "Run bd doctor and fix tracker hooks because .beads health looks broken.",
+    "should_trigger": false
+  },
+  {
+    "query": "Please plan work in beads and create an epic with tasks plus acceptance review.",
+    "should_trigger": false
+  },
+  {
+    "query": "I need AGENTS.md generated and a docs lifecycle refresh for project docs.",
+    "should_trigger": false
+  },
+  {
+    "query": "Use the GitHub task-sync workflow to sync beads issues with GitHub issues and report import/export changes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a GitHub release for v0.40.0 and verify release notes.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run docs lifecycle verify with focus on AGENTS routing cleanup and stale doc links; do not do runtime troubleshooting.",
+    "should_trigger": false
+  },
+  {
+    "query": "Our non-standard docs need migration decisions and AGENTS updates under docs lifecycle policy.",
+    "should_trigger": false
+  },
+  {
+    "query": "Fix two typos in docs/TESTING.md only; no runtime work needed.",
+    "should_trigger": false
+  }
+]

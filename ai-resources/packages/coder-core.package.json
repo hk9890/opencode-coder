@@ -1,0 +1,7 @@
+{
+  "name": "coder-core",
+  "description": "Standalone core opencode-coder runtime skill package without beads/docs companion surfaces",
+  "resources": [
+    "skill/coder-core"
+  ]
+}
