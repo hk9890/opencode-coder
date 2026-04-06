@@ -29,11 +29,11 @@ describe("validate-isolated-pins", () => {
     const result = validateIsolatedPinsConsistencyFromInputs({
       manifestPins: {
         "@hk9890/opencode-dynatrace": "0.6.0",
-        "@opencode-ai/plugin": "^1.2.16",
+        "@opencode-ai/plugin": "^1.3.17",
       },
       sharedPluginSpecs: ["@hk9890/opencode-dynatrace@0.6.0"],
       harnessScaffoldDependencies: {
-        "@opencode-ai/plugin": "^1.2.16",
+        "@opencode-ai/plugin": "^1.3.17",
       },
       harnessSource:
         "await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0']); await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0', '@dynatrace-oss/opencode-coder@0.34.2']);",
@@ -46,7 +46,7 @@ describe("validate-isolated-pins", () => {
     const result = validateIsolatedPinsConsistencyFromInputs({
       manifestPins: {
         "@hk9890/opencode-dynatrace": "0.6.0",
-        "@opencode-ai/plugin": "^1.2.16",
+        "@opencode-ai/plugin": "^1.3.17",
       },
       sharedPluginSpecs: ["@hk9890/opencode-dynatrace@0.7.0", "@dynatrace-oss/opencode-coder@0.34.2"],
       harnessScaffoldDependencies: {

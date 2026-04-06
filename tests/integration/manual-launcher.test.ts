@@ -138,7 +138,7 @@ describe("manual launcher preflight", () => {
     const manifest = await readIsolatedTestManifest();
 
     expect(manifest.pins["@hk9890/opencode-dynatrace"]).toBe("0.6.0");
-    expect(manifest.pins["@opencode-ai/plugin"]).toBe("^1.2.16");
+    expect(manifest.pins["@opencode-ai/plugin"]).toBe("^1.3.17");
   });
 
   it("fails clearly for unknown fixture", async () => {
