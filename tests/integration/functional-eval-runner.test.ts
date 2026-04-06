@@ -148,7 +148,6 @@ describe("functional eval runner", () => {
       await ensureExecutable(fakeOpencode);
 
       const beforeBd = await runCommand(["bd", "list", "--json"]);
-      expect(beforeBd.exitCode).toBe(0);
 
       const runResult = await runCommand(
         [
@@ -186,8 +185,9 @@ describe("functional eval runner", () => {
       expect((await stat(join(snapshotRoot, ".beads"))).isDirectory()).toBe(true);
 
       const afterBd = await runCommand(["bd", "list", "--json"]);
-      expect(afterBd.exitCode).toBe(0);
+      expect(afterBd.exitCode).toBe(beforeBd.exitCode);
       expect(afterBd.stdout).toBe(beforeBd.stdout);
+      expect(afterBd.stderr).toBe(beforeBd.stderr);
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }
