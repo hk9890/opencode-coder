@@ -1,6 +1,6 @@
 ---
 name: coder-beads
-description: "Use this skill for beads-centric planning, issue structure, execution orchestration, acceptance review gates, beads setup/runtime troubleshooting, beads health checks, and beads follow-up bug/task filing. This skill is self-contained for tracker workflows and does not require coder-core or coder-docs at runtime."
+description: "Use this skill for beads-centric planning, issue structure, execution orchestration, acceptance review gates, beads setup/runtime troubleshooting, beads health checks, and beads follow-up bug/task filing when users ask to capture tracker bugs/tasks (for example with repro and expected vs actual), even without explicitly saying beads. Trigger only for beads tracker workflow requests. Do not trigger for opencode-coder mode/runtime controls (stealth mode, team mode, OPENCODE_CODER_DISABLED), observability or production-log triage into bugs, external task-sync/import-export workflows (GitHub issues/Jira), docs lifecycle/taxonomy cleanup, simplify cleanup, GitHub releases, or general coding tasks."
 ---
 
 # coder-beads
@@ -14,7 +14,7 @@ This skill owns:
 - execution orchestration across ready/blocked work
 - acceptance-review gate patterns
 - beads setup/runtime troubleshooting and health checks
-- beads follow-up behavior (creating bugs/tasks for discovered issues)
+- beads follow-up behavior for tracker workflow issues (creating bugs/tasks for discovered issues)
 
 This skill does **not** own docs lifecycle or AGENTS generation workflows.
 

@@ -49,18 +49,23 @@ Verify that a beads ticket (task, bug, epic) is complete, consistent, and ready 
 4. **Instructions are actionable** — a tasker should be able to execute without guessing.
 
 **If any check fails:**
-- Add a comment to the ticket detailing what is missing or inconsistent: `bd comments add <id> "Ticket verification: <specific finding>"`
+- Add a comment to the ticket detailing what is missing or inconsistent by writing the body to a file first, then using `bd comments add <id> -f <comment-file>`
 - Do NOT close the ticket
 - Report back to the caller with the exact issues found
 
 **All verification steps MUST be documented as a comment on the ticket:**
 ```bash
-bd comments add <id> "Ticket verification performed:
+tmp_comment="$(mktemp)"
+cat <<'EOF' > "$tmp_comment"
+Ticket verification performed:
 - [PASS] No orphaned comments
 - [FAIL] Open questions found: Q1 about token expiry unresolved
 - [PASS] Acceptance criteria exist (4 criteria)
 - [PASS] Instructions are actionable
-Result: BLOCKED — open questions must be resolved before execution."
+Result: BLOCKED — open questions must be resolved before execution.
+EOF
+bd comments add <id> -f "$tmp_comment"
+rm -f "$tmp_comment"
 ```
 
 ## No Silent Failures (NON-NEGOTIABLE)

@@ -89,14 +89,13 @@ Rules:
 3. Open the PR with GitHub CLI:
 
    ```bash
-   gh pr create --title "docs: refresh change workflow guidance" --body "$(cat <<'EOF'
+   gh pr create --title "docs: refresh change workflow guidance" --body-file - <<'EOF'
 ## Summary
 - explain what changed and why
 
 ## Testing
 - list the commands you ran from docs/TESTING.md
 EOF
-)"
    ```
 
 ### PR expectations

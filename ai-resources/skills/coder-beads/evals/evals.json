@@ -3,21 +3,21 @@
   "evals": [
     {
       "id": 0,
-      "prompt": "I need to plan a customer-facing search improvement in beads. Create an epic with child tasks and an acceptance review task, and mark anything that still needs decisions as blocked discussion work before execution starts.",
-      "expected_output": "A beads-centric planning response that creates epic decomposition with explicit acceptance review and discussion blocking for unresolved scope.",
+      "prompt": "I need to plan a customer-facing search improvement. Create an epic with child tasks and an acceptance review task, and mark anything that still needs decisions as blocked discussion work before execution starts.",
+      "expected_output": "A tracker planning response that creates epic decomposition with explicit acceptance review and discussion blocking for unresolved scope.",
       "files": [],
       "expectations": [
         "Uses epic plus child tasks plus an explicit acceptance review task",
         "Uses numeric priorities and concrete task instructions",
         "Marks unresolved items with needs:discussion or has:open-questions and blocked status",
         "Shows actionable queue checks such as bd ready and bd blocked",
-        "Stays within beads planning workflow ownership"
+        "Stays within tracker planning workflow ownership"
       ]
     },
     {
       "id": 1,
-      "prompt": "A customer says checkout crashes when carts exceed 50 items. Capture this as a beads bug with source:external, expected vs actual, repro details, and a linked follow-up task for post-mortem.",
-      "expected_output": "A high-quality beads bug-reporting response with external-source labeling, concrete evidence fields, and tracked follow-up work.",
+      "prompt": "A customer says checkout crashes when carts exceed 50 items. Capture this as a bug with source:external, expected vs actual, repro details, and a linked follow-up task for post-mortem.",
+      "expected_output": "A high-quality tracker bug-reporting response with external-source labeling, concrete evidence fields, and tracked follow-up work.",
       "files": [],
       "expectations": [
         "Creates a bug issue rather than a generic task",
@@ -29,8 +29,8 @@
     },
     {
       "id": 2,
-      "prompt": "I have a task with unresolved API contract choices and one open dependency. Show how to structure it in beads so execution agents do not guess, and explain when to unblock it.",
-      "expected_output": "A beads issue-workflow response that blocks unresolved work with the right labels and defines explicit unblocking conditions.",
+      "prompt": "I have a task with unresolved API contract choices and one open dependency. Show how to structure it so execution agents do not guess, and explain when to unblock it.",
+      "expected_output": "A tracker issue-workflow response that blocks unresolved work with the right labels and defines explicit unblocking conditions.",
       "files": [],
       "expectations": [
         "Uses needs:discussion and/or has:open-questions labels for unresolved scope",
@@ -42,7 +42,7 @@
     },
     {
       "id": 3,
-      "prompt": "Run a beads execution orchestration pass for me: choose what can run in parallel from the ready queue, explain mandatory pre-execution ticket review checks, and state what to do if unrelated failures are discovered during implementation.",
+      "prompt": "Run an execution orchestration pass for me: choose what can run in parallel from the ready queue, explain mandatory pre-execution ticket review checks, and state what to do if unrelated failures are discovered during implementation.",
       "expected_output": "An execution orchestration response that applies ready/blocked discipline, pre-execution quality checks, and explicit unrelated-bug filing behavior.",
       "files": [],
       "expectations": [
@@ -55,8 +55,8 @@
     },
     {
       "id": 4,
-      "prompt": "We finished child tasks under an epic. Describe the acceptance review gate process in beads, including what evidence must exist before the epic can close and what to do when acceptance fails.",
-      "expected_output": "A beads acceptance-review response that enforces gate criteria, tracks discovered defects, and keeps epic closure blocked until review passes.",
+      "prompt": "We finished child tasks under an epic. Describe the acceptance review gate process, including what evidence must exist before the epic can close and what to do when acceptance fails.",
+      "expected_output": "A tracker acceptance-review response that enforces gate criteria, tracks discovered defects, and keeps epic closure blocked until review passes.",
       "files": [],
       "expectations": [
         "Requires a dedicated Acceptance Review task per epic",
@@ -68,7 +68,7 @@
     },
     {
       "id": 5,
-      "prompt": "My shell says bd command not found and bd init failed in a new repo. Give me a beads setup troubleshooting sequence that gets me to a healthy tracker state.",
+      "prompt": "My shell says bd command not found and bd init failed in a new repo. Give me a setup troubleshooting sequence that gets the task tracker into a healthy state.",
       "expected_output": "A setup troubleshooting response with concrete bd installation/path fixes, git prerequisites, and post-setup verification commands.",
       "files": [],
       "expectations": [
@@ -76,12 +76,12 @@
         "Covers non-git repo prerequisite before bd init",
         "Includes hooks installation/verification where relevant",
         "Ends with setup verification commands such as bd doctor and bd status",
-        "Stays focused on beads setup ownership"
+        "Stays focused on tracker setup ownership"
       ]
     },
     {
       "id": 6,
-      "prompt": "During execution, bd shows runtime tracker errors and task state drift. Walk me through beads runtime troubleshooting to diagnose root cause and decide escalation.",
+      "prompt": "During execution, bd shows runtime tracker errors and task state drift. Walk me through runtime troubleshooting to diagnose root cause and decide escalation.",
       "expected_output": "A runtime troubleshooting response that sequences bd doctor/bootstrap/status checks, detects stale tracker state, and escalates with evidence when unresolved.",
       "files": [],
       "expectations": [
@@ -94,8 +94,8 @@
     },
     {
       "id": 7,
-      "prompt": "Give me a quick beads health snapshot for this project and explain how to interpret ready versus blocked queues so we do not accidentally run non-executable work.",
-      "expected_output": "A beads status/health response that checks core tracker readiness and interprets queue health for execution safety.",
+      "prompt": "Give me a quick task tracker health snapshot for this project and explain how to interpret ready versus blocked queues so we do not accidentally run non-executable work.",
+      "expected_output": "A tracker status/health response that checks core tracker readiness and interprets queue health for execution safety.",
       "files": [],
       "expectations": [
         "Includes core health checks for bd install, .beads state, hooks, and status commands",

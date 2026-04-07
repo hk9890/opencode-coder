@@ -1,66 +1,66 @@
 [
   {
-    "query": "Plan this backend feature in beads: create an epic with child tasks, include an acceptance review gate, and block unresolved decisions before coding starts.",
+    "query": "Create an epic for this backend feature and split it into child tasks.",
     "should_trigger": true
   },
   {
-    "query": "A customer reported checkout fails above 50 cart items. Capture it as a beads bug with source:external, repro, expected vs actual, and follow-up work.",
+    "query": "Capture this checkout failure as a bug with repro and expected vs actual.",
     "should_trigger": true
   },
   {
-    "query": "Show the right beads issue workflow for tasks that still have open questions and dependencies so execution agents do not guess.",
+    "query": "What is the workflow when a task has open questions and dependencies?",
     "should_trigger": true
   },
   {
-    "query": "Run execution orchestration guidance: start from bd ready, select safe parallel tasks, and explain mandatory pre-execution ticket review.",
+    "query": "Give execution guidance from ready tasks with safe parallel picks.",
     "should_trigger": true
   },
   {
-    "query": "Describe beads acceptance review: what evidence is required, when to file follow-up bugs, and when epic closure is allowed.",
+    "query": "How should I run acceptance review and decide when to close an epic?",
     "should_trigger": true
   },
   {
-    "query": "I cannot run bd because command not found and hooks are missing after init. Give me beads setup troubleshooting and verification steps.",
+    "query": "I ran init, but now bd is command not found. Help me fix setup.",
     "should_trigger": true
   },
   {
-    "query": "bd doctor shows runtime errors and task state drift. Provide beads runtime troubleshooting and escalation steps.",
+    "query": "bd doctor shows task drift and runtime errors. What should I do next?",
     "should_trigger": true
   },
   {
-    "query": "Give me a beads status and health check, including how to interpret ready vs blocked queues safely.",
+    "query": "Give me a quick task tracker health check: ready vs blocked.",
     "should_trigger": true
   },
   {
-    "query": "I need project docs cleanup: run init-or-update-docs and regenerate AGENTS.md routing with canonical topic docs.",
+    "query": "Clean up project docs and update AGENTS.md.",
     "should_trigger": false
   },
   {
-    "query": "Use /opencode-coder/improve-doc to analyze stale links and rewrite documentation taxonomy.",
+    "query": "Rewrite our docs taxonomy and fix stale links.",
     "should_trigger": false
   },
   {
-    "query": "Please run /opencode-coder/init and explain stealth vs team mode plus OPENCODE_CODER_DISABLED behavior.",
+    "query": "Explain stealth mode, team mode, and OPENCODE_CODER_DISABLED.",
     "should_trigger": false
   },
   {
-    "query": "Run /simplify on my latest commit and classify safe-path versus ask-first cleanup opportunities.",
+    "query": "Simplify my latest commit and suggest safe cleanup.",
     "should_trigger": false
   },
   {
-    "query": "Create a GitHub release v1.4.0 and prepare release notes.",
+    "query": "Create GitHub release v1.4.0 with release notes.",
     "should_trigger": false
   },
   {
-    "query": "Sync beads with GitHub issues and report import/export differences.",
+    "query": "Sync tasks with GitHub issues and report import/export diffs.",
     "should_trigger": false
   },
   {
-    "query": "Analyze production logs and triage top failures into actionable bugs.",
+    "query": "Analyze production logs and triage top failures into bugs.",
     "should_trigger": false
   },
   {
-    "query": "Write a TypeScript helper and add unit tests for it.",
+    "query": "Write a TypeScript helper and add unit tests.",
     "should_trigger": false
   }
 ]

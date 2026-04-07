@@ -9,6 +9,7 @@ overfitting.
 import argparse
 import json
 import random
+import shutil
 import sys
 import tempfile
 import time
@@ -57,6 +58,7 @@ def run_loop(
     trigger_threshold: float,
     holdout: float,
     model: str | None,
+    opencode_path: str,
     verbose: bool,
     live_report_path: Path | None = None,
     log_dir: Path | None = None,
@@ -106,6 +108,8 @@ def run_loop(
             runs_per_query=runs_per_query,
             trigger_threshold=trigger_threshold,
             model=model,
+            opencode_path=opencode_path,
+            source_skill_path=skill_path,
         )
         eval_elapsed = time.time() - t0
 
@@ -340,6 +344,11 @@ def main():
 
     name, _, _ = parse_skill_md(skill_path)
 
+    opencode_path = shutil.which("opencode")
+    if not opencode_path:
+        print("Error: opencode CLI not found on PATH", file=sys.stderr)
+        sys.exit(1)
+
     # Set up live report path
     if args.report != "none":
         if args.report == "auto":
@@ -379,6 +388,7 @@ def main():
         trigger_threshold=args.trigger_threshold,
         holdout=args.holdout,
         model=args.model,
+        opencode_path=opencode_path,
         verbose=args.verbose,
         live_report_path=live_report_path,
         log_dir=log_dir,

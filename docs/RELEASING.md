@@ -64,12 +64,13 @@ bun run test:e2e
 
 ## Accepted Release Gap
 
-`bun run test:e2e` and isolated manual harness checks currently depend on access to `@hk9890/opencode-dynatrace`.
+Private-package coverage for `@hk9890/opencode-dynatrace` is opt-in via `OPENCODE_CODER_PRIVATE_TESTS=true`.
 
 That means:
 
-- the checks are required for a real release environment
-- GitHub Actions does not fully enforce that private-package-dependent coverage yet
+- default public-safe isolated checks run without private package access
+- private coverage should still be run in release environments that have package access
+- GitHub Actions does not fully enforce private-package-dependent coverage yet
 - this gap is currently accepted and should be mentioned if release confidence is discussed
 
 ## Publishing and Auth Quirks

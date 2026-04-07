@@ -9,13 +9,15 @@
 
 - `ai-resources/skills/coder-docs/evals/evals.json`
 - `ai-resources/skills/coder-docs/evals/trigger-evals.json`
+- `ai-resources/skills/coder-docs/evals/hooks/setup-minimal-project-workspace.sh`
 
 ## Fixture status
 
-No fixtures were needed for this phase.
+No static `evals/files/**` fixtures were needed for this phase, but eval `0` now uses a minimal setup hook.
 
 - `ai-resources/skills/coder-docs/evals/files/**` was intentionally not created.
-- Rationale: prompts validate docs-lifecycle/behavior scope directly and do not require repo fixture files.
+- Eval `0` uses `evals/hooks/setup-minimal-project-workspace.sh` to seed a plausible repo root (`README.md`, `package.json`, `src/index.ts`, `.gitignore`, optional `.git/`) before execution.
+- Rationale: a bare functional workspace exposed only `.opencode/**`, which let the model misread the sandbox as the target repo and spend time creating docs under `.opencode/` instead of evaluating project-doc setup against a plausible project root.
 
 ## Contract checks
 

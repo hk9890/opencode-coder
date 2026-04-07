@@ -108,7 +108,7 @@ Use them for:
 Prerequisites:
 - built plugin artifact (`bun run build`)
 - `opencode` available on `PATH`
-- E2E and isolated manual harness runs currently require access to `@hk9890/opencode-dynatrace`; if you do not have access, those checks cannot be run right now and that limitation is accepted.
+- Private-package coverage (including `@hk9890/opencode-dynatrace`) is opt-in via `OPENCODE_CODER_PRIVATE_TESTS=true`. Default public-safe isolated runs skip private plugin installation.
 
 Commands:
 

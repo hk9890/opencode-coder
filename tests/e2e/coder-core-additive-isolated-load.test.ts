@@ -33,9 +33,11 @@ describe.skipIf(!aimgrCheck.available)("coder-core additive isolated loadability
 
       const repoAddResult = await $`aimgr repo add local:${AI_RESOURCES_DIR}`.cwd(workspace.workdir).env(isolatedEnv).quiet();
       expect(repoAddResult.exitCode).toBe(0);
+      expect(repoAddResult.stderr.toString().toLowerCase()).not.toContain("author identity unknown");
 
       const installResult = await $`aimgr install package/coder-core`.cwd(workspace.workdir).env(isolatedEnv).quiet();
       expect(installResult.exitCode).toBe(0);
+      expect(installResult.stderr.toString().toLowerCase()).not.toContain("author identity unknown");
 
       const skillPath = join(workspace.workdir, ".opencode", "skills", "coder-core", "SKILL.md");
       const installedSkill = await readFile(skillPath, "utf8");

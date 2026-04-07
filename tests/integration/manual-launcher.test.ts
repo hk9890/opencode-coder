@@ -18,6 +18,7 @@ import {
   readIsolatedTestManifest,
   resolveHostOpenCodeConfigPath,
   resolveInstalledConfiguredPluginFromHostConfig,
+  withEnvironment,
 } from "../e2e/helpers/harness";
 
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
@@ -126,9 +127,17 @@ describe("manual launcher preflight", () => {
       const isolatedPaths = await createIsolatedOpenCodePaths(tempRoot);
       const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
 
-      expect(opencodeConfig).toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      if (privateTestsEnabled) {
+        expect(opencodeConfig).toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      } else {
+        expect(opencodeConfig).not.toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      }
       expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
       expect(opencodeConfig).toContain('"theme": "catppuccin"');
+      expect(isolatedPaths.env.GIT_AUTHOR_NAME).toBe("opencode-coder-isolated");
+      expect(isolatedPaths.env.GIT_AUTHOR_EMAIL).toBe("isolated@opencode-coder.local");
+      expect(isolatedPaths.env.GIT_COMMITTER_NAME).toBe("opencode-coder-isolated");
+      expect(isolatedPaths.env.GIT_COMMITTER_EMAIL).toBe("isolated@opencode-coder.local");
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }
@@ -292,7 +301,11 @@ describe("manual launcher preflight", () => {
       });
 
       const opencodeConfig = await readFile(join(isolatedPaths.opencodeConfigDir, "opencode.json"), "utf8");
-      expect(opencodeConfig).toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      if (privateTestsEnabled) {
+        expect(opencodeConfig).toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      } else {
+        expect(opencodeConfig).not.toContain(`"${DYNATRACE_PLUGIN_SPEC}"`);
+      }
       expect(opencodeConfig).not.toContain('"@dynatrace-oss/opencode-coder@0.34.2"');
       expect(Object.prototype.hasOwnProperty.call(isolatedPaths.env, "OPENCODE_DISABLE_DEFAULT_PLUGINS")).toBe(true);
     } finally {
@@ -320,6 +333,32 @@ describe("manual launcher preflight", () => {
       );
       const packageJson = JSON.parse(await readFile(dynatracePackageJsonPath, "utf8")) as { version?: string };
       expect(packageJson.version).toBe("0.6.0");
+    } finally {
+      await rm(workspace.tempRoot, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("skips private Dynatrace package prep when OPENCODE_CODER_PRIVATE_TESTS is unset/false", async () => {
+    const workspace = await createFixtureWorkspace("cli-smoke-project");
+
+    try {
+      await withEnvironment({ OPENCODE_CODER_PRIVATE_TESTS: "false" }, async () => {
+        await prepareWorkspacePluginSource({
+          projectRoot: PROJECT_ROOT,
+          workdir: workspace.workdir,
+          pluginSource: "local-build",
+        });
+      });
+
+      const dynatracePackageJsonPath = join(
+        workspace.workdir,
+        ".opencode",
+        "node_modules",
+        "@hk9890",
+        "opencode-dynatrace",
+        "package.json"
+      );
+      expect(await Bun.file(dynatracePackageJsonPath).exists()).toBe(false);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });
     }

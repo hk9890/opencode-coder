@@ -30,6 +30,67 @@ def _write_text(path: Path, content: str) -> None:
     path.write_text(content)
 
 
+def _coerce_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def _verbose_log(enabled: bool, message: str) -> None:
+    if not enabled:
+        return
+    print(message, file=sys.stderr, flush=True)
+
+
+def _is_executable_file(path: str) -> bool:
+    return os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+def _resolve_opencode_executable() -> tuple[str | None, str | None]:
+    """Resolve an opencode executable path stable across isolated HOME environments.
+
+    Prefers a direct executable from PATH when available. If PATH only provides a
+    shim (or does not provide opencode), falls back to `mise which opencode` to
+    obtain the concrete versioned install path.
+    """
+
+    which_path = shutil.which("opencode")
+    if which_path:
+        real_path = os.path.realpath(which_path)
+        if _is_executable_file(real_path):
+            return real_path, None
+        return (
+            None,
+            (
+                "opencode resolved on PATH but target is not executable: "
+                f"{which_path} -> {real_path}"
+            ),
+        )
+
+    mise_path = shutil.which("mise")
+    if mise_path:
+        proc = subprocess.run(
+            [mise_path, "which", "opencode"],
+            capture_output=True,
+            text=True,
+        )
+        candidate = proc.stdout.strip()
+        if proc.returncode == 0 and candidate and _is_executable_file(candidate):
+            return candidate, None
+        if proc.returncode == 0 and candidate:
+            return (
+                None,
+                f"mise resolved opencode to non-executable path: {candidate}",
+            )
+
+        detail = proc.stderr.strip() or "unknown error"
+        return None, f"failed to resolve opencode via mise: {detail}"
+
+    return None, "opencode CLI not found on PATH and mise is unavailable"
+
+
 def _build_eval_env(
     *,
     eval_id: str,
@@ -38,6 +99,7 @@ def _build_eval_env(
     workspace_root: Path,
     artifacts_root: Path,
     skill_root: Path,
+    isolated_env: dict[str, str] | None = None,
 ) -> dict[str, str]:
     env = os.environ.copy()
     env["EVAL_ID"] = eval_id
@@ -46,6 +108,8 @@ def _build_eval_env(
     env["EVAL_WORKSPACE"] = str(workspace_root)
     env["EVAL_ARTIFACTS_DIR"] = str(artifacts_root)
     env["EVAL_SKILL_ROOT"] = str(skill_root)
+    if isolated_env:
+        env.update(isolated_env)
     return env
 
 
@@ -94,6 +158,44 @@ def _inject_runtime_skill(
     return destination
 
 
+def _prepare_sandbox_opencode_config(workspace_root: Path) -> Path:
+    sandbox_opencode_dir = workspace_root / ".opencode"
+    ensure_dir(sandbox_opencode_dir)
+    (sandbox_opencode_dir / "opencode.json").write_text(
+        json.dumps({"plugin": []}, indent=2) + "\n"
+    )
+    (sandbox_opencode_dir / ".gitignore").write_text("node_modules/\n")
+    return sandbox_opencode_dir
+
+
+def _prepare_isolated_opencode_environment(workspace_root: Path) -> dict[str, str]:
+    isolated_root = workspace_root / ".eval-isolated-opencode"
+    home_dir = isolated_root / "home"
+    xdg_config_home = isolated_root / "xdg-config"
+    xdg_data_home = isolated_root / "xdg-data"
+    xdg_cache_home = isolated_root / "xdg-cache"
+    opencode_config_dir = xdg_config_home / "opencode"
+
+    ensure_dir(home_dir)
+    ensure_dir(xdg_config_home)
+    ensure_dir(xdg_data_home)
+    ensure_dir(xdg_cache_home)
+    ensure_dir(opencode_config_dir)
+
+    (opencode_config_dir / "opencode.json").write_text(
+        json.dumps({"plugin": []}, indent=2) + "\n"
+    )
+
+    return {
+        "HOME": str(home_dir),
+        "XDG_CONFIG_HOME": str(xdg_config_home),
+        "XDG_DATA_HOME": str(xdg_data_home),
+        "XDG_CACHE_HOME": str(xdg_cache_home),
+        "OPENCODE_CONFIG_DIR": str(opencode_config_dir),
+        "OPENCODE_DISABLE_DEFAULT_PLUGINS": "true",
+    }
+
+
 def _run_hook(
     *,
     hook: dict,
@@ -103,6 +205,8 @@ def _run_hook(
     workspace_root: Path,
     artifacts_root: Path,
     phase_artifacts_dir: Path,
+    isolated_env: dict[str, str],
+    verbose: bool = False,
 ) -> dict:
     script_value = hook.get("script")
     if not script_value or not isinstance(script_value, str):
@@ -135,9 +239,17 @@ def _run_hook(
         workspace_root=workspace_root,
         artifacts_root=artifacts_root,
         skill_root=skill_root,
+        isolated_env=isolated_env,
     )
 
     started_at = time.time()
+    _verbose_log(
+        verbose,
+        (
+            f"[{hook.get('_eval_id', 'unknown')}] {phase} hook start: {display_name} "
+            f"(timeout={timeout_seconds}s)"
+        ),
+    )
     timed_out = False
     exit_code = None
     stdout_text = ""
@@ -157,14 +269,28 @@ def _run_hook(
         stderr_text = proc.stderr
     except subprocess.TimeoutExpired as exc:
         timed_out = True
-        stdout_text = exc.stdout or ""
-        stderr_text = exc.stderr or ""
+        stdout_text = _coerce_text(exc.stdout)
+        stderr_text = _coerce_text(exc.stderr)
 
     finished_at = time.time()
     duration_seconds = round(finished_at - started_at, 3)
 
     _write_text(hook_dir / "stdout.log", stdout_text)
     _write_text(hook_dir / "stderr.log", stderr_text)
+
+    if timed_out:
+        hook_status = "TIMED OUT"
+    elif exit_code == 0:
+        hook_status = "PASS"
+    else:
+        hook_status = f"FAIL(exit={exit_code})"
+    _verbose_log(
+        verbose,
+        (
+            f"[{hook.get('_eval_id', 'unknown')}] {phase} hook end: {display_name} "
+            f"-> {hook_status} in {duration_seconds:.3f}s"
+        ),
+    )
 
     result = {
         "display_name": display_name,
@@ -201,6 +327,8 @@ def _run_model_execution(
     opencode_path: str,
     timeout_seconds: int,
     model: str | None,
+    isolated_env: dict[str, str],
+    verbose: bool = False,
 ) -> dict:
     ensure_dir(execution_dir)
 
@@ -224,9 +352,14 @@ def _run_model_execution(
         workspace_root=workspace_root,
         artifacts_root=artifacts_root,
         skill_root=skill_root,
+        isolated_env=isolated_env,
     )
 
     started_at = time.time()
+    _verbose_log(
+        verbose,
+        f"[{eval_id}] model run start (timeout={timeout_seconds}s)",
+    )
     timed_out = False
     exit_code = None
     stdout_text = ""
@@ -246,14 +379,25 @@ def _run_model_execution(
         stderr_text = proc.stderr
     except subprocess.TimeoutExpired as exc:
         timed_out = True
-        stdout_text = exc.stdout or ""
-        stderr_text = exc.stderr or ""
+        stdout_text = _coerce_text(exc.stdout)
+        stderr_text = _coerce_text(exc.stderr)
 
     finished_at = time.time()
     duration_seconds = round(finished_at - started_at, 3)
 
     _write_text(execution_dir / "stdout.ndjson", stdout_text)
     _write_text(execution_dir / "stderr.log", stderr_text)
+
+    if timed_out:
+        run_status = "TIMED OUT"
+    elif exit_code == 0:
+        run_status = "PASS"
+    else:
+        run_status = f"FAIL(exit={exit_code})"
+    _verbose_log(
+        verbose,
+        f"[{eval_id}] model run end -> {run_status} in {duration_seconds:.3f}s",
+    )
 
     result = {
         "ran": True,
@@ -320,6 +464,7 @@ def run_single_eval(
     opencode_path: str,
     timeout_seconds: int,
     model: str | None,
+    verbose: bool = False,
 ) -> dict:
     run_artifacts = artifacts_root / run_label
     hooks_before_dir = run_artifacts / "hooks" / "before_run"
@@ -358,15 +503,23 @@ def run_single_eval(
 
     setup_failed = False
     setup_failure_reason: str | None = None
+    setup_error: str | None = None
+    model_failed = False
+    model_failure_reason: str | None = None
+    model_error: str | None = None
     after_failed = False
     runtime_skill_path: Path | None = None
     model_result: dict | None = None
-    run_exception: str | None = None
+    isolated_env: dict[str, str] = {}
 
     workspace_root = Path(
         tempfile.mkdtemp(prefix=f"functional-eval-{sanitize_label(run_label)}-")
     ).resolve()
     started_at = time.time()
+    _verbose_log(
+        verbose,
+        f"[{eval_id}] eval start: {run_label} (timeout={timeout_seconds}s)",
+    )
 
     try:
         try:
@@ -375,6 +528,8 @@ def run_single_eval(
                 workspace_root=workspace_root,
                 runtime_skill_name=runtime_skill_name,
             )
+            _prepare_sandbox_opencode_config(workspace_root)
+            isolated_env = _prepare_isolated_opencode_environment(workspace_root)
 
             hydrated_files = _hydrate_eval_files(skill_root, workspace_root, eval_files)
 
@@ -390,18 +545,28 @@ def run_single_eval(
                     workspace_root=workspace_root,
                     artifacts_root=run_artifacts,
                     phase_artifacts_dir=hooks_before_dir,
+                    isolated_env=isolated_env,
+                    verbose=verbose,
                 )
                 before_results.append(result)
                 if not result["success"]:
                     setup_failed = True
                     setup_failure_reason = "before_run_failed"
                     break
+        except (
+            Exception
+        ) as exc:  # Ensure after_run still executes on setup/model errors
+            if not setup_failed:
+                setup_failed = True
+                setup_failure_reason = "setup_exception"
+            setup_error = str(exc)
 
-            if setup_failed:
-                model_result = _build_skipped_model_result(
-                    execution_dir, setup_failure_reason or "setup_failed"
-                )
-            else:
+        if setup_failed:
+            skip_reason = setup_failure_reason or "setup_failed"
+            _verbose_log(verbose, f"[{eval_id}] model run skipped: {skip_reason}")
+            model_result = _build_skipped_model_result(execution_dir, skip_reason)
+        else:
+            try:
                 model_result = _run_model_execution(
                     prompt=prompt,
                     eval_id=eval_id,
@@ -413,17 +578,20 @@ def run_single_eval(
                     opencode_path=opencode_path,
                     timeout_seconds=timeout_seconds,
                     model=model,
+                    isolated_env=isolated_env,
+                    verbose=verbose,
                 )
-        except (
-            Exception
-        ) as exc:  # Ensure after_run still executes on setup/model errors
-            run_exception = str(exc)
-            if not setup_failed:
-                setup_failed = True
-                setup_failure_reason = "setup_exception"
-            if model_result is None:
+            except Exception as exc:
+                model_failed = True
+                model_failure_reason = "model_execution_exception"
+                model_error = str(exc)
+                _verbose_log(
+                    verbose,
+                    f"[{eval_id}] model run exception: {model_error}",
+                )
                 model_result = _build_skipped_model_result(
-                    execution_dir, setup_failure_reason or "setup_exception"
+                    execution_dir,
+                    model_failure_reason,
                 )
 
         for index, hook in enumerate(after_hooks, start=1):
@@ -439,6 +607,8 @@ def run_single_eval(
                     workspace_root=workspace_root,
                     artifacts_root=run_artifacts,
                     phase_artifacts_dir=hooks_after_dir,
+                    isolated_env=isolated_env,
+                    verbose=verbose,
                 )
             except Exception as exc:
                 result = {
@@ -470,8 +640,26 @@ def run_single_eval(
         finished_at = time.time()
         overall_success = (
             (not setup_failed)
+            and (not model_failed)
             and bool(model_result and model_result.get("success", False))
             and (not after_failed)
+        )
+        eval_duration = round(finished_at - started_at, 3)
+        if overall_success:
+            eval_status = "PASS"
+        elif setup_failed:
+            eval_status = f"FAIL(setup:{setup_failure_reason})"
+        elif model_failed:
+            eval_status = f"FAIL(model:{model_failure_reason})"
+        elif model_result and model_result.get("timed_out"):
+            eval_status = "FAIL(model_timeout)"
+        elif after_failed:
+            eval_status = "FAIL(after_run)"
+        else:
+            eval_status = "FAIL"
+        _verbose_log(
+            verbose,
+            f"[{eval_id}] eval end: {run_label} -> {eval_status} in {eval_duration:.3f}s",
         )
 
         result = {
@@ -486,12 +674,15 @@ def run_single_eval(
             "workspace_cleaned_up": False,
             "setup_failed": setup_failed,
             "setup_failure_reason": setup_failure_reason,
-            "setup_error": run_exception,
+            "setup_error": setup_error,
+            "model_failed": model_failed,
+            "model_failure_reason": model_failure_reason,
+            "model_error": model_error,
             "after_run_failed": after_failed,
             "success": overall_success,
             "started_at": started_at,
             "finished_at": finished_at,
-            "duration_seconds": round(finished_at - started_at, 3),
+            "duration_seconds": eval_duration,
             "hydrated_files": hydrated_files,
             "hooks": {
                 "before_run": before_results,
@@ -524,6 +715,7 @@ def run_functional_eval(
     timeout_seconds: int,
     model: str | None,
     eval_ids: set[int] | None,
+    verbose: bool = False,
 ) -> dict:
     skill_name, _, _ = parse_skill_md(skill_root)
     runtime_skill_name = derive_runtime_skill_name(skill_name)
@@ -545,9 +737,17 @@ def run_functional_eval(
 
     ensure_dir(artifacts_root)
     run_results = []
+    _verbose_log(
+        verbose,
+        f"Functional eval run start: {len(selected_evals)} eval(s), timeout={timeout_seconds}s",
+    )
     for index, entry in enumerate(selected_evals, start=1):
         entry_id = entry["id"]
         run_label = f"eval-{entry_id:03d}-run-{index:02d}"
+        _verbose_log(
+            verbose,
+            f"Queue eval {index}/{len(selected_evals)}: id={entry_id} label={run_label}",
+        )
         run_result = run_single_eval(
             eval_entry=entry,
             run_label=run_label,
@@ -557,6 +757,7 @@ def run_functional_eval(
             opencode_path=opencode_path,
             timeout_seconds=timeout_seconds,
             model=model,
+            verbose=verbose,
         )
         run_result["workspace_cleaned_up"] = True
         _write_text(
@@ -583,6 +784,14 @@ def run_functional_eval(
     _write_text(
         artifacts_root / "summary.json",
         json.dumps(output, indent=2, default=json_default),
+    )
+    _verbose_log(
+        verbose,
+        (
+            "Functional eval run end: "
+            f"passed={output['summary']['passed']}/{output['summary']['total']} "
+            f"failed={output['summary']['failed']}"
+        ),
     )
     return output
 
@@ -648,9 +857,12 @@ def main() -> None:
         )
         sys.exit(1)
 
-    opencode_path = shutil.which("opencode")
+    opencode_path, opencode_error = _resolve_opencode_executable()
     if not opencode_path:
-        print("Error: opencode CLI not found on PATH", file=sys.stderr)
+        print(
+            f"Error: Unable to resolve executable opencode binary: {opencode_error}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     artifacts_root = (
@@ -676,6 +888,7 @@ def main() -> None:
         timeout_seconds=args.timeout,
         model=args.model,
         eval_ids=eval_ids,
+        verbose=args.verbose,
     )
     finished = time.time()
 

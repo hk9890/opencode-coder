@@ -1,42 +1,54 @@
 [
   {
-    "query": "Set up project docs taxonomy for this repo and explain what belongs in canonical docs versus what should route to installed skills.",
+    "query": "Create a standard document structure for this project.",
     "should_trigger": true
   },
   {
-    "query": "Run docs lifecycle guidance for init/update/audit/slim/verify and tell me the right order to fix stale links and duplicate sections.",
+    "query": "Set up the standard project docs for this repo.",
     "should_trigger": true
   },
   {
-    "query": "Use improve-doc behavior for an incident where outdated docs caused a bad handoff. I want prevention-oriented doc updates.",
+    "query": "I want to convert the docs in this project into the standard document structure.",
     "should_trigger": true
   },
   {
-    "query": "I need discussion-first improve-doc help: analyze docs quality and propose options before editing anything.",
+    "query": "Refactor my docs so they match the standard project document structure.",
     "should_trigger": true
   },
   {
-    "query": "Generate AGENTS.md routing guidance aligned to our canonical docs taxonomy and installed skills.",
+    "query": "Please check if my project docs are up to date.",
     "should_trigger": true
   },
   {
-    "query": "Review our project docs: AGENTS has stale links and some topic docs look hollow. What should we fix and re-verify?",
+    "query": "Are my project doc files good, or is there anything to improve?",
     "should_trigger": true
   },
   {
-    "query": "How should change-landing docs be structured when we allow urgent direct-to-main but usually require branch plus PR review?",
+    "query": "Improve my AGENTS.md file.",
     "should_trigger": true
   },
   {
-    "query": "We have old non-standard docs mixed with canonical files. What merge/split decisions should docs lifecycle make before refreshing AGENTS?",
+    "query": "Does my AGENTS.md still match the current repo structure?",
     "should_trigger": true
   },
   {
-    "query": "Can you do project setup and docs taxonomy guidance, then generate AGENTS routing for team mode?",
+    "query": "Can you review our project documentation and tell me what is stale or missing?",
     "should_trigger": true
   },
   {
-    "query": "Use improve-doc workflow to clean up release docs and stale AGENTS routing.",
+    "query": "Help me clean up my project docs and fix outdated guidance.",
+    "should_trigger": true
+  },
+  {
+    "query": "We had confusion because our docs were outdated. Help me improve them so this does not happen again.",
+    "should_trigger": true
+  },
+  {
+    "query": "Can you review our docs first and suggest improvements before editing anything?",
+    "should_trigger": true
+  },
+  {
+    "query": "How should our change workflow docs be written if we sometimes go direct to main but usually use branches and pull requests?",
     "should_trigger": true
   },
   {
@@ -72,11 +84,11 @@
     "should_trigger": false
   },
   {
-    "query": "I only need typo fixes in one markdown file, no docs lifecycle workflow.",
+    "query": "I only need two typo fixes in one markdown file.",
     "should_trigger": false
   },
   {
-    "query": "Use docs lifecycle guidance with focus context for testing docs and AGENTS routing cleanup while keeping full lifecycle integrity.",
-    "should_trigger": true
+    "query": "Make me a one-off markdown TODO list for a refactor.",
+    "should_trigger": false
   }
 ]

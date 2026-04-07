@@ -19,6 +19,19 @@ description: "Use this skill for core opencode-coder plugin/runtime workflows th
 
 - In scope: plugin/runtime operations that still apply when beads is absent.
 - Out of scope: beads tracker health, `bd doctor`, hooks, tracker diagnostics, issue filing/follow-up workflows, docs lifecycle, and AGENTS generation.
+- If a request asks for docs lifecycle or AGENTS generation, do not execute that work in coder-core. Decline and delegate to `coder-docs` instead.
+- If `coder-docs` is unavailable in the current runtime, explicitly state that limitation and stop at delegation guidance rather than attempting docs-lifecycle execution.
+- For docs-lifecycle/AGENTS requests, return a short boundary response only: no `read`, `write`, `edit`, `bash`, `task`, or issue-tracker actions.
+
+### Required response pattern for docs-lifecycle / AGENTS requests
+
+When the user asks for docs lifecycle work or AGENTS generation, use this exact behavior:
+
+1. State this is out-of-scope for `coder-core`.
+2. Delegate to `coder-docs`.
+3. If `coder-docs` is unavailable, say so and stop.
+
+Do not perform any workspace/tool actions for these requests.
 
 ## Optional companion skills
 

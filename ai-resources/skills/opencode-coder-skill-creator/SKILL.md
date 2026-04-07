@@ -512,6 +512,15 @@ What gets recorded:
 3. Aggregate eval and loop outputs in `results.json`
 4. Description rewrite transcripts in `logs/improve_iter_*.json`
 
+Bounded-run interpretation:
+
+- A run is considered **decidable** when trigger intent is provable from observed signal, even if the process times out. Examples:
+  - `tool_use` (skill clearly used)
+  - `available_but_not_used` (skill available but not used)
+  - `load_then_reject` (skill loaded then explicitly rejected as out-of-scope)
+- Timeout records still preserve this evidence (`timeout_after_trigger`, `timeout_without_trigger`, etc.) under `detection.partial_signal`.
+- `run_eval.py` aggregates pass/fail using decidable signal correctness (`success_rate`) and reports `undecidable_runs` separately in summary for true measurement gaps.
+
 Use these artifacts to identify false negatives/false positives, improve descriptions, and verify progress over iterations.
 
 ### How skill triggering works

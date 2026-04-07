@@ -5,15 +5,19 @@ import { join } from "path";
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 
 describe("additive rollout no-touch guard", () => {
-  it("keeps root ai.package.yaml free of standalone coder-beads resources", () => {
+  it("keeps root ai.package.yaml free of standalone additive rollout resources", () => {
     const rootPackageYaml = readFileSync(join(PROJECT_ROOT, "ai.package.yaml"), "utf8");
 
     expect(rootPackageYaml).toContain("package/opencode-coder");
     expect(rootPackageYaml).not.toContain("package/coder-beads");
     expect(rootPackageYaml).not.toContain("skill/coder-beads");
+    expect(rootPackageYaml).not.toContain("package/coder-core");
+    expect(rootPackageYaml).not.toContain("skill/coder-core");
+    expect(rootPackageYaml).not.toContain("package/coder-docs");
+    expect(rootPackageYaml).not.toContain("skill/coder-docs");
   });
 
-  it("keeps existing opencode-coder package surface unchanged by additive coder-beads", () => {
+  it("keeps existing opencode-coder package surface unchanged by additive rollout", () => {
     const packageManifest = JSON.parse(
       readFileSync(join(PROJECT_ROOT, "ai-resources", "packages", "opencode-coder.package.json"), "utf8")
     ) as { resources?: string[] };
@@ -22,5 +26,9 @@ describe("additive rollout no-touch guard", () => {
     expect(resources).toContain("skill/opencode-coder");
     expect(resources).not.toContain("skill/coder-beads");
     expect(resources).not.toContain("package/coder-beads");
+    expect(resources).not.toContain("skill/coder-core");
+    expect(resources).not.toContain("package/coder-core");
+    expect(resources).not.toContain("skill/coder-docs");
+    expect(resources).not.toContain("package/coder-docs");
   });
 });

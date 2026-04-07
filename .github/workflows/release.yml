@@ -129,9 +129,11 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Release v${{ inputs.version }} completed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Tag: v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- NPM Package: @dynatrace-oss/opencode-coder@${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Verify package: npm view @dynatrace-oss/opencode-coder@${{ inputs.version }} --registry=https://npm.pkg.github.com" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Release v${{ inputs.version }} completed!"
+            echo ""
+            echo "- Tag: v${{ inputs.version }}"
+            echo "- NPM Package: @dynatrace-oss/opencode-coder@${{ inputs.version }}"
+            echo "- GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.version }}"
+            echo "- Verify package: npm view @dynatrace-oss/opencode-coder@${{ inputs.version }} --registry=https://npm.pkg.github.com"
+          } >> "$GITHUB_STEP_SUMMARY"

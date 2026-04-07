@@ -56,6 +56,8 @@ export interface WorkspaceCreationOptions {
 
 export const OPENCODE_CODER_PACKAGE_NAME = "@dynatrace-oss/opencode-coder";
 export const OPENCODE_DYNATRACE_PACKAGE_NAME = "@hk9890/opencode-dynatrace";
+const ISOLATED_GIT_AUTHOR_NAME = "opencode-coder-isolated";
+const ISOLATED_GIT_AUTHOR_EMAIL = "isolated@opencode-coder.local";
 
 export type PluginSource = "local-build" | "installed-configured";
 
@@ -216,6 +218,18 @@ async function getPinnedDynatracePluginSpec(): Promise<string> {
   return buildPluginSpecFromPin(OPENCODE_DYNATRACE_PACKAGE_NAME, pinnedVersion);
 }
 
+function privateTestsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.OPENCODE_CODER_PRIVATE_TESTS === "true";
+}
+
+async function getOptionalPinnedDynatracePluginSpec(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  if (!privateTestsEnabled(env)) {
+    return null;
+  }
+
+  return getPinnedDynatracePluginSpec();
+}
+
 export async function readHarnessScaffoldDependenciesFromManifest(): Promise<Record<string, string>> {
   return {
     "@opencode-ai/plugin": await getPinnedVersionFromManifest("@opencode-ai/plugin"),
@@ -226,14 +240,14 @@ async function buildSharedConfiguredPluginSpecs(): Promise<string[]> {
   const fixtureRaw = await readFile(OPENCODE_CONFIG_FIXTURE_PATH, "utf8");
   const fixtureConfig = JSON.parse(fixtureRaw) as unknown;
   const fixturePluginSpecs = readPluginSpecsFromConfig(fixtureConfig);
-  const dynatraceSpec = await getPinnedDynatracePluginSpec();
+  const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
 
   const filtered = fixturePluginSpecs.filter((spec) => {
     const packageName = parsePackageNameFromPluginSpec(spec);
     return packageName !== OPENCODE_CODER_PACKAGE_NAME && packageName !== OPENCODE_DYNATRACE_PACKAGE_NAME;
   });
 
-  return [...filtered, dynatraceSpec];
+  return dynatraceSpec ? [...filtered, dynatraceSpec] : filtered;
 }
 
 function parsePackageNameFromPluginSpec(spec: string): string {
@@ -405,9 +419,10 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
   const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
   const pluginEntrypoint = join(packageDir, "dist", "opencode-coder.js");
   const packageJsonPath = join(packageDir, "package.json");
+  const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
 
   await mkdir(pluginDir, { recursive: true });
-  await installWorkspacePluginDependencies(workdir, [await getPinnedDynatracePluginSpec(), normalizedSpec]);
+  await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
 
   let installedPackageJsonRaw: string;
   try {
@@ -765,9 +780,10 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   const opencodeDir = join(workdir, ".opencode");
   const pluginDir = join(opencodeDir, "plugins");
   const pluginSymlink = join(pluginDir, "opencode-coder.js");
+  const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
 
   await mkdir(pluginDir, { recursive: true });
-  await installWorkspacePluginDependencies(workdir, [await getPinnedDynatracePluginSpec()]);
+  await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
 
   await rm(pluginSymlink, { force: true });
   await symlink(pluginPath, pluginSymlink);
@@ -850,6 +866,10 @@ export async function createIsolatedOpenCodePaths(baseDir: string): Promise<Isol
       XDG_CACHE_HOME: xdgCacheHome,
       OPENCODE_CONFIG_DIR: opencodeConfigDir,
       OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
+      GIT_AUTHOR_NAME: ISOLATED_GIT_AUTHOR_NAME,
+      GIT_AUTHOR_EMAIL: ISOLATED_GIT_AUTHOR_EMAIL,
+      GIT_COMMITTER_NAME: ISOLATED_GIT_AUTHOR_NAME,
+      GIT_COMMITTER_EMAIL: ISOLATED_GIT_AUTHOR_EMAIL,
     },
   };
 }
