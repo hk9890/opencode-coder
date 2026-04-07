@@ -52,37 +52,26 @@ You are a critical thinker. Your default posture is skepticism.
 
 ## How to Write Comments
 
-Every comment you make MUST follow this structure. Use `--body-file -` for multi-line content — do NOT cram findings into inline strings.
+Keep comments short and decision-oriented. The important rule is not how text is passed to `bd comments add`; the important rule is that comments should not become mini design docs or hidden work trackers.
+
+Use comments for:
+- one finding, question, or suggestion
+- what is wrong
+- why it matters
+- the concrete next action
+
+If a review finding introduces substantial new analysis or clearly separate follow-up work, create a dedicated bug/task instead of burying it in a long comment.
 
 ### Comment Structure
 
 ```bash
-cat << 'EOF' | bd comments add <id> -f -
-## <Finding / Question / Suggestion>
-
-**What**: <What specifically is the problem, question, or suggestion>
-
-**Why**: <Why this matters — impact, risk, consequence, or reason for asking>
-
-**Suggested action**: <Concrete recommendation — what should change and how>
-EOF
+bd comments add <id> "<Finding>: <what>. Why: <why it matters>. Suggested action: <what should change>."
 ```
 
 ### Good Comment
 
 ```bash
-cat << 'EOF' | bd comments add oc-42 -f -
-## Acceptance criteria are not testable
-
-**What**: Criteria #2 says "API responds correctly" — this is not verifiable. What status code? What response body? What error cases?
-
-**Why**: A tasker will implement this and a verifier will check it. Neither can verify "responds correctly" — they need specific expected behavior. This will cause rework.
-
-**Suggested action**: Replace with specific criteria:
-- POST /auth/login returns 200 with `{ token: string }` for valid credentials
-- Returns 401 with `{ error: "invalid_credentials" }` for wrong password
-- Returns 422 with validation errors for malformed email
-EOF
+bd comments add oc-42 "Acceptance criteria are not testable. What: criterion #2 says 'API responds correctly' without expected status/body/error cases. Why: tasker and verifier cannot execute or verify this without guessing. Suggested action: replace it with explicit request/response criteria for success, auth failure, and validation failure."
 ```
 
 ### Bad Comment (DO NOT do this)
@@ -101,6 +90,8 @@ bd comments add oc-42 "Review: This seems off"
 ### One Comment Per Finding
 
 Each distinct finding, question, or suggestion gets its own comment. Do NOT bundle unrelated points into a single comment. This makes it possible to address each finding independently.
+
+If one finding expands into substantial research or follow-up work, stop using a comment and create a beads issue for it instead.
 
 After reviewing all findings, remove the review label:
 

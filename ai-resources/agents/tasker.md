@@ -24,7 +24,7 @@ Before implementing anything, you MUST evaluate whether the ticket is actually r
 
 **If the ticket is NOT ready**, do the following:
 - Do NOT write any code
-- Add a comment explaining what is missing, unclear, or contradictory by writing the body to a file first, then `bd comments add <id> -f <comment-file>`
+- Add a short comment explaining what is missing, unclear, or contradictory
 - Report back to the orchestrator with the exact problems: missing instructions, unresolved questions, stale comments not reflected in the description, ambiguous acceptance criteria, etc.
 
 **If the ticket IS ready**, proceed to the workflow below.
@@ -65,3 +65,10 @@ bd create --title="Found: <description>" --type=bug --priority=2 --description="
 ```
 
 Never ignore problems. Never silently work around them. Track everything.
+
+## Comment Discipline
+
+- Keep `bd` comments short and decision-oriented
+- Use comments for status, blocker/result, artifact path, and next step
+- If you discover substantial new analysis or follow-up work, create/update a dedicated bug/task instead of writing a long tracker comment
+- Prefer direct `bd comments add <id> "..."` for short notes; multiline comments are acceptable, but keep them concise

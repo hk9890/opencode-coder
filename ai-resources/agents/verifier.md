@@ -49,23 +49,30 @@ Verify that a beads ticket (task, bug, epic) is complete, consistent, and ready 
 4. **Instructions are actionable** — a tasker should be able to execute without guessing.
 
 **If any check fails:**
-- Add a comment to the ticket detailing what is missing or inconsistent by writing the body to a file first, then using `bd comments add <id> -f <comment-file>`
+- Add a short comment to the ticket detailing what is missing or inconsistent
 - Do NOT close the ticket
 - Report back to the caller with the exact issues found
 
-**All verification steps MUST be documented as a comment on the ticket:**
+**Keep tracker comments short and decision-oriented:**
+- Comments should capture status, outcome, artifact path(s), and next step
+- Do **not** turn a comment into a long research note or full verification report if the content introduces substantial new analysis or new follow-up work
+- If verification discovers a new blocker, a new workstream, or substantial root-cause analysis, create/update a dedicated bug/task instead of burying it in a large comment
+
+Preferred comment shape:
 ```bash
-tmp_comment="$(mktemp)"
-cat <<'EOF' > "$tmp_comment"
-Ticket verification performed:
-- [PASS] No orphaned comments
-- [FAIL] Open questions found: Q1 about token expiry unresolved
-- [PASS] Acceptance criteria exist (4 criteria)
-- [PASS] Instructions are actionable
-Result: BLOCKED — open questions must be resolved before execution.
+bd comments add <id> "Verifier rerun: BLOCKED. Trigger checks pass; eval 0 still times out at 120s. Artifact: /tmp/coder-beads-functional-20260407-reverify. Next: analyze eval-0 slow path and decide whether 120s remains the acceptance budget."
+```
+
+If you need multiline text, keep it concise:
+```bash
+bd comments add <id> "$(cat <<'EOF'
+Verifier rerun: BLOCKED.
+- Trigger checks pass
+- Eval 0 still times out at 120s
+Artifact: /tmp/coder-beads-functional-20260407-reverify
+Next: analyze eval-0 slow path and decide whether 120s remains the acceptance budget.
 EOF
-bd comments add <id> -f "$tmp_comment"
-rm -f "$tmp_comment"
+)"
 ```
 
 ## No Silent Failures (NON-NEGOTIABLE)
@@ -113,11 +120,13 @@ An acceptance review task with ANY unverified steps stays OPEN until a human con
 
 ## Evidence Requirement
 
-For every verification step, provide:
+For every verification step, provide enough evidence to support the decision:
 1. **What was tested** — the criterion
 2. **How it was tested** — exact command or action
 3. **What was observed** — actual output or result
 4. **Conclusion** — PASS, FAIL, or UNVERIFIED
+
+Prefer linking to artifact paths or creating follow-up tickets over copying large analysis into a single comment.
 
 ## Core Principles
 

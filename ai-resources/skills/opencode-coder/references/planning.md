@@ -238,6 +238,16 @@ Use normal `task` issues for blocking review work in this beads setup:
 
 These tasks represent **blocking conditions**, not approval states. Add comments on the epic and review task when you need to clarify that they are serving as acceptance gates.
 
+### Comment discipline
+
+Keep `bd` comments short and decision-oriented:
+- status
+- outcome
+- artifact path(s)
+- next step
+
+Do **not** use a long comment as a substitute for tracked work. If planning, review, or verification discovers substantial new analysis, a new blocker, or follow-up implementation/research, create or update a dedicated bug/task instead of burying it in a large comment.
+
 ## Priority Guide
 
 | Level | Name | When to Use |
