@@ -19,6 +19,7 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 ### Testing
 
 - Read [`docs/TESTING.md`](docs/TESTING.md) for test levels, commands, and local/e2e guidance.
+- Before running any skill trigger or functional evals, read [`docs/TESTING.md`](docs/TESTING.md) and follow the required skill-eval preflight guidance there first.
 
 ### Releases
 

@@ -1,5 +1,7 @@
 # coder-core isolated eval assets verification (2026-04-06)
 
+> Historical note (superseded for current-state simplify ownership): this verification artifact reflects additive rollout scope under `opencode-coder-3mv8`, when simplify baseline was temporarily assigned to `coder-core`. Under epic `opencode-coder-wlpd`, base `/simplify` ownership moved to standalone `code-simplify`.
+
 ## Task
 
 - Task ID: `opencode-coder-3mv8.3.3`
@@ -24,7 +26,8 @@ No fixtures were required for this phase (`evals/files/**` not created).
 3. **Near-miss overlap coverage**
    - includes at least 2 negative near-miss overlaps against unchanged `opencode-coder` owned areas
 4. **Scope boundary**
-   - prompts are limited to coder-core-owned workflows (runtime/setup/mode/doctor/simplify baseline/logs/session dump/plugin bug-reporting split)
+   - historical additive scope included simplify baseline for that phase; current-state ownership moved simplify to standalone `code-simplify`
+   - current-state coder-core scope is runtime/setup/mode/doctor/logs/session dump/plugin bug-reporting split
    - non-core ownership is represented as negative/delegation cases
 5. **No-touch guard**
    - no edits under `ai-resources/skills/opencode-coder/evals/**`

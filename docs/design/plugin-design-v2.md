@@ -128,6 +128,18 @@ It should own:
 
 The plugin should not require `coder-docs` in order to provide core setup/bootstrap behavior.
 
+### `code-simplify`
+
+`code-simplify` should own base `/simplify` workflow guidance.
+
+It should own:
+
+- simplify scope guardrails for recently changed files
+- safe-vs-ask-first simplification boundaries
+- standalone simplify workflow detail consumed by `/simplify` routing
+
+`coder-core` should not own simplify baseline workflow in this model.
+
 ## Runtime model with new skills
 
 The runtime should be organized around capabilities instead of one large combined skill.
@@ -140,12 +152,14 @@ The runtime should be organized around capabilities instead of one large combine
 
 - `coder-beads` present + beads available -> enable beads-aware behavior
 - `coder-docs` present -> enable docs lifecycle behavior
+- `code-simplify` present -> enable dedicated simplify workflow guidance
 
 This means the plugin should move toward:
 
 - **core required**
 - **beads optional**
 - **docs optional**
+- **simplify capability optional and standalone**
 
 ## Proposed plugin responsibilities in V2
 

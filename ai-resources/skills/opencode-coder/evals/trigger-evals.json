@@ -33,7 +33,7 @@
   },
   {
     "query": "I just finished a batch of changes across a few files and want to run /simplify focused on duplication before I open a PR. How does it decide what to clean up?",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "I want to switch my project from stealth mode to team mode. What changes in terms of file paths, git visibility, and what gets committed?",

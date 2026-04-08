@@ -10,6 +10,9 @@ This document freezes the implementation contract for the additive rollout of th
 
 The contract is intentionally decisive so child implementation epics can execute without hidden assumptions or cross-skill coupling.
 
+> **Amendment (2026-04-08, epic `opencode-coder-wlpd`)**
+> This document remains a historical frozen contract for additive rollout under epic `opencode-coder-3mv8`. The simplify ownership decision in Section B is superseded for current-state ownership: base `/simplify` workflow ownership moved from `coder-core` to standalone `code-simplify` after compatibility-surface routing changed.
+
 ---
 
 ## Phase Scope (Additive Only)
@@ -83,6 +86,8 @@ Decision: split plugin/runtime health from beads health. Do not preserve mixed o
 
 ### B. Simplify Guidance Ownership
 
+> **Historical note (superseded for current-state ownership):** The table and decision below capture the additive-phase decision as originally frozen under `opencode-coder-3mv8`.
+
 | Topic | Owner |
 |---|---|
 | Base `/simplify` workflow and non-tracker behavior | `coder-core` |
@@ -90,6 +95,8 @@ Decision: split plugin/runtime health from beads health. Do not preserve mixed o
 | Existing combined simplify guidance | `opencode-coder` unchanged |
 
 Decision: `coder-core` keeps simplify baseline; `coder-beads` owns tracker-integrated follow-up behavior. Cross-skill references are optional and explicit only.
+
+**Current-state supersession (`opencode-coder-wlpd`):** Base `/simplify` ownership is now `code-simplify`; `coder-core` no longer owns simplify baseline workflow.
 
 ### C. AGENTS and Docs Lifecycle Ownership
 

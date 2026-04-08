@@ -1,0 +1,66 @@
+[
+  {
+    "query": "I just ran simplify and want the baseline safe-versus-ask-first guidance for local cleanup only.",
+    "should_trigger": true
+  },
+  {
+    "query": "I just finished a batch of changes across a few files and want to run /simplify focused on duplication before I open a PR. How does it decide what to clean up?",
+    "should_trigger": true
+  },
+  {
+    "query": "I ran /simplify on a tiny docs-only commit and got basically no changes. Is that expected?",
+    "should_trigger": true
+  },
+  {
+    "query": "For /simplify, when do you auto-apply cleanup versus ask first for approval?",
+    "should_trigger": true
+  },
+  {
+    "query": "After simplify reviewers flagged cross-module deduplication, what is the safe next step?",
+    "should_trigger": true
+  },
+  {
+    "query": "How does /simplify choose scope when there are staged and unstaged changes?",
+    "should_trigger": true
+  },
+  {
+    "query": "Should /simplify run parallel review lenses for reuse, quality, and efficiency?",
+    "should_trigger": true
+  },
+  {
+    "query": "If no meaningful simplifications are found, what should /simplify return?",
+    "should_trigger": true
+  },
+  {
+    "query": "Run /opencode-coder/status and summarize current runtime health.",
+    "should_trigger": false
+  },
+  {
+    "query": "Troubleshoot opencode-coder startup mode conflicts with OPENCODE_CODER_DISABLED.",
+    "should_trigger": false
+  },
+  {
+    "query": "Create an epic and child tasks in beads for this roadmap item.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run bd doctor and fix tracker hook diagnostics.",
+    "should_trigger": false
+  },
+  {
+    "query": "Generate AGENTS.md and refresh project docs lifecycle guidance.",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a GitHub release and verify the changelog.",
+    "should_trigger": false
+  },
+  {
+    "query": "Sync beads issues with GitHub issues and report differences.",
+    "should_trigger": false
+  },
+  {
+    "query": "Analyze production logs and triage incidents into tracker bugs.",
+    "should_trigger": false
+  }
+]

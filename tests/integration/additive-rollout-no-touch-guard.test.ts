@@ -17,13 +17,14 @@ describe("additive rollout no-touch guard", () => {
     expect(rootPackageYaml).not.toContain("skill/coder-docs");
   });
 
-  it("keeps existing opencode-coder package surface unchanged by additive rollout", () => {
+  it("keeps opencode-coder package surface constrained to intentional additive inclusions", () => {
     const packageManifest = JSON.parse(
       readFileSync(join(PROJECT_ROOT, "ai-resources", "packages", "opencode-coder.package.json"), "utf8")
     ) as { resources?: string[] };
 
     const resources = packageManifest.resources ?? [];
     expect(resources).toContain("skill/opencode-coder");
+    expect(resources).toContain("skill/code-simplify");
     expect(resources).not.toContain("skill/coder-beads");
     expect(resources).not.toContain("package/coder-beads");
     expect(resources).not.toContain("skill/coder-core");

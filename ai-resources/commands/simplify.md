@@ -1,8 +1,8 @@
 ---
-description: Simplify recently changed files with the opencode-coder workflow
+description: Simplify recently changed files with the code-simplify workflow
 ---
 
-Load the `opencode-coder` skill.
+Load the `code-simplify` skill.
 
 Treat the following as optional simplify focus guidance:
 

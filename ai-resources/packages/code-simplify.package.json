@@ -1,0 +1,7 @@
+{
+  "name": "code-simplify",
+  "description": "Standalone simplify workflow skill for recently changed-file cleanup",
+  "resources": [
+    "skill/code-simplify"
+  ]
+}

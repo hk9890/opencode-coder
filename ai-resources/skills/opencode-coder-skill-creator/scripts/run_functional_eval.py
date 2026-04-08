@@ -24,6 +24,11 @@ from scripts.utils import (
 
 DEFAULT_HOOK_TIMEOUT_SECONDS = 30
 
+SKILL_EVAL_PREFLIGHT_HINT = (
+    "This is a skill-eval preflight/infra problem. Fix it first, then rerun the eval. "
+    "See docs/TESTING.md for the required preflight steps."
+)
+
 
 def _write_text(path: Path, content: str) -> None:
     ensure_dir(path.parent)
@@ -837,6 +842,7 @@ def main() -> None:
     skill_root = Path(args.skill_path).resolve()
     if not (skill_root / "SKILL.md").exists():
         print(f"Error: No SKILL.md found at {skill_root}", file=sys.stderr)
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     eval_set_path = (
@@ -848,6 +854,7 @@ def main() -> None:
         print(
             f"Error: Functional eval set not found at {eval_set_path}", file=sys.stderr
         )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     if eval_set_path.name != "evals.json":
@@ -855,6 +862,7 @@ def main() -> None:
             "Error: Functional runner only supports evals/evals.json schema",
             file=sys.stderr,
         )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     opencode_path, opencode_error = _resolve_opencode_executable()
@@ -863,6 +871,7 @@ def main() -> None:
             f"Error: Unable to resolve executable opencode binary: {opencode_error}",
             file=sys.stderr,
         )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     artifacts_root = (
@@ -876,7 +885,16 @@ def main() -> None:
         ).resolve()
     )
 
-    eval_set = json.loads(eval_set_path.read_text())
+    try:
+        eval_set = json.loads(eval_set_path.read_text())
+    except json.JSONDecodeError as exc:
+        print(
+            f"Error: Functional eval set at {eval_set_path} is not valid JSON: {exc}",
+            file=sys.stderr,
+        )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
+        sys.exit(1)
+
     eval_ids = set(args.eval_ids) if args.eval_ids else None
 
     started = time.time()

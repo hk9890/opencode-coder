@@ -32,6 +32,8 @@ describe("coder-core additive integration surface", () => {
     expect(referenceFiles.length).toBeGreaterThan(0);
     expect(referenceFiles).toContain("installation-setup.md");
     expect(referenceFiles).toContain("mode-runtime.md");
+
+    expect(skillEntry).not.toContain("references/simplify.md");
   });
 
   it("coexists with the combined opencode-coder skill without replacing it", () => {

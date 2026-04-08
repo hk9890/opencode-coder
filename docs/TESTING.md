@@ -260,7 +260,8 @@ Use when:
 - you want to avoid ad hoc copying of command/skill files into `.opencode/`
 
 Why this is needed:
-- `existing-active-project` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill).
+- `/simplify` behavior is owned by standalone `code-simplify` and routed via command/skill composition.
+- `existing-active-project` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill) or explicit standalone simplify package installation.
 - A stock isolated run can therefore still start in bootstrap phase, where `/simplify` is not exposed yet.
 
 Reproducible path:
@@ -274,16 +275,21 @@ Reproducible path:
 2. In that shell, bootstrap resources through `aimgr` (repo-supported path):
 
    ```bash
-   # existing-active-project already includes ai.package.yaml, so do not run `aimgr init` here
-   aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
-   aimgr install package/opencode-coder
-   ```
+    # existing-active-project already includes ai.package.yaml, so do not run `aimgr init` here
+    aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
+    # Option A (full combined surface):
+    aimgr install package/opencode-coder
+
+    # Option B (targeted ownership check for standalone simplify):
+    aimgr install package/code-simplify
+    ```
 
 3. Start OpenCode from the same shell and run `/simplify ...` for semantic validation.
 
 Notes:
 - This replaces manual file copying with a repeatable package install flow.
 - `aimgr install package/opencode-coder` requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
+- Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling the full combined package.
 - If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in isolated mode.
 
 ## Testing Skills, Commands, and Agents
@@ -312,6 +318,23 @@ For docs lifecycle changes such as `/opencode-coder/init-or-update-docs`, `/open
    - was it suppressed when it should be?
    - did the response help the user well?
    - did it avoid legacy or incorrect flows?
+
+### Skill eval preflight (required)
+
+Before running any skill trigger evals or functional evals, first verify the deterministic runtime surfaces that those evals depend on.
+
+1. Run the required deterministic checks first:
+
+   ```bash
+   bun test tests/integration/plugin.test.ts
+   bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario [1-4]"
+   ```
+
+2. Only run skill evals after that preflight is green. If the deterministic checks fail, fix the infra/runtime problem first and only then rerun the evals.
+
+3. Run the Python eval entrypoints from `ai-resources/skills/opencode-coder-skill-creator/` (or set `PYTHONPATH` to that directory) so `python3 -m scripts.run_eval` and `python3 -m scripts.run_functional_eval` resolve correctly.
+
+4. Treat missing `opencode`, missing eval files, startup probe failures, and similar preflight errors as infra/setup failures rather than semantic skill failures.
 
 ## Quick Command Reference
 

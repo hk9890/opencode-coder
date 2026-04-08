@@ -13,7 +13,7 @@
   },
   {
     "query": "I just ran simplify and want the baseline safe-versus-ask-first guidance for local cleanup only.",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "How do I enable plugin debug logging and collect opencode-coder logs for runtime troubleshooting?",

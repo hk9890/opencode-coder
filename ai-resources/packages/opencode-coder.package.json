@@ -14,6 +14,7 @@
     "command/opencode-coder/improve-doc",
     "command/opencode-coder/report-bug",
     "command/opencode-coder/status",
+    "skill/code-simplify",
     "skill/opencode-coder"
   ]
 }

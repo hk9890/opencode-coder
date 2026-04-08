@@ -157,7 +157,7 @@ These commands are published with `@dynatrace-oss/opencode-coder` and available 
 | Command | Description |
 |---------|-------------|
 | `/opencode-coder/init` | Explicitly enable, refresh, disable, or reconfigure opencode-coder for a project |
-| `/simplify` | Review and simplify recently changed files using the opencode-coder workflow |
+| `/simplify` | Review and simplify recently changed files using the standalone code-simplify workflow |
 | `/opencode-coder/doctor` | Diagnose plugin health and configuration |
 | `/opencode-coder/status` | Show plugin status |
 | `/opencode-coder/report-bug` | Report a bug with session context |
@@ -202,7 +202,8 @@ Skills extend the agent's capabilities with specialized workflows and domain exp
 
 | Skill | Description |
 |-------|-------------|
-| `opencode-coder` | Core workflow hub for planning, setup, troubleshooting, and the `/simplify` cleanup workflow. |
+| `opencode-coder` | Core workflow hub for planning, setup, troubleshooting, health checks, and docs lifecycle workflows. |
+| `code-simplify` | Standalone skill behind `/simplify` for recent-change cleanup with scoped simplification guardrails. |
 
 ### Release and Development Skills
 

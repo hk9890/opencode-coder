@@ -59,6 +59,12 @@ class OpencodeCommandError(RuntimeError):
         self.details = details
 
 
+SKILL_EVAL_PREFLIGHT_HINT = (
+    "This is a skill-eval preflight/infra problem. Fix it first, then rerun the eval. "
+    "See docs/TESTING.md for the required preflight steps."
+)
+
+
 def _classify_opencode_startup_exception(exc: Exception) -> dict:
     startup_error_kind = "os_error"
     if isinstance(exc, FileNotFoundError):
@@ -790,11 +796,27 @@ def main() -> None:
         print("Error: --timeout must be a positive integer", file=sys.stderr)
         sys.exit(1)
 
-    eval_set = json.loads(Path(args.eval_set).read_text())
+    eval_set_path = Path(args.eval_set).resolve()
+    if not eval_set_path.exists():
+        print(f"Error: Trigger eval set not found at {eval_set_path}", file=sys.stderr)
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        eval_set = json.loads(eval_set_path.read_text())
+    except json.JSONDecodeError as exc:
+        print(
+            f"Error: Trigger eval set at {eval_set_path} is not valid JSON: {exc}",
+            file=sys.stderr,
+        )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
+        sys.exit(1)
+
     skill_path = Path(args.skill_path)
     skill_md = skill_path / "SKILL.md"
     if not skill_md.exists():
         print(f"Error: No SKILL.md found at {skill_path}", file=sys.stderr)
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     name, original_description, skill_markdown = parse_skill_md(skill_path)
@@ -803,6 +825,7 @@ def main() -> None:
     opencode_path = shutil.which("opencode")
     if not opencode_path:
         print("Error: opencode CLI not found on PATH", file=sys.stderr)
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(1)
 
     artifacts_dir = (
@@ -843,6 +866,7 @@ def main() -> None:
             f"See preflight artifact: {artifacts_dir / 'opencode-preflight-error.json'}",
             file=sys.stderr,
         )
+        print(SKILL_EVAL_PREFLIGHT_HINT, file=sys.stderr)
         sys.exit(2)
 
     if args.verbose:

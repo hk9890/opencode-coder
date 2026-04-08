@@ -7,6 +7,9 @@ Task: `opencode-coder-3mv8.2`
 
 This matrix implements the frozen contract from `docs/design/coder-skill-additive-split-boundaries.md` and is **mandatory** for child epics `.3`, `.4`, and `.5`.
 
+> **Amendment (2026-04-08, epic `opencode-coder-wlpd`)**
+> This matrix remains a historical additive-rollout record for `opencode-coder-3mv8`. The simplify ownership aspect referenced below is superseded for current-state ownership: base `/simplify` moved from `coder-core` to standalone `code-simplify` once compatibility-surface routing was migrated.
+
 - Exact new skills: `coder-core`, `coder-beads`, `coder-docs`
 - Additive only; no edits to existing assets
 - Old combined `opencode-coder` remains unchanged during this phase
@@ -14,7 +17,7 @@ This matrix implements the frozen contract from `docs/design/coder-skill-additiv
 - No new command wrappers; no command routing changes
 - Intentional forks (not tracked mirrors)
 - No hidden cross-skill runtime dependencies
-- Ownership split remains frozen (including health/troubleshooting, simplify follow-up behavior, AGENTS/docs lifecycle, bug-reporting split, debugging-logs split)
+- Ownership split remains frozen for additive rollout history (including health/troubleshooting, simplify follow-up behavior, AGENTS/docs lifecycle, bug-reporting split, debugging-logs split)
 
 ## 2) File-creation-only rules for packaging/testing
 

@@ -1,0 +1,56 @@
+{
+  "skill_name": "code-simplify",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I ran simplify after touching three files. Two duplicate private helpers are in the same file; another cleanup would require cross-module import changes. What is safe to apply directly versus ask-first?",
+      "expected_output": "A simplify baseline response that allows local safe cleanup and classifies cross-module refactors as ask-first.",
+      "files": [],
+      "expectations": [
+        "Treats same-file private deduplication as a safe-path candidate",
+        "Treats cross-module import boundary changes as ask-first",
+        "Keeps scope anchored to recently changed files",
+        "Includes concise output summary structure: scope, applied changes, deferred ask-first items, validation"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I ran /simplify on my last commit and one of the reviewers flagged that a utility function in src/utils/format.ts is almost identical to one in src/helpers/string.ts. Both are used by different modules. The simplify flow classified this as ask-first rather than safe. Why would it do that and what should I do next?",
+      "expected_output": "An explanation of the safe-versus-ask-first boundary in simplify, why cross-module deduplication is ask-first, and what the next step is.",
+      "files": [],
+      "expectations": [
+        "Explains the safe-versus-ask-first boundary: safe means local to scoped files while ask-first means cross-module or public API changes",
+        "Identifies cross-module deduplication as ask-first because it changes import paths and module boundaries for consumers",
+        "Recommends resolving the deduplication by choosing one canonical location and updating all consumers",
+        "Suggests creating a beads task or follow-up for the deduplication if it is too large to do inline",
+        "References the structured closing summary where deferred and ask-first items are listed"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I ran /simplify right after a tiny docs-only commit that just fixed punctuation, and it returned basically no actionable cleanup. Is that expected?",
+      "expected_output": "A simplify no-op response that confirms no-op is valid when there is no meaningful safe simplification and does not invent changes.",
+      "files": [],
+      "expectations": [
+        "Acknowledges that no-op outcomes are acceptable when recent changes do not contain worthwhile simplifications",
+        "Avoids fabricating refactors just to satisfy the workflow",
+        "Keeps scope anchored to recently changed files and commit intent",
+        "Provides a brief completion summary even when no edits are made",
+        "Reflects standalone code-simplify ownership where command routing is thin and workflow semantics come from code-simplify references"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "On my latest commit, two private helper functions in the same file parse the same JSON shape with slightly different error strings. If I run /simplify with focus on duplication cleanup, should that be treated as a safe-path change?",
+      "expected_output": "A simplify safe-path explanation that identifies local same-file deduplication as safe and keeps changes bounded.",
+      "files": [],
+      "expectations": [
+        "Identifies same-file private helper deduplication as a typical safe-path candidate",
+        "Keeps edits bounded to recently changed scoped files without widening across modules",
+        "Preserves behavior while reducing duplication",
+        "Explains why this differs from cross-module ask-first cases",
+        "Includes concise summary of what would be changed and why"
+      ]
+    }
+  ]
+}

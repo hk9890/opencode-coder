@@ -35,19 +35,19 @@ Evaluate each sentence in `SKILL.md`:
 
 Text that sounds meta can still belong in `SKILL.md` when it constrains runtime behavior.
 
-Example (valid runtime constraint from `ai-resources/skills/opencode-coder/SKILL.md`):
+Example (valid runtime constraint from `ai-resources/skills/code-simplify/SKILL.md`):
 
-> For `/simplify` requests, run the simplify workflow in `references/simplify.md`. Treat command arguments as optional focus weighting and keep scope centered on recently changed files unless the user explicitly expands it.
+> For `/simplify` requests, run the simplify workflow in `code-simplify/references/simplify.md`. Treat command arguments as optional focus weighting and keep scope centered on recently changed files unless the user explicitly expands it.
 
 Why this stays in runtime text: it directly constrains routing and scope decisions during execution.
 
 ## Repo-Grounded Good/Bad Examples
 
-### `/simplify` + `opencode-coder` examples
+### `/simplify` + `code-simplify` examples
 
 **Good (runtime skill content):**
 
-From `ai-resources/skills/opencode-coder/SKILL.md`:
+From `ai-resources/skills/code-simplify/SKILL.md`:
 
 > Optional free-text focus via `$ARGUMENTS`; apply as weighting guidance, not scope expansion permission.
 
@@ -55,7 +55,7 @@ Why good: this controls runtime decision boundaries and scope.
 
 **Good (reference-detail content):**
 
-From `ai-resources/skills/opencode-coder/references/simplify.md`:
+From `ai-resources/skills/code-simplify/references/simplify.md`:
 
 > Launch three reviewer agents in parallel... merge duplicate findings... ask before broader refactors.
 
@@ -93,7 +93,7 @@ Use this before merging skill changes:
 - [ ] Contributor/editorial guidance is moved to `docs/` (or CONTRIBUTING docs), not left in runtime skill text.
 - [ ] Detailed step-by-step instructions live in reference docs and are linked from the skill.
 - [ ] Command wrappers stay thin and only load the skill + pass arguments.
-- [ ] `/simplify` and `opencode-coder` routing boundaries remain explicit (skill routes and constrains scope, reference owns detailed procedure).
+- [ ] `/simplify` routing boundaries remain explicit (`code-simplify` routes and constrains scope, reference owns detailed procedure).
 
 ## Quick Placement Heuristic
 

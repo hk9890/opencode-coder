@@ -39,18 +39,6 @@
     },
     {
       "id": 3,
-      "prompt": "I ran simplify after touching three files. Two duplicate private helpers are in the same file; another cleanup would require cross-module import changes. What is safe to apply directly versus ask-first?",
-      "expected_output": "A simplify baseline response that allows local safe cleanup and classifies cross-module refactors as ask-first.",
-      "files": [],
-      "expectations": [
-        "Treats same-file private deduplication as a safe-path candidate",
-        "Treats cross-module import boundary changes as ask-first",
-        "Keeps scope anchored to recently changed files",
-        "Includes concise output summary structure: scope, applied changes, deferred ask-first items, validation"
-      ]
-    },
-    {
-      "id": 4,
       "prompt": "I need plugin/runtime debug evidence. Tell me how to enable debug logging, where logs live on Linux/macOS, and how to filter for opencode-coder entries.",
       "expected_output": "A debugging-logs response with exact env toggles, path guidance, and filtering commands.",
       "files": [],
@@ -62,7 +50,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 4,
       "prompt": "I suspect a plugin/runtime defect: startup mode handling seems inconsistent. What evidence package should I gather before filing a report?",
       "expected_output": "A plugin/runtime bug-reporting checklist with reproducibility, environment, and log evidence.",
       "files": [],
@@ -74,7 +62,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 5,
       "prompt": "I need to export a session for maintainers. Tell me the exact session dump steps, output location pattern, and privacy caveat before sharing.",
       "expected_output": "A session-dump workflow with concrete commands/path and sensitive-data warning.",
       "files": [],
@@ -86,7 +74,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 6,
       "prompt": "Please walk me through bd doctor, hooks verification, and tracker diagnostics for .beads issues after startup.",
       "expected_output": "A boundary-aware response that redirects beads-owned diagnostics to coder-beads instead of handling them as core scope.",
       "files": [],
@@ -98,7 +86,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 7,
       "prompt": "I want AGENTS generation and docs lifecycle updates for CODING.md and CHANGE-WORKFLOW.md. Handle the full docs lifecycle for me.",
       "expected_output": "A boundary-aware response that routes docs lifecycle and AGENTS generation work to coder-docs.",
       "files": [],
@@ -110,7 +98,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 8,
       "prompt": "I have two issues: plugin runtime looks disabled unexpectedly, and I also need help filing tracker follow-up tasks. Split what you can handle directly versus what should be delegated.",
       "expected_output": "A split-ownership response that handles runtime diagnosis in-core and delegates tracker filing/follow-up to coder-beads.",
       "files": [],

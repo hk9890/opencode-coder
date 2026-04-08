@@ -116,9 +116,10 @@
     {
       "id": 6,
       "prompt": "I ran /simplify on my last commit and one of the reviewers flagged that a utility function in src/utils/format.ts is almost identical to one in src/helpers/string.ts. Both are used by different modules. The simplify flow classified this as ask-first rather than safe. Why would it do that and what should I do next?",
-      "expected_output": "An explanation of the safe-versus-ask-first boundary in simplify, why cross-module deduplication is ask-first, and what the next step is.",
+      "expected_output": "A routing-aware response that delegates simplify semantics to standalone code-simplify while still explaining ask-first rationale and next steps.",
       "files": [],
       "expectations": [
+        "States that /simplify semantics are owned by standalone code-simplify (delegated from opencode-coder command surface)",
         "Explains the safe-versus-ask-first boundary: safe means local to scoped files while ask-first means cross-module or public API changes",
         "Identifies cross-module deduplication as ask-first because it changes import paths and module boundaries for consumers",
         "Recommends resolving the deduplication by choosing one canonical location and updating all consumers",
@@ -225,22 +226,24 @@
     {
       "id": 14,
       "prompt": "I ran /simplify right after a tiny docs-only commit that just fixed punctuation, and it returned basically no actionable cleanup. Is that expected?",
-      "expected_output": "A simplify no-op response that confirms no-op is valid when there is no meaningful safe simplification and does not invent changes.",
+      "expected_output": "A delegated simplify no-op response that confirms no-op is valid and references standalone code-simplify ownership.",
       "files": [],
       "expectations": [
+        "Acknowledges that /simplify behavior is delegated to standalone code-simplify rather than owned directly by opencode-coder",
         "Acknowledges that no-op outcomes are acceptable when recent changes do not contain worthwhile simplifications",
         "Avoids fabricating refactors just to satisfy the workflow",
         "Keeps scope anchored to recently changed files and commit intent",
         "Provides a brief completion summary even when no edits are made",
-        "Reflects post-refactor simplify contract where command routing is thin and workflow semantics come from the skill reference"
+        "Reflects post-refactor simplify contract where command routing is thin and workflow semantics come from code-simplify references"
       ]
     },
     {
       "id": 15,
       "prompt": "On my latest commit, two private helper functions in the same file parse the same JSON shape with slightly different error strings. If I run /simplify with focus on duplication cleanup, should that be treated as a safe-path change?",
-      "expected_output": "A simplify safe-path explanation that identifies local same-file deduplication as safe and keeps changes bounded.",
+      "expected_output": "A delegated simplify safe-path explanation that identifies same-file deduplication as safe while referencing code-simplify ownership.",
       "files": [],
       "expectations": [
+        "Notes that /simplify semantic guidance is provided by standalone code-simplify",
         "Identifies same-file private helper deduplication as a typical safe-path candidate",
         "Keeps edits bounded to recently changed scoped files without widening across modules",
         "Preserves behavior while reducing duplication",
