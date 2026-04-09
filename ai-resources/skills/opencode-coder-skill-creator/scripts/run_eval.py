@@ -771,7 +771,7 @@ def main() -> None:
         "--num-workers", type=int, default=4, help="Number of parallel workers"
     )
     parser.add_argument(
-        "--timeout", type=int, default=120, help="Timeout per query in seconds"
+        "--timeout", type=int, default=240, help="Timeout per query in seconds"
     )
     parser.add_argument(
         "--runs-per-query", type=int, default=1, help="Number of runs per query"

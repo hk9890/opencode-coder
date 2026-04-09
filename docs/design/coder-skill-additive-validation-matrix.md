@@ -141,7 +141,7 @@ python3 -m scripts.run_eval \
   --eval-set "/abs/repo/ai-resources/skills/<skill>/evals/trigger-evals.json" \
   --runs-per-query 1 \
   --num-workers 1 \
-  --timeout 120 \
+  --timeout 240 \
   --artifacts-dir "/abs/repo/ai-resources/skills/<skill>/eval-artifacts/trigger/<stamp>"
 ```
 

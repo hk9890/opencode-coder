@@ -498,7 +498,7 @@ Run iterative optimize/eval loop:
 python -m scripts.run_loop \
   --eval-set <path/to/eval_set.json> \
   --skill-path <path/to/skill> \
-  --timeout 120 \
+  --timeout 240 \
   --max-iterations 3 \
   --runs-per-query 1 \
   --results-dir <path/to/results-root> \

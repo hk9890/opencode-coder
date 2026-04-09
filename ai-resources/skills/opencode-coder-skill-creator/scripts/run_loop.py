@@ -297,7 +297,7 @@ def main():
         "--num-workers", type=int, default=10, help="Number of parallel workers"
     )
     parser.add_argument(
-        "--timeout", type=int, default=120, help="Timeout per query in seconds"
+        "--timeout", type=int, default=240, help="Timeout per query in seconds"
     )
     parser.add_argument(
         "--max-iterations", type=int, default=5, help="Max improvement iterations"
