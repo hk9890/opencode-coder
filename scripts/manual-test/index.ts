@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { input, select } from "@inquirer/prompts";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "fs/promises";
+import { mkdir, mkdtemp, stat, writeFile } from "fs/promises";
 import { basename, join } from "path";
 import {
   FIXTURE_NAMES,
@@ -126,7 +126,7 @@ interface ParsedArgs {
 }
 
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
-const DEFAULT_FIXTURE = "cli-smoke-project";
+const DEFAULT_FIXTURE: FixtureName = "empty-project";
 const MANUAL_RUNS_ROOT = join(PROJECT_ROOT, ".manual-test-runs");
 
 interface WizardSelection {
@@ -140,7 +140,7 @@ function printHelp(): void {
 
 Usage:
   bun run test:manual -- [options]
-  bun run test:manual -- --mode=command -- opencode run --command "pwd" --format json
+  bun run test:manual -- --mode=command --fixture=empty-project -- env
 
 No-arg behavior:
   Interactive wizard (TTY only) asks for project source and mode (tui/shell).
@@ -170,6 +170,9 @@ Notes:
   --fixture uses a copied disposable workspace.
   --project-path runs directly in the provided project and may mutate it.
   Use a clean branch, worktree, or disposable project when testing in place.
+  Automated launcher guardrails cover environment preparation + startup viability only.
+  Auth/model-backed prompts (for example: "say hi") are exploratory manual checks.
+  "env" remains useful for launcher-environment debugging only.
 `);
 }
 
@@ -376,7 +379,7 @@ async function runWizard(): Promise<WizardSelection> {
         name: fixtureName,
         value: fixtureName,
       })),
-      default: DEFAULT_FIXTURE as FixtureName,
+      default: DEFAULT_FIXTURE,
     });
   } else {
     const rawPath = await input({
@@ -434,26 +437,6 @@ function exitReason(exitCode: number, signalCode: NodeJS.Signals | null): string
     return `signal ${signalCode}`;
   }
   return `exit code ${exitCode}`;
-}
-
-function isInstalledConfiguredLoadProofValid(loadedPluginVersion: string | null, expectedVersion: string): boolean {
-  const loaded = loadedPluginVersion?.trim();
-  if (!loaded || loaded === "fixture") {
-    return false;
-  }
-
-  return loaded === expectedVersion.trim();
-}
-
-async function readLoadedPluginVersion(workdir: string): Promise<string | null> {
-  const projectYamlPath = join(workdir, ".coder", "project.yaml");
-  const content = await readFile(projectYamlPath, "utf8").catch(() => null);
-  if (!content) {
-    return null;
-  }
-
-  const match = content.match(/^pluginVersion:\s*(.+)$/m);
-  return match?.[1]?.trim() ?? null;
 }
 
 async function runInteractive(
@@ -621,7 +604,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   let pluginPathUsed = "<none>";
   let resolvedInstalledPackage = "<none>";
   let resolvedHostConfig = "<none>";
-  let expectedInstalledLoadedVersion = "<none>";
   let exitCode = 1;
   let seededAuthPath: string | null = null;
   let authSourceCategory: string = "none";
@@ -640,11 +622,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     pluginPathUsed = preparedPluginSource.localPluginSymlink ?? "<none>";
     resolvedInstalledPackage = preparedPluginSource.resolvedInstalledPackageSpec ?? "<none>";
     resolvedHostConfig = preparedPluginSource.resolvedHostConfigPath ?? "<none>";
-    expectedInstalledLoadedVersion = preparedPluginSource.expectedLoadedPluginVersion ?? "<none>";
-
-    if (args.pluginSource === "installed-configured" && expectedInstalledLoadedVersion === "<none>") {
-      throw new Error("installed-configured setup did not resolve expected loaded plugin version");
-    }
 
     if (authSeedPath) {
       seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, {
@@ -671,7 +648,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     printSection("Plugin path used", pluginPathUsed);
     printSection("Resolved installed package", resolvedInstalledPackage);
     printSection("Resolved host config", resolvedHostConfig);
-    printSection("Expected installed plugin version", expectedInstalledLoadedVersion);
     printSection("Isolated HOME", isolatedPaths.homeDir);
     printSection("Isolated XDG_CONFIG_HOME", isolatedPaths.xdgConfigHome);
     printSection("Isolated XDG_DATA_HOME", isolatedPaths.xdgDataHome);
@@ -706,40 +682,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (args.mode === "tui") {
       const result = await runInteractive(["opencode"], workspace.workdir, childEnv);
       exitCode = result.exitCode;
-      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
-      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
-      if (args.pluginSource === "installed-configured") {
-        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
-        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
-        if (!validProof) {
-          console.error(
-            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
-              loadedPluginVersion ?? "<not-detected>"
-            })`
-          );
-          exitCode = 1;
-        }
-      }
       console.log(`\nOpenCode TUI finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else if (args.mode === "shell") {
       const shell = process.env.SHELL?.trim() || "/bin/sh";
       await ensureInteractiveShellStartupReady(shell, childEnv);
       const result = await runInteractive([shell], workspace.workdir, childEnv);
       exitCode = result.exitCode;
-      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
-      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
-      if (args.pluginSource === "installed-configured") {
-        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
-        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
-        if (!validProof) {
-          console.error(
-            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
-              loadedPluginVersion ?? "<not-detected>"
-            })`
-          );
-          exitCode = 1;
-        }
-      }
       console.log(`\nShell session finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else {
       const result = await runCaptured(args.command, workspace.workdir, childEnv);
@@ -760,21 +708,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       }
 
       exitCode = result.exitCode;
-
-      const loadedPluginVersion = await readLoadedPluginVersion(workspace.workdir);
-      printSection("Loaded plugin version", loadedPluginVersion ?? "<not-detected>");
-      if (args.pluginSource === "installed-configured") {
-        const validProof = isInstalledConfiguredLoadProofValid(loadedPluginVersion, expectedInstalledLoadedVersion);
-        printSection("Installed plugin load proof", validProof ? "valid" : "MISSING_OR_INVALID");
-        if (!validProof) {
-          console.error(
-            `INVALID_COMPARISON: installed-configured plugin load proof missing (expected ${expectedInstalledLoadedVersion}, loaded ${
-              loadedPluginVersion ?? "<not-detected>"
-            })`
-          );
-          exitCode = 1;
-        }
-      }
 
       console.log(`--- result ---\nExit: ${exitReason(result.exitCode, result.signalCode)}`);
     }

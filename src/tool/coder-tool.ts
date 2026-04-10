@@ -1,72 +1,11 @@
 import { tool } from "@opencode-ai/plugin";
 import type { ToolContext, ToolDefinition } from "@opencode-ai/plugin/tool";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { isDebugLoggingEnabled, isPluginDisabled } from "../config";
 import type { SessionExportService } from "../service";
 import type { VersionInfo } from "../core";
-import { getOpenCodeLogDirectoryCandidates } from "../core";
-
-interface OpenCodeLogDirectoryResolutionOptions {
-  platform?: NodeJS.Platform;
-  homeDir?: string;
-  localAppData?: string;
-  exists?: (path: string) => boolean;
-}
-
-export function resolveOpenCodeLogDirectory(
-  options: OpenCodeLogDirectoryResolutionOptions = {},
-): { directory: string; candidates: string[]; exists: boolean } {
-  const candidates = getOpenCodeLogDirectoryCandidates({
-    ...(options.platform ? { platform: options.platform } : {}),
-    ...(options.homeDir ? { homeDir: options.homeDir } : {}),
-    ...(options.localAppData ? { localAppData: options.localAppData } : {}),
-  });
-
-  const existsPredicate = options.exists ?? existsSync;
-  const existingCandidate = candidates.find((candidate) => existsPredicate(candidate));
-  const directory = existingCandidate ?? candidates[0] ?? "unknown";
-  const directoryExists = directory !== "unknown" && existsPredicate(directory);
-
-  return {
-    directory,
-    candidates,
-    exists: directoryExists,
-  };
-}
-
-interface OpenCodeLogDirectorySummaryOptions {
-  directory: string;
-  exists: boolean;
-  readdir?: (path: string) => string[];
-  stat?: (path: string) => { mtime: Date };
-}
-
-export function summarizeOpenCodeLogDirectory(
-  options: OpenCodeLogDirectorySummaryOptions,
-): { fileCount: number; latestFile: string } {
-  if (!options.exists) {
-    return { fileCount: 0, latestFile: "none" };
-  }
-
-  const readDirectory = options.readdir ?? readdirSync;
-  const readStats = options.stat ?? statSync;
-  const files = readDirectory(options.directory).filter((f) => f.endsWith(".log"));
-  const fileCount = files.length;
-
-  if (fileCount === 0) {
-    return { fileCount, latestFile: "none" };
-  }
-
-  const latest = files
-    .map((f) => ({ name: f, mtime: readStats(join(options.directory, f)).mtime }))
-    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime())[0]?.name;
-
-  return {
-    fileCount,
-    latestFile: latest ?? "none",
-  };
-}
+import { resolveOpenCodeLogDirectory, summarizeOpenCodeLogDirectory } from "../core";
 
 /**
  * Options for creating the coder tool.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, mock, spyOn, beforeEach, afterEach } from "bun:test";
 import { AimgrService } from "../../../src/service/aimgr-service";
 import type { Logger } from "../../../src/core/logger";
 
@@ -14,17 +14,17 @@ describe("AimgrService", () => {
   beforeEach(async () => {
     // Create mock logger
     mockLogger = {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      enableFileLogging: vi.fn(),
+      debug: mock(),
+      info: mock(),
+      warn: mock(),
+      error: mock(),
+      enableFileLogging: mock(),
     } as unknown as Logger;
 
     // Create mock client with TUI
     mockClient = {
       tui: {
-        showToast: vi.fn().mockResolvedValue(undefined),
+        showToast: mock().mockResolvedValue(undefined),
       },
     };
 
@@ -32,15 +32,13 @@ describe("AimgrService", () => {
     const childProcess = await import("child_process");
     const fs = await import("fs");
     
-    execSyncMock = vi.spyOn(childProcess, "execSync");
-    existsSyncMock = vi.spyOn(fs, "existsSync");
-
-    // Reset all mocks
-    vi.clearAllMocks();
+    execSyncMock = spyOn(childProcess, "execSync");
+    existsSyncMock = spyOn(fs, "existsSync");
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    execSyncMock.mockRestore();
+    existsSyncMock.mockRestore();
   });
 
   describe("constructor", () => {
@@ -386,9 +384,13 @@ describe("AimgrService", () => {
       const result = aimgrService.verifyResources();
 
       expect(result).toBeNull();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(mockLogger.warn).toHaveBeenCalledWith(
         "Failed to run aimgr verify",
-        expect.objectContaining({ error: expect.any(String) })
+        expect.objectContaining({
+          error: expect.any(String),
+          command: "aimgr verify --format json",
+          timeoutMs: 10000,
+        })
       );
     });
   });

@@ -17,10 +17,9 @@ export const ISOLATED_TEST_MANIFEST_PATH = join(SHARED_FIXTURES_DIR, "test-manif
 export const HARNESS_SOURCE_PATH = join(E2E_DIR, "helpers", "harness.ts");
 
 export const FIXTURE_NAMES = [
-  "existing-active-project",
-  "cli-smoke-project",
-  "fresh-inactive-project",
-  "local-startup-parity-project",
+  "empty-project",
+  "coder-mode-configured",
+  "coder-skill-installed",
 ] as const;
 
 export type FixtureName = (typeof FIXTURE_NAMES)[number];

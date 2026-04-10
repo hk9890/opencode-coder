@@ -46,7 +46,7 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 - Edit canonical docs-lifecycle references under `ai-resources/skills/opencode-coder/references/`.
 - Edit `ai-resources/skills/opencode-coder/SKILL.md` when the published opencode-coder skill entrypoint itself must change.
 - Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are aimgr-managed installed runtime surfaces, not authoring sources.
-- Treat `docs/user-guide/project-setup.md`, `docs/user-guide/project-doc-guidelines.md`, and `docs/user-guide/project-doc-review-guidelines.md` as symlinked entrypoints to the canonical skill references; edit the `ai-resources/` source only.
+- Treat `docs/user-guide/project-setup.md`, `docs/user-guide/project-doc-guidelines.md`, and `docs/user-guide/project-doc-review-guidelines.md` as copied entrypoints for the canonical skill references; keep them aligned with the `ai-resources/` source.
 
 ## Landing the Plane (Session Completion)
 

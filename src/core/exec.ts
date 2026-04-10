@@ -63,21 +63,3 @@ export function isCommandAvailable(
 ): boolean {
   return getCommandAvailabilityStatus(commandName, logger, options) === "installed";
 }
-
-export function hasResourceIssues(result: unknown): boolean {
-  if (!result || typeof result !== "object") return true;
-
-  const verifyResult = result as {
-    issues?: unknown[];
-    errors?: unknown[];
-    error?: unknown;
-    status?: unknown;
-  };
-
-  return (
-    (Array.isArray(verifyResult.issues) && verifyResult.issues.length > 0) ||
-    (Array.isArray(verifyResult.errors) && verifyResult.errors.length > 0) ||
-    (typeof verifyResult.error === "string" && verifyResult.error !== "") ||
-    (typeof verifyResult.status === "string" && verifyResult.status !== "ok" && verifyResult.status !== "healthy")
-  );
-}

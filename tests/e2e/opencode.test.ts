@@ -19,6 +19,7 @@ import {
   withEnvironment,
   wireBuiltPluginArtifact,
   writeFailureArtifacts,
+  type FixtureName,
 } from "./helpers/harness";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,6 +91,30 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       expect(commandNames).not.toContain(commandName);
     }
     expect(commandNames).not.toContain(LEGACY_DOCS_COMMAND);
+  };
+
+  const assertFixtureStageBaseline = async (workspaceDir: string, stage: FixtureName) => {
+    const coderModeConfigPath = join(workspaceDir, ".coder", "opencode-coder.yaml");
+    const projectStatePath = join(workspaceDir, ".coder", "project.yaml");
+    const manifestPath = join(workspaceDir, "ai.package.yaml");
+
+    if (stage === "empty-project") {
+      expect(await Bun.file(coderModeConfigPath).exists()).toBe(false);
+      expect(await Bun.file(projectStatePath).exists()).toBe(false);
+      expect(await Bun.file(manifestPath).exists()).toBe(false);
+      return;
+    }
+
+    if (stage === "coder-mode-configured") {
+      expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
+      expect(await Bun.file(projectStatePath).exists()).toBe(false);
+      expect(await Bun.file(manifestPath).exists()).toBe(false);
+      return;
+    }
+
+    expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
+    expect(await Bun.file(projectStatePath).exists()).toBe(true);
+    expect(await Bun.file(manifestPath).exists()).toBe(true);
   };
 
   const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
@@ -181,10 +206,13 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   };
 
   describe("real startup scenario coverage", () => {
-    it("scenario 1: should load once in existing real-server startup path", async () => {
+    it("scenario 1: should load once from coder-skill-installed active baseline", async () => {
       await withScenarioLogging("scenario 1", async () => {
-        const workspace = await createFixtureWorkspace("existing-active-project");
+        const workspace = await createFixtureWorkspace("coder-skill-installed");
         try {
+          expect(workspace.fixtureName).toBe("coder-skill-installed");
+          await assertFixtureStageBaseline(workspace.workdir, "coder-skill-installed");
+
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
@@ -213,42 +241,23 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       });
     }, 120000);
 
-    it("scenario 2: should run CLI smoke startup path via opencode run equivalent", async () => {
+    it("scenario 2: should prove startup from empty-project baseline via real-server semantic probe", async () => {
       await withScenarioLogging("scenario 2", async () => {
-        const workspace = await createFixtureWorkspace("cli-smoke-project");
+        const workspace = await createFixtureWorkspace("empty-project");
         try {
+          expect(workspace.fixtureName).toBe("empty-project");
+          await assertFixtureStageBaseline(workspace.workdir, "empty-project");
+
           await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
           await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
 
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-          const result = await runLoggedOpencodeCli("scenario 2", ["run", "--command", "pwd", "--format", "json"], {
-            cwd: workspace.workdir,
-            env: isolatedPaths.env,
-            timeoutMs: 120000,
-          });
-
-          if (result.exitCode !== 0 || result.timedOut) {
-            const artifactPath = await writeFailureArtifacts({
-              artifactDir: ARTIFACT_DIR,
-              testName: "scenario-2-cli-smoke-run-pwd",
-              command: result.command,
-              stdout: result.stdout,
-              stderr: result.stderr,
-              notes: result.timedOut ? "CLI smoke command timed out" : "CLI smoke command failed",
-              isolationPaths: isolatedPaths,
-            });
-
-            throw new Error(`CLI smoke command failed. Artifacts: ${artifactPath}`);
-          }
-
-          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
 
-          expect(result.exitCode).toBe(0);
-          expect(result.timedOut).toBe(false);
           expect(projectYamlAfter).toContain("pluginVersion:");
+          expect(projectYamlAfter).not.toContain("pluginVersion: fixture");
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
 
           const gitHead = await readFile(join(workspace.workdir, ".git", "HEAD"), "utf8");
@@ -262,40 +271,21 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       });
     }, 120000);
 
-    it("scenario 3: should keep local-startup parity on real CLI entrypoint", async () => {
+    it("scenario 3: should keep local startup parity from coder-mode-configured baseline via real-server semantic probe", async () => {
       await withScenarioLogging("scenario 3", async () => {
-        const workspace = await createFixtureWorkspace("local-startup-parity-project");
+        const workspace = await createFixtureWorkspace("coder-mode-configured");
         try {
+          expect(workspace.fixtureName).toBe("coder-mode-configured");
+          await assertFixtureStageBaseline(workspace.workdir, "coder-mode-configured");
+
           await seedManualPhase2Resources(workspace.workdir);
           await rm(join(workspace.workdir, "ai.package.yaml"), { force: true });
 
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-          const result = await runLoggedOpencodeCli("scenario 3", ["run", "--command", "pwd", "--format", "json"], {
-            cwd: workspace.workdir,
-            env: isolatedPaths.env,
-            timeoutMs: 120000,
-          });
-
-          if (result.exitCode !== 0 || result.timedOut) {
-            const artifactPath = await writeFailureArtifacts({
-              artifactDir: ARTIFACT_DIR,
-              testName: "scenario-3-local-startup-parity",
-              command: result.command,
-              stdout: result.stdout,
-              stderr: result.stderr,
-              notes: result.timedOut ? "Local parity command timed out" : "Local parity command failed",
-              isolationPaths: isolatedPaths,
-            });
-
-            throw new Error(`Local startup parity command failed. Artifacts: ${artifactPath}`);
-          }
-
-          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
 
-          expect(result.exitCode).toBe(0);
           expect(projectYamlAfter).toContain("mode: stealth");
           expect(projectYamlAfter).toContain("pluginVersion:");
           expect(countMatches(pluginSignals.toolIds, "coder")).toBe(1);
@@ -311,32 +301,15 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       });
     }, 120000);
 
-    it("scenario 4: should keep fresh project inactive and expose init behavior only", async () => {
+    it("scenario 4: should keep empty-project inactive and expose init behavior only via real-server semantic probe", async () => {
       await withScenarioLogging("scenario 4", async () => {
-        const workspace = await createFixtureWorkspace("fresh-inactive-project");
+        const workspace = await createFixtureWorkspace("empty-project");
         try {
+          expect(workspace.fixtureName).toBe("empty-project");
+          await assertFixtureStageBaseline(workspace.workdir, "empty-project");
+
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-          const result = await runLoggedOpencodeCli("scenario 4", ["run", "--command", "pwd", "--format", "json"], {
-            cwd: workspace.workdir,
-            env: isolatedPaths.env,
-            timeoutMs: 120000,
-          });
-
-          if (result.exitCode !== 0 || result.timedOut) {
-            const artifactPath = await writeFailureArtifacts({
-              artifactDir: ARTIFACT_DIR,
-              testName: "scenario-4-fresh-inactive-startup",
-              command: result.command,
-              stdout: result.stdout,
-              stderr: result.stderr,
-              notes: result.timedOut ? "Fresh inactive command timed out" : "Fresh inactive command failed",
-              isolationPaths: isolatedPaths,
-            });
-
-            throw new Error(`Fresh inactive startup command failed. Artifacts: ${artifactPath}`);
-          }
 
           const projectYamlAfter = await readIfExists(join(workspace.workdir, ".coder", "project.yaml"));
           const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
@@ -351,40 +324,21 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
       });
     }, 120000);
 
-    it("scenario 4b: should enter normal mode with init+skill threshold and expose improve-doc only", async () => {
+    it("scenario 4b: should enter normal mode from coder-mode-configured threshold and expose improve-doc only via real-server semantic probe", async () => {
       await withScenarioLogging("scenario 4b", async () => {
-        const workspace = await createFixtureWorkspace("local-startup-parity-project");
+        const workspace = await createFixtureWorkspace("coder-mode-configured");
         try {
+          expect(workspace.fixtureName).toBe("coder-mode-configured");
+          await assertFixtureStageBaseline(workspace.workdir, "coder-mode-configured");
+
           await seedMinimalNormalThresholdResources(workspace.workdir);
           await rm(join(workspace.workdir, "ai.package.yaml"), { force: true });
 
           await wireBuiltPluginArtifact(PROJECT_ROOT, workspace.workdir);
           const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
-
-          const result = await runLoggedOpencodeCli("scenario 4b", ["run", "--command", "pwd", "--format", "json"], {
-            cwd: workspace.workdir,
-            env: isolatedPaths.env,
-            timeoutMs: 120000,
-          });
-
-          if (result.exitCode !== 0 || result.timedOut) {
-            const artifactPath = await writeFailureArtifacts({
-              artifactDir: ARTIFACT_DIR,
-              testName: "scenario-4b-minimal-normal-threshold",
-              command: result.command,
-              stdout: result.stdout,
-              stderr: result.stderr,
-              notes: result.timedOut ? "Minimal threshold command timed out" : "Minimal threshold command failed",
-              isolationPaths: isolatedPaths,
-            });
-
-            throw new Error(`Minimal threshold command failed. Artifacts: ${artifactPath}`);
-          }
-
-          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
           const pluginSignals = await getPluginSignalsViaRealServer(workspace.workdir, isolatedPaths.env);
+          const projectYamlAfter = await readFile(join(workspace.workdir, ".coder", "project.yaml"), "utf8");
 
-          expect(result.exitCode).toBe(0);
           expect(projectYamlAfter).toContain("phase: normal");
           expect(pluginSignals.commandNames).toContain("opencode-coder/improve-doc");
           expect(pluginSignals.commandNames).not.toContain("opencode-coder/init-or-update-docs");
@@ -401,11 +355,14 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     const copilotAuthSeed = resolveCopilotAuthSeedFromEnv();
 
     it.skipIf(!copilotAuthSeed)(
-      "scenario 5 (optional): should support isolated GitHub Copilot auth-seeded LLM-backed CLI run",
+      "scenario 5 (optional): should support auth-seeded LLM-backed CLI smoke run from empty-project",
       async () => {
         await withScenarioLogging("scenario 5 (optional)", async () => {
-          const workspace = await createFixtureWorkspace("cli-smoke-project");
+          const workspace = await createFixtureWorkspace("empty-project");
           try {
+            expect(workspace.fixtureName).toBe("empty-project");
+            await assertFixtureStageBaseline(workspace.workdir, "empty-project");
+
             await mkdir(join(workspace.workdir, ".coder"), { recursive: true });
             await Bun.write(join(workspace.workdir, ".coder", "opencode-coder.yaml"), "mode: team\n");
 

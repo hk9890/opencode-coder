@@ -8,25 +8,50 @@ The manual launcher also supports `--project-path <dir>` for reproducing behavio
 
 ## Fixture directories
 
-- `existing-active-project/` — existing project already enabled for active startup
-- `cli-smoke-project/` — minimal project used for lightweight CLI startup smoke checks
-- `fresh-inactive-project/` — project with no `.coder/` state (init-only behavior)
-- `local-startup-parity-project/` — project shape used for local startup parity checks
+- `empty-project/` — Stage 0 baseline with no committed `.coder/` state
+- `coder-mode-configured/` — Stage 1 baseline with committed coder mode config only
+- `coder-skill-installed/` — Stage 2 baseline with committed coder mode and skill-install files
 
 Each fixture intentionally keeps content minimal. Scenario-specific files can be added later with the same disposable fixture-copy model.
 
-### `/simplify` validation note for `existing-active-project`
+## Canonical stage model (committed state)
 
-`existing-active-project` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
+| Stage | Fixture directory | What is committed |
+|---|---|---|
+| Stage 0 | `empty-project` | `.gitkeep`, `.opencode/.gitkeep` |
+| Stage 1 | `coder-mode-configured` | Stage 0 + `.coder/opencode-coder.yaml` |
+| Stage 2 | `coder-skill-installed` | Stage 1 + `.coder/project.yaml`, `ai.package.yaml` |
+
+## Scenarios vs fixture identity
+
+- Fixture identity is the committed on-disk state in these directories.
+- Scenario labels (for example smoke, parity, team, stealth) describe **how** a test is run, not fixture directory names.
+
+## Legacy fixture name mapping
+
+| Legacy fixture name | Canonical fixture |
+|---|---|
+| `cli-smoke-project` | `empty-project` |
+| `fresh-inactive-project` | `empty-project` |
+| `local-startup-parity-project` | `coder-mode-configured` |
+| `existing-active-project` | `coder-skill-installed` |
+
+### `/simplify` validation note for `coder-skill-installed`
+
+`coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
 
 For reproducible semantic validation without manual file copying:
 
-1. `bun run test:manual -- --mode=shell --fixture=existing-active-project --plugin-source=local-build`
+1. `bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build`
 2. inside shell:
    - `aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources`
    - `aimgr install package/opencode-coder`
    - do not run `aimgr init` for this fixture (`ai.package.yaml` is already committed)
 3. run OpenCode and validate `/simplify`
+
+## Out of scope for this fixture set
+
+Beads-stage fixture strategy and beads-system tests are tracked in a separate epic and are not represented as fixture directories in this matrix.
 
 ## Shared support fixtures
 

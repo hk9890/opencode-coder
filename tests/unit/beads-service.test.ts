@@ -3,6 +3,7 @@ import { BeadsService } from "../../src/service/beads-service";
 import type { PluginInput } from "@opencode-ai/plugin";
 import { createMockLogger, type MockLogger } from "../helpers/mock-logger";
 import { createMockClient } from "../helpers/mock-client";
+import * as core from "../../src/core";
 import * as childProcess from "child_process";
 import * as fs from "fs";
 
@@ -75,6 +76,27 @@ describe("BeadsService", () => {
   });
 
   describe("checkBeadsAvailability", () => {
+    it("should delegate bd CLI detection through shared project-detection helper", async () => {
+      const bdDetectionSpy = spyOn(core, "detectBdCliAvailabilityStatus").mockReturnValue("missing");
+      const accessSyncSpy = spyOn(fs, "accessSync").mockImplementation(() => undefined);
+
+      const service = new BeadsService({
+        logger: mockLogger,
+        client: mockClient,
+        workdir: "/custom/project",
+        beadsEnabled: true,
+      });
+
+      await service.checkBeadsAvailability();
+
+      expect(bdDetectionSpy).toHaveBeenCalledWith("/custom/project", mockLogger);
+      expect(toastCalls.length).toBe(1);
+      expect(toastCalls[0].title).toBe("Beads Not Available");
+
+      bdDetectionSpy.mockRestore();
+      accessSyncSpy.mockRestore();
+    });
+
     it("should show toast when bd CLI is not installed", async () => {
       // Mock execSync to throw (bd not found)
       const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation(() => {

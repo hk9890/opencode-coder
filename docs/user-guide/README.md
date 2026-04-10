@@ -2,13 +2,9 @@
 
 This folder contains setup, usage, and focused how-to documentation for the opencode-coder plugin.
 
-Canonical project-doc references live under `ai-resources/skills/opencode-coder/references/`.
+Canonical project-doc references also live under `ai-resources/skills/opencode-coder/references/`.
 
-- `project-setup.md`
-- `project-doc-guidelines.md`
-- `project-doc-review-guidelines.md`
-
-are symlinked entrypoints to those canonical skill references. Edit the `ai-resources/` source, not the `docs/user-guide/` path.
+The copies in this folder are regular markdown files for easier browsing from `docs/user-guide/`.
 
 - [Getting Started](getting-started.md) — install the plugin, run `/opencode-coder/init`, and explicitly enable or configure it for a project
 - [Project Setup](project-setup.md) — recommended repository structure and documentation conventions for projects that use the plugin well once enabled

@@ -24,7 +24,7 @@ Use this guide when changing this repo.
 | Installed runtime resources under `.opencode/` | Do **not** edit `.opencode/` directly; update the owning source in `ai-resources/`, `src/`, or test fixtures instead | only inspect `.opencode/` to verify runtime/install state after updating the real source | targeted tests for the affected workflow |
 | `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests | `bun run typecheck`, targeted unit tests |
 | Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests | targeted unit/integration tests, `bun run validate:isolated-pins` when harness pins change |
-| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` (and `ai-resources/skills/opencode-coder/SKILL.md` when the skill entrypoint itself changes) | symlinked `docs/user-guide/project-setup.md`, `project-doc-guidelines.md`, and `project-doc-review-guidelines.md` should stay pointed at the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
+| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` (and `ai-resources/skills/opencode-coder/SKILL.md` when the skill entrypoint itself changes) | keep the matching copies under `docs/user-guide/` aligned with the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
 
 ## Repository Structure
 
@@ -118,13 +118,13 @@ If a command and a skill cover the same workflow:
 See [`user-guide/how-to-write-commands.md`](user-guide/how-to-write-commands.md).
 For runtime skill content boundaries, see [`user-guide/how-to-write-skills.md`](user-guide/how-to-write-skills.md).
 
-### 6. Respect canonical doc sources and symlinked user-guide entrypoints
+### 6. Respect canonical doc sources and copied user-guide entrypoints
 
-Docs lifecycle work in this repo has one authoring source plus user-guide entrypoints:
+Docs lifecycle work in this repo has one authoring source plus user-guide copies:
 
 - published canonical references under `ai-resources/skills/opencode-coder/references/`
 - the published skill entrypoint at `ai-resources/skills/opencode-coder/SKILL.md`
-- contributor-facing symlinks under `docs/user-guide/`
+- contributor-facing copies under `docs/user-guide/`
 
 The published references are the source of truth for docs-lifecycle content. If the opencode-coder skill entrypoint itself must change, edit `ai-resources/skills/opencode-coder/SKILL.md`.
 
@@ -132,15 +132,15 @@ Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are 
 
 In this repo:
 
-- `docs/user-guide/project-setup.md` is a symlink to the canonical source
-- `docs/user-guide/project-doc-guidelines.md` is a symlink to the canonical source
-- `docs/user-guide/project-doc-review-guidelines.md` is a symlink to the canonical source
+- `docs/user-guide/project-setup.md` is a copy of the canonical source
+- `docs/user-guide/project-doc-guidelines.md` is a copy of the canonical source
+- `docs/user-guide/project-doc-review-guidelines.md` is a copy of the canonical source
 
 When you change one of these areas:
 
 1. update the canonical source under `ai-resources/skills/opencode-coder/references/`
-2. keep the matching `docs/user-guide/` symlink in place
-3. do not edit the symlink target through `docs/user-guide/`; edit the canonical `ai-resources/` file directly
+2. keep the matching `docs/user-guide/` copy in sync
+3. do not edit `.opencode/`; update the published source and matching user-guide copy together
 
 Examples:
 

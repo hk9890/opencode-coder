@@ -1,3 +1,4 @@
+import { createOpencodeClient, createOpencodeServer } from "@opencode-ai/sdk";
 import { describe, expect, it } from "bun:test";
 import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
@@ -53,6 +54,55 @@ async function runLauncher(
 const opencodeCheck = await checkOpencodeAvailability();
 const privateTestsEnabled = process.env.OPENCODE_CODER_PRIVATE_TESTS === "true";
 
+async function getLauncherPreparedEnv(stdout: string): Promise<Record<string, string>> {
+  const preservedMatch = stdout.match(/Environment preserved at: (.+)\n?/);
+  const preservedRoot = preservedMatch?.[1]?.trim();
+  if (!preservedRoot) {
+    throw new Error("Launcher output did not include preserved environment path");
+  }
+
+  const isolatedRoot = join(preservedRoot, "isolated-opencode");
+  return {
+    HOME: join(isolatedRoot, "home"),
+    XDG_CONFIG_HOME: join(isolatedRoot, "xdg-config"),
+    XDG_DATA_HOME: join(isolatedRoot, "xdg-data"),
+    XDG_CACHE_HOME: join(isolatedRoot, "xdg-cache"),
+    OPENCODE_CONFIG_DIR: join(isolatedRoot, "opencode-config"),
+    OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
+  };
+}
+
+async function proveLauncherStartupViability(workdir: string, launcherEnv: Record<string, string>) {
+  const server = await withEnvironment(launcherEnv, () =>
+    createOpencodeServer({
+      hostname: "127.0.0.1",
+      port: 0,
+      timeout: 30000,
+      config: {
+        autoupdate: false,
+        snapshot: false,
+      },
+    })
+  );
+
+  try {
+    const url = new URL(server.url);
+    expect(url.hostname).toBe("127.0.0.1");
+    expect(Number(url.port)).toBeGreaterThan(0);
+
+    const client = createOpencodeClient({
+      baseUrl: server.url,
+      responseStyle: "data",
+      throwOnError: true,
+    });
+    const commandListResult = await client.command.list({ query: { directory: workdir } });
+    const commandList = "data" in commandListResult ? commandListResult.data : commandListResult;
+    expect(Array.isArray(commandList)).toBe(true);
+  } finally {
+    server.close();
+  }
+}
+
 describe("manual launcher preflight", () => {
   it("seeds isolated .zshrc for zsh shell mode in empty HOME", async () => {
     const tempHome = await mkdtemp(join(tmpdir(), "opencode-coder-zsh-home-"));
@@ -102,7 +152,7 @@ describe("manual launcher preflight", () => {
     const implicit = parseArgs([]);
     expect(shouldActivateWizard(implicit)).toBe(true);
 
-    const explicitFixture = parseArgs(["--fixture=cli-smoke-project"]);
+    const explicitFixture = parseArgs(["--fixture=empty-project"]);
     expect(shouldActivateWizard(explicitFixture)).toBe(false);
 
     const explicitProjectPath = parseArgs(["--project-path", "/tmp"]);
@@ -118,6 +168,23 @@ describe("manual launcher preflight", () => {
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("Usage error: no project source or mode specified in non-interactive context");
     expect(result.stderr).toContain("Run with --help for usage.");
+  });
+
+  it("prints help with command-mode launcher usage and manual boundary notes", async () => {
+    const result = await runLauncher(["--help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("bun run test:manual -- --mode=command --fixture=empty-project -- env");
+    expect(result.stdout).toContain("Automated launcher guardrails cover environment preparation + startup viability only.");
+    expect(result.stdout).toContain("Auth/model-backed prompts (for example: \"say hi\") are exploratory manual checks.");
+    expect(result.stdout).not.toContain('opencode run --command "pwd"');
+  });
+
+  it("rejects removed --probe-plugin-load option", async () => {
+    const result = await runLauncher(["--mode=command", "--probe-plugin-load", "--", "env"]);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("Argument error: Unknown argument: --probe-plugin-load");
   });
 
   it("copies the committed OpenCode config fixture into isolated config", async () => {
@@ -160,7 +227,7 @@ describe("manual launcher preflight", () => {
   it("fails clearly for non-existent auth path", async () => {
     const result = await runLauncher([
       "--mode=command",
-      "--fixture=cli-smoke-project",
+      "--fixture=empty-project",
       "--auth=/tmp/does-not-exist-auth.json",
       "--",
       "env",
@@ -188,7 +255,7 @@ describe("manual launcher preflight", () => {
   it("fails clearly when --fixture and --project-path are both set", async () => {
     const result = await runLauncher([
       "--mode=command",
-      "--fixture=cli-smoke-project",
+      "--fixture=empty-project",
       "--project-path=/tmp",
       "--",
       "env",
@@ -314,7 +381,7 @@ describe("manual launcher preflight", () => {
   });
 
   it.skipIf(!privateTestsEnabled)("prepares pinned Dynatrace package deterministically for isolated local-build startup", async () => {
-    const workspace = await createFixtureWorkspace("cli-smoke-project");
+    const workspace = await createFixtureWorkspace("empty-project");
 
     try {
       await prepareWorkspacePluginSource({
@@ -339,7 +406,7 @@ describe("manual launcher preflight", () => {
   }, 120000);
 
   it("skips private Dynatrace package prep when OPENCODE_CODER_PRIVATE_TESTS is unset/false", async () => {
-    const workspace = await createFixtureWorkspace("cli-smoke-project");
+    const workspace = await createFixtureWorkspace("empty-project");
 
     try {
       await withEnvironment({ OPENCODE_CODER_PRIVATE_TESTS: "false" }, async () => {
@@ -376,7 +443,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
     try {
       const result = await runLauncher([
         "--mode=command",
-        "--fixture=cli-smoke-project",
+        "--fixture=empty-project",
         `--auth=${authPath}`,
         "--",
         "env",
@@ -390,7 +457,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Mode: command");
       expect(result.stdout).toContain("Plugin source: local-build");
       expect(result.stdout).toContain("Execution model: fixture copy (disposable workspace)");
-      expect(result.stdout).toContain("Fixture: cli-smoke-project");
+      expect(result.stdout).toContain("Fixture: empty-project");
       expect(result.stdout).toContain("Project source:");
       expect(result.stdout).toContain("Workdir:");
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
@@ -398,7 +465,6 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Resolved installed package: <none>");
       expect(result.stdout).toContain("Resolved host config: <none>");
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
-      expect(result.stdout).toContain("Loaded plugin version:");
       expect(result.stdout).toContain("Cleanup plan: preserve copied workspace and isolated environment");
       expect(result.stdout).not.toContain("--keep: accepted (backward-compatible no-op)");
       expect(result.stdout).toContain("OPENCODE_DISABLE_DEFAULT_PLUGINS=true");
@@ -558,7 +624,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
     }
   }, 120000);
 
-  it("supports installed-configured plugin source with deterministic package prep and version proof", async () => {
+  it("supports installed-configured plugin source with deterministic package prep", async () => {
     const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-launcher-installed-source-"));
 
     await writeFile(
@@ -579,12 +645,11 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       const result = await runLauncher(
         [
           "--mode=command",
-          "--fixture=existing-active-project",
+          "--fixture=coder-skill-installed",
           "--plugin-source=installed-configured",
           "--keep",
           "--",
-          "node",
-          join(PROJECT_ROOT, "tests", "e2e", "helpers", "manual-launcher-plugin-proof.mjs"),
+          "env",
         ],
         {
           OPENCODE_CONFIG_DIR: hostConfigRoot,
@@ -598,11 +663,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Resolved installed package: @dynatrace-oss/opencode-coder@0.34.2");
       expect(result.stdout).toContain(`Resolved host config: ${join(hostConfigRoot, "opencode.json")}`);
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
-      expect(result.stdout).toContain("Expected installed plugin version: 0.34.2");
-      expect(result.stdout).toContain("Loaded plugin version:");
-      expect(result.stdout).toContain("Installed plugin load proof: valid");
-      expect(result.stdout).toContain("PLUGIN_PROOF_OK:0.34.2");
-      expect(result.stdout).not.toContain("INVALID_COMPARISON");
+      expect(result.stdout).toContain("One-shot command: env");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
       expect(preservedMatch).not.toBeNull();
@@ -626,15 +687,36 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       await rm(hostConfigRoot, { recursive: true, force: true });
     }
   }, 120000);
+});
 
-  it("fails installed-configured run when plugin load proof remains fixture baseline", async () => {
-    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-launcher-installed-source-negative-"));
+describe.skipIf(!opencodeCheck.available)("manual launcher startup viability contract", () => {
+  it("proves launcher-prepared local-build environment can start server and return structured SDK response", async () => {
+    let preservedRoot: string | undefined;
 
+    try {
+      const result = await runLauncher(["--mode=command", "--fixture=empty-project", "--", "env"]);
+      expect(result.exitCode).toBe(0);
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const launcherEnv = await getLauncherPreparedEnv(result.stdout);
+      await proveLauncherStartupViability(join(preservedRoot!, "project"), launcherEnv);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  }, 120000);
+
+  it("proves launcher-prepared installed-configured environment can start server and return structured SDK response", async () => {
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-launcher-installed-source-viability-"));
     await writeFile(
       join(hostConfigRoot, "opencode.json"),
       JSON.stringify(
         {
-          plugin: ["@dynatrace-oss/opencode-coder@0.34.2", "@hk9890/opencode-dynatrace@0.6.0"],
+          plugin: ["@dynatrace-oss/opencode-coder@0.34.2"],
         },
         null,
         2
@@ -646,31 +728,17 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
 
     try {
       const result = await runLauncher(
-        [
-          "--mode=command",
-          "--fixture=existing-active-project",
-          "--plugin-source=installed-configured",
-          "--keep",
-          "--",
-          "env",
-        ],
-        {
-          OPENCODE_CONFIG_DIR: hostConfigRoot,
-        }
+        ["--mode=command", "--fixture=empty-project", "--plugin-source=installed-configured", "--", "env"],
+        { OPENCODE_CONFIG_DIR: hostConfigRoot }
       );
-
-      expect(result.exitCode).toBe(1);
-      expect(result.stdout).toContain("Plugin source: installed-configured");
-      expect(result.stdout).toContain("Expected installed plugin version: 0.34.2");
-      expect(result.stdout).toContain("Loaded plugin version: fixture");
-      expect(result.stdout).toContain("Installed plugin load proof: MISSING_OR_INVALID");
-      expect(result.stderr).toContain("INVALID_COMPARISON: installed-configured plugin load proof missing");
+      expect(result.exitCode).toBe(0);
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
-      expect(preservedMatch).not.toBeNull();
       preservedRoot = preservedMatch?.[1]?.trim();
       expect(Boolean(preservedRoot)).toBe(true);
-      expect(preservedRoot).toContain(`${join(".manual-test-runs", "run-")}`);
+
+      const launcherEnv = await getLauncherPreparedEnv(result.stdout);
+      await proveLauncherStartupViability(join(preservedRoot!, "project"), launcherEnv);
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });

@@ -23,6 +23,7 @@
   "scripts": {
     "build": "bun build src/index.ts --outfile dist/opencode-coder.js --target bun",
     "dev": "bun --watch src/index.ts",
+    "lint": "bun run typecheck",
     "test": "bun test",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",

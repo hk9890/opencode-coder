@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { parse as parseYaml, stringify } from "yaml";
-import { type Logger } from "../core";
+import { detectBeadsDirectory, detectPackageYaml, detectStealthMarker, type Logger } from "../core";
 import { isPluginDisabled } from "../config";
 
 export type SavedPluginMode = "disabled" | "stealth" | "team";
@@ -28,7 +28,6 @@ type SavedModeReadResult =
   | { kind: "saved"; mode: SavedPluginMode }
   | { kind: "invalid"; reason: string };
 
-const STEALTH_MARKER = "# opencode-coder stealth mode";
 const SAVED_PLUGIN_MODES: ReadonlySet<SavedPluginMode> = new Set(["disabled", "stealth", "team"]);
 
 export class PluginModeService {
@@ -183,12 +182,7 @@ export class PluginModeService {
   }
 
   private detectStealthMarker(): boolean {
-    const excludeFile = path.join(this.workdir, ".git", "info", "exclude");
-    try {
-      return fs.readFileSync(excludeFile, "utf-8").includes(STEALTH_MARKER);
-    } catch {
-      return false;
-    }
+    return detectStealthMarker(this.workdir, this.logger);
   }
 
   private readLegacyProjectContextMode(): Exclude<SavedPluginMode, "disabled"> | null {
@@ -212,11 +206,11 @@ export class PluginModeService {
   }
 
   private detectLegacyTeamMarkers(): boolean {
-    return [
-      path.join(this.workdir, ".beads"),
-      path.join(this.workdir, "AGENTS.md"),
-      path.join(this.workdir, "ai.package.yaml"),
-    ].every((filePath) => fs.existsSync(filePath));
+    return (
+      detectBeadsDirectory(this.workdir, this.logger) &&
+      fs.existsSync(path.join(this.workdir, "AGENTS.md")) &&
+      detectPackageYaml(this.workdir, this.logger)
+    );
   }
 
   private detectLegacyStealthAgentsFile(): boolean {

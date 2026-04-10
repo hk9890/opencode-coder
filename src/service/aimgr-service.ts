@@ -1,19 +1,36 @@
 import type { Logger, OpencodeClient } from "../core";
 import {
   AIMGR_COMMAND_TIMEOUT_MS,
-  hasResourceIssues,
-  isCommandAvailable,
+  detectAimgrAvailable,
+  detectPackageYaml,
   showToast,
+  verifyAimgrResources,
 } from "../core";
 import { execSync } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
 
 export interface AimgrStartupHealthResult {
   verifyResult: any | null;
   resourcesHealthy: boolean;
   repairAttempted: boolean;
   repairSucceeded: boolean;
+}
+
+export function hasResourceIssues(result: unknown): boolean {
+  if (!result || typeof result !== "object") return true;
+
+  const verifyResult = result as {
+    issues?: unknown[];
+    errors?: unknown[];
+    error?: unknown;
+    status?: unknown;
+  };
+
+  return (
+    (Array.isArray(verifyResult.issues) && verifyResult.issues.length > 0) ||
+    (Array.isArray(verifyResult.errors) && verifyResult.errors.length > 0) ||
+    (typeof verifyResult.error === "string" && verifyResult.error !== "") ||
+    (typeof verifyResult.status === "string" && verifyResult.status !== "ok" && verifyResult.status !== "healthy")
+  );
 }
 
 /**
@@ -57,11 +74,7 @@ export class AimgrService {
       return this.aimgrAvailable;
     }
 
-    this.aimgrAvailable = isCommandAvailable("aimgr", this.logger, {
-      successMessage: "aimgr CLI is available",
-      missingMessage: "aimgr CLI not found on PATH",
-      timeoutMessage: "aimgr availability check timed out",
-    });
+    this.aimgrAvailable = detectAimgrAvailable(this.workdir, this.logger);
 
     return this.aimgrAvailable;
   }
@@ -70,10 +83,7 @@ export class AimgrService {
    * Check if ai.package.yaml exists in the working directory
    */
   hasPackageYaml(): boolean {
-    const packagePath = path.join(this.workdir, "ai.package.yaml");
-    const exists = fs.existsSync(packagePath);
-    this.logger.debug("Checking for ai.package.yaml", { path: packagePath, exists });
-    return exists;
+    return detectPackageYaml(this.workdir, this.logger);
   }
 
   /**
@@ -150,20 +160,12 @@ export class AimgrService {
       return null;
     }
 
-    try {
-      this.logger.debug("Running aimgr verify --format json");
-      const stdout = execSync("aimgr verify --format json", {
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: AIMGR_COMMAND_TIMEOUT_MS,
-      });
-      const result = JSON.parse(stdout);
+    this.logger.debug("Running aimgr verify --format json");
+    const result = verifyAimgrResources(this.workdir, { logger: this.logger });
+    if (result !== null) {
       this.logger.debug("aimgr verify completed", { result });
-      return result;
-    } catch (error) {
-      this.logger.error("Failed to run aimgr verify", { error: String(error) });
-      return null;
     }
+    return result;
   }
 
   /**

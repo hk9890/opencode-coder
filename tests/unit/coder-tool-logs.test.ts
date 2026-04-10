@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
+  getOpenCodeLogDirectoryCandidates,
   resolveOpenCodeLogDirectory,
   summarizeOpenCodeLogDirectory,
-} from "../../src/tool/coder-tool";
-import { getOpenCodeLogDirectoryCandidates } from "../../src/core";
+} from "../../src/core";
 
 describe("coder-tool logs path resolution", () => {
   it("uses canonical Linux path when no candidate exists", () => {

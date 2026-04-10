@@ -29,10 +29,6 @@ export function createLogger(client: OpencodeClient, workdir: string): Logger {
   let isFileLoggingEnabled = false;
   const bufferedFileLogs: BufferedFileLogEntry[] = [];
 
-  const writeFileLog = (entry: BufferedFileLogEntry) => {
-    appendFileSync(entry.path, entry.line);
-  };
-
   const enableFileLogging = () => {
     if (isFileLoggingEnabled) {
       return;
@@ -87,7 +83,7 @@ export function createLogger(client: OpencodeClient, workdir: string): Logger {
     }
 
     try {
-      writeFileLog(fileLogEntry);
+      appendFileSync(fileLogEntry.path, fileLogEntry.line);
     } catch {
       // Never break plugin startup/runtime if local file logging fails
     }

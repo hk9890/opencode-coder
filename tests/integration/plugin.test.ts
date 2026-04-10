@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+import * as childProcess from "child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { parse as parseYaml } from "yaml";
 import { OpencodeCoder } from "../../src";
 import { AimgrService, BeadsService, PluginModeService, ProjectDetectorService } from "../../src/service";
 import type { PluginModeResolution, ProjectContext } from "../../src/service";
@@ -13,19 +15,6 @@ function createProjectContext(overrides?: Partial<ProjectContext>): ProjectConte
     missingRequiredSurfaces: [],
     shouldExposeBootstrapInit: false,
     shouldUseResourceBackedCommands: true,
-      requiredSurfaceAvailability: {
-        "resource/opencode-coder": true,
-      },
-    optionalAgentAvailability: {
-      "resource/opencode-coder/optional-agents": true,
-    },
-    diagnostics: {
-      aimgrAvailable: true,
-      packageYamlAvailable: true,
-      coderPackageInstalled: true,
-      resourcesHealthy: true,
-      opencodeCoderSkillMarkerAvailable: true,
-    },
   };
 
   return {
@@ -86,6 +75,40 @@ function createPhase2CommandFixture() {
       template: "resource init template",
     },
   } as Record<string, { description: string; template: string }>;
+}
+
+function createActiveTeamWorktree(prefix: string, options?: { withGit?: boolean; withBeads?: boolean; withPackageYaml?: boolean }) {
+  const worktree = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(join(worktree, ".coder"), { recursive: true });
+  writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: team\n", "utf-8");
+
+  if (options?.withGit !== false) {
+    mkdirSync(join(worktree, ".git"), { recursive: true });
+  }
+
+  if (options?.withBeads) {
+    mkdirSync(join(worktree, ".beads"), { recursive: true });
+  }
+
+  if (options?.withPackageYaml) {
+    writeFileSync(join(worktree, "ai.package.yaml"), "name: test\nversion: 1\n", "utf-8");
+  }
+
+  return worktree;
+}
+
+function readProjectContextFromWorktree(worktree: string): ProjectContext {
+  const contextPath = join(worktree, ".coder", "project.yaml");
+  const raw = readFileSync(contextPath, "utf-8");
+  return parseYaml(raw) as ProjectContext;
+}
+
+function createExecTimeoutError(message: string): Error & { code: string; killed: boolean; signal: string } {
+  return Object.assign(new Error(message), {
+    code: "ETIMEDOUT",
+    killed: true,
+    signal: "SIGTERM",
+  });
 }
 
 describe("OpencodeCoder Plugin Integration", () => {
@@ -340,10 +363,6 @@ describe("OpencodeCoder Plugin Integration", () => {
             shouldExposeBootstrapInit: false,
             shouldUseResourceBackedCommands: true,
             missingRequiredSurfaces: [],
-            requiredSurfaceAvailability: {
-              ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "resource/opencode-coder": true,
-            },
           },
         })
       );
@@ -435,10 +454,6 @@ describe("OpencodeCoder Plugin Integration", () => {
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
             missingRequiredSurfaces: ["resource/opencode-coder"],
-            requiredSurfaceAvailability: {
-              ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "resource/opencode-coder": false,
-            },
           },
         })
       );
@@ -491,10 +506,6 @@ describe("OpencodeCoder Plugin Integration", () => {
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
             missingRequiredSurfaces: ["resource/opencode-coder"],
-            requiredSurfaceAvailability: {
-              ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "resource/opencode-coder": false,
-            },
           },
         })
       );
@@ -535,10 +546,6 @@ describe("OpencodeCoder Plugin Integration", () => {
             shouldExposeBootstrapInit: true,
             shouldUseResourceBackedCommands: false,
             missingRequiredSurfaces: ["resource/opencode-coder"],
-            requiredSurfaceAvailability: {
-              ...createProjectContext().runtimePhase.requiredSurfaceAvailability,
-              "resource/opencode-coder": false,
-            },
           },
         })
       );
@@ -820,6 +827,249 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
+    it("degrades safely when aimgr is missing on PATH (partial tools: bd available)", async () => {
+      const worktree = createActiveTeamWorktree("opencode-coder-aimgr-missing-", {
+        withGit: true,
+        withBeads: true,
+      });
+
+      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
+        if (command === "command -v bd") {
+          return Buffer.from("/usr/bin/bd") as any;
+        }
+
+        if (command === "command -v aimgr") {
+          const err = Object.assign(new Error("aimgr not found"), { code: "ENOENT" });
+          throw err;
+        }
+
+        throw new Error(`Unexpected command in aimgr-missing integration test: ${command}`);
+      });
+
+      try {
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+          expect(cfg.command?.[commandName]).toBeUndefined();
+        }
+        expect(cfg.default_agent).toBeUndefined();
+
+        const context = readProjectContextFromWorktree(worktree);
+        expect(context.aimgr.installed).toBe(false);
+        expect(context.aimgr.resourcesHealthy).toBe(false);
+        expect(context.beads.bdCliInstalled).toBe(true);
+        expect(context.installReady).toBe(false);
+
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.project_context.available" &&
+              entry.extra?.["resourcesHealthy"] === false
+          )
+        ).toBe(true);
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
+              entry.extra?.["action"] === "suppressed"
+          )
+        ).toBe(true);
+      } finally {
+        execSyncSpy.mockRestore();
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
+    it("handles execSync timeout on tool discovery without crashing startup", async () => {
+      const worktree = createActiveTeamWorktree("opencode-coder-aimgr-timeout-", {
+        withGit: true,
+        withBeads: true,
+      });
+
+      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
+        if (command === "command -v bd") {
+          return Buffer.from("/usr/bin/bd") as any;
+        }
+
+        if (command === "command -v aimgr") {
+          throw createExecTimeoutError("aimgr discovery timed out");
+        }
+
+        throw new Error(`Unexpected command in timeout integration test: ${command}`);
+      });
+
+      try {
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+        expect(cfg.default_agent).toBeUndefined();
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) => entry.level === "warn" && entry.message === "aimgr availability check timed out"
+          )
+        ).toBe(true);
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.project_context.available"
+          )
+        ).toBe(true);
+      } finally {
+        execSyncSpy.mockRestore();
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
+    it("7rn regression: uses post-repair readiness before detection/config hook consumption", async () => {
+      const worktree = createActiveTeamWorktree("opencode-coder-7rn-sequencing-", {
+        withGit: true,
+        withBeads: true,
+      });
+
+      const callOrder: string[] = [];
+      let verifyCount = 0;
+
+      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
+        callOrder.push(command);
+
+        if (command === "command -v aimgr" || command === "command -v bd") {
+          return Buffer.from("/usr/bin/tool") as any;
+        }
+
+        if (command === "aimgr init") {
+          return Buffer.from("initialized") as any;
+        }
+
+        if (command === "aimgr repo list --format=json") {
+          return JSON.stringify({ packages: [{ name: "opencode-coder" }] }) as any;
+        }
+
+        if (command === "aimgr install package/opencode-coder") {
+          return Buffer.from("installed") as any;
+        }
+
+        if (command === "aimgr verify --format json") {
+          verifyCount += 1;
+          if (verifyCount === 1) {
+            return JSON.stringify({ status: "ok", issues: [{ id: "missing-resource" }] }) as any;
+          }
+          return JSON.stringify({ status: "ok", issues: [] }) as any;
+        }
+
+        if (command === "aimgr repair --format json") {
+          return JSON.stringify({ status: "ok", fixed: ["missing-resource"] }) as any;
+        }
+
+        if (command === 'aimgr list "package/opencode-coder" --format json') {
+          return JSON.stringify([{ name: "package/opencode-coder" }]) as any;
+        }
+
+        throw new Error(`Unexpected command in 7rn sequencing integration test: ${command}`);
+      });
+
+      try {
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        expect(verifyCount).toBe(2);
+        const firstVerifyIndex = callOrder.indexOf("aimgr verify --format json");
+        const repairIndex = callOrder.indexOf("aimgr repair --format json");
+        const secondVerifyIndex = callOrder.findIndex((command, index) => command === "aimgr verify --format json" && index > firstVerifyIndex);
+        const detectListIndex = callOrder.indexOf('aimgr list "package/opencode-coder" --format json');
+        expect(firstVerifyIndex).toBeGreaterThan(-1);
+        expect(repairIndex).toBeGreaterThan(firstVerifyIndex);
+        expect(secondVerifyIndex).toBeGreaterThan(repairIndex);
+        expect(detectListIndex).toBeGreaterThan(secondVerifyIndex);
+
+        const context = readProjectContextFromWorktree(worktree);
+        expect(context.aimgr.resourcesHealthy).toBe(true);
+        expect(context.aimgr.coderPackageInstalled).toBe(true);
+        expect(cfg.default_agent).toBeUndefined();
+
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) => entry.message === "aimgr verify found resource issues, attempting automatic repair"
+          )
+        ).toBe(true);
+        expect(mockInput.client.tui.toasts.some((toast) => toast.message.includes("auto-repair fixed resource issues"))).toBe(true);
+      } finally {
+        execSyncSpy.mockRestore();
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
+    it("detects partial availability when aimgr is present but bd is missing", async () => {
+      const worktree = createActiveTeamWorktree("opencode-coder-partial-bd-missing-", {
+        withGit: true,
+        withBeads: true,
+        withPackageYaml: true,
+      });
+
+      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
+        if (command === "command -v aimgr") {
+          return Buffer.from("/usr/bin/aimgr") as any;
+        }
+
+        if (command === "command -v bd") {
+          const err = Object.assign(new Error("bd not found"), { code: "ENOENT" });
+          throw err;
+        }
+
+        if (command === "aimgr verify --format json") {
+          return JSON.stringify({ status: "ok", issues: [] }) as any;
+        }
+
+        if (command === 'aimgr list "package/opencode-coder" --format json') {
+          return JSON.stringify([{ name: "package/opencode-coder" }]) as any;
+        }
+
+        throw new Error(`Unexpected command in partial-availability integration test: ${command}`);
+      });
+
+      try {
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        const context = readProjectContextFromWorktree(worktree);
+        expect(context.aimgr.installed).toBe(true);
+        expect(context.beads.bdCliInstalled).toBe(false);
+        expect(context.installReady).toBe(false);
+        expect(context.ecosystemReady).toBe(true);
+        expect(cfg.default_agent).toBe("orchestrator");
+
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.project_context.available" &&
+              entry.extra?.["installReady"] === false &&
+              entry.extra?.["resourcesHealthy"] === true
+          )
+        ).toBe(true);
+      } finally {
+        execSyncSpy.mockRestore();
+        rmSync(worktree, { recursive: true, force: true });
+      }
+    });
+
     it("skips runtime bootstrap when manual Phase 2 surfaces exist without ai.package.yaml", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const classifySpy = spyOn(ProjectDetectorService.prototype, "classifyRuntimePhase").mockReturnValue({
@@ -827,17 +1077,6 @@ describe("OpencodeCoder Plugin Integration", () => {
         missingRequiredSurfaces: [],
         shouldExposeBootstrapInit: false,
         shouldUseResourceBackedCommands: true,
-        requiredSurfaceAvailability: createProjectContext().runtimePhase.requiredSurfaceAvailability,
-        optionalAgentAvailability: {
-          "resource/opencode-coder/optional-agents": false,
-        },
-        diagnostics: {
-          aimgrAvailable: true,
-          packageYamlAvailable: false,
-          coderPackageInstalled: false,
-          resourcesHealthy: false,
-          opencodeCoderSkillMarkerAvailable: true,
-        },
       });
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -885,7 +1124,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("degrades safely when project context startup times out", async () => {
+    it("degrades safely when config hook times out waiting on startup context", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockImplementation(
         () => new Promise<void>(() => {})
@@ -911,12 +1150,15 @@ describe("OpencodeCoder Plugin Integration", () => {
       try {
         const mockInput = createMockPluginInput();
         const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, unknown> = {};
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
         await hooks.config?.(cfg as any);
 
         expect(cfg.default_agent).toBeUndefined();
         expect(cfg.command).toBeDefined();
         expect((cfg.command as Record<string, unknown>)["opencode-coder/init"]).toBeDefined();
+        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+          expect((cfg.command as Record<string, unknown>)[commandName]).toBeUndefined();
+        }
         expect(
           mockInput.client.app.logs.some(
             (entry) => entry.level === "warn" && entry.message === "Project context startup timed out; continuing in degraded mode"

@@ -6,7 +6,7 @@ import { parseLine } from "../../scripts/log-analyzer/parser";
 import { __testing as filterTesting, filterLogs, matchesFilter } from "../../scripts/log-analyzer/filters";
 import { hasExplicitFilters, parseArgs } from "../../scripts/log-analyzer/cli-args";
 import { discoverSessions, getLogDirectoryCandidates } from "../../scripts/log-analyzer/discovery";
-import { resolveOpenCodeLogDirectory } from "../../src/tool/coder-tool";
+import { resolveOpenCodeLogDirectory } from "../../src/core";
 
 describe("log-analyzer", () => {
   it("parses OpenCode log lines with explicit source", () => {

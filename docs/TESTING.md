@@ -166,22 +166,36 @@ bun run test:manual -- --help
 
 ```bash
 # quick fixture smoke check
-bun run test:manual -- --mode=tui --fixture=cli-smoke-project
+bun run test:manual -- --mode=tui --fixture=empty-project
 
 # inspect behavior in an interactive shell on a fixture
-bun run test:manual -- --mode=shell --fixture=existing-active-project
+bun run test:manual -- --mode=shell --fixture=coder-skill-installed
 
 # run directly in a real local project
 bun run test:manual -- --mode=shell --project-path "$HOME/dev/some-project"
 
-# compare installed plugin vs current local build on the same project
-bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --plugin-source=installed-configured -- opencode run --command "pwd" --format json
-bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --plugin-source=local-build -- opencode run --command "pwd" --format json
+# compare installed plugin vs current local build in an interactive manual scenario
+bun run test:manual -- --mode=shell --project-path "$HOME/dev/some-project" --plugin-source=installed-configured
+bun run test:manual -- --mode=shell --project-path "$HOME/dev/some-project" --plugin-source=local-build
+
+# launcher environment debugging only
+bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" -- env
 ```
 
 ## Manual Testing Scenarios
 
 Use these scenario labels consistently when discussing or documenting manual checks.
+
+Scenario labels are not fixture directory names. They describe test intent, while fixture identity is the committed on-disk state (`empty-project`, `coder-mode-configured`, `coder-skill-installed`).
+
+### Legacy fixture name mapping
+
+| Legacy fixture name | Canonical fixture |
+|---|---|
+| `cli-smoke-project` | `empty-project` |
+| `fresh-inactive-project` | `empty-project` |
+| `local-startup-parity-project` | `coder-mode-configured` |
+| `existing-active-project` | `coder-skill-installed` |
 
 ### Scenario A — Quick startup smoke
 
@@ -191,7 +205,7 @@ Use when:
 Recommended command:
 
 ```bash
-bun run test:manual -- --mode=tui --fixture=cli-smoke-project
+bun run test:manual -- --mode=tui --fixture=empty-project
 ```
 
 ### Scenario B — Existing active project behavior
@@ -203,7 +217,7 @@ Use when:
 Recommended command:
 
 ```bash
-bun run test:manual -- --mode=shell --fixture=existing-active-project
+bun run test:manual -- --mode=shell --fixture=coder-skill-installed
 ```
 
 ### Scenario C — Fresh inactive project behavior
@@ -215,7 +229,7 @@ Use when:
 Recommended command:
 
 ```bash
-bun run test:manual -- --mode=shell --fixture=fresh-inactive-project
+bun run test:manual -- --mode=shell --fixture=empty-project
 ```
 
 ### Scenario D — Local startup parity
@@ -226,7 +240,7 @@ Use when:
 Recommended command:
 
 ```bash
-bun run test:manual -- --mode=shell --fixture=local-startup-parity-project
+bun run test:manual -- --mode=shell --fixture=coder-mode-configured
 ```
 
 ### Scenario E — Real project reproduction in place
@@ -251,7 +265,21 @@ Recommended pattern:
 
 1. run with `--plugin-source=installed-configured`
 2. rerun the same scenario with `--plugin-source=local-build`
-3. compare outcomes and plugin load proof
+3. compare outcomes semantically in the same manual scenario
+
+Use an interactive/manual scenario (for example shell mode):
+
+```bash
+bun run test:manual -- --mode=shell --project-path "$HOME/dev/some-project" --plugin-source=installed-configured
+bun run test:manual -- --mode=shell --project-path "$HOME/dev/some-project" --plugin-source=local-build
+```
+
+Automated coverage for the manual launcher remains limited to environment preparation + startup viability guardrails. Semantic checks (including auth/model-backed prompts such as `say hi`) are manual-only and should be judged interactively.
+
+Precondition for `installed-configured`:
+- host OpenCode config must contain exactly one configured `@dynatrace-oss/opencode-coder@...` plugin entry so the launcher can resolve and verify expected version.
+
+`env` remains useful for checking isolated launcher environment wiring.
 
 ### Scenario G — Isolated `/simplify` semantic validation (no manual copying)
 
@@ -261,7 +289,7 @@ Use when:
 
 Why this is needed:
 - `/simplify` behavior is owned by standalone `code-simplify` and routed via command/skill composition.
-- `existing-active-project` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill) or explicit standalone simplify package installation.
+- `coder-skill-installed` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill) or explicit standalone simplify package installation.
 - A stock isolated run can therefore still start in bootstrap phase, where `/simplify` is not exposed yet.
 
 Reproducible path:
@@ -269,13 +297,13 @@ Reproducible path:
 1. Launch isolated shell on the fixture using local build:
 
    ```bash
-   bun run test:manual -- --mode=shell --fixture=existing-active-project --plugin-source=local-build
+   bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
    ```
 
 2. In that shell, bootstrap resources through `aimgr` (repo-supported path):
 
    ```bash
-    # existing-active-project already includes ai.package.yaml, so do not run `aimgr init` here
+    # coder-skill-installed already includes ai.package.yaml, so do not run `aimgr init` here
     aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
     # Option A (full combined surface):
     aimgr install package/opencode-coder
@@ -291,6 +319,10 @@ Notes:
 - `aimgr install package/opencode-coder` requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
 - Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling the full combined package.
 - If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in isolated mode.
+
+### Scope note
+
+Beads-stage fixture strategy and beads-system tests are tracked in a separate epic and are out of scope for these manual fixture scenarios.
 
 ## Testing Skills, Commands, and Agents
 

@@ -1,7 +1,5 @@
 import type { Logger, OpencodeClient } from "../core";
-import { getCommandAvailabilityStatus, showToast } from "../core";
-import { accessSync, constants } from "fs";
-import { join } from "path";
+import { detectBdCliAvailabilityStatus, detectBeadsDirectory, showToast } from "../core";
 
 /**
  * Options for BeadsService
@@ -108,26 +106,16 @@ export class BeadsService {
   }
 
   /**
-   * Check if the bd CLI is installed by running 'command -v bd'
+   * Check bd CLI availability status via shared project-detection helper.
    */
   private getBdCliAvailability() {
-    return getCommandAvailabilityStatus("bd", this.logger, {
-      timeoutMessage: "bd CLI availability check timed out",
-    });
+    return detectBdCliAvailabilityStatus(this.workdir, this.logger);
   }
 
   /**
    * Check whether .beads/ directory exists.
    */
   private detectBeadsDirectory(): boolean {
-    const beadsDir = join(this.workdir, ".beads");
-    try {
-      accessSync(beadsDir, constants.F_OK);
-      this.logger.debug("Beads directory detected", { path: beadsDir });
-      return true;
-    } catch {
-      this.logger.debug("Beads directory not found", { path: beadsDir });
-      return false;
-    }
+    return detectBeadsDirectory(this.workdir, this.logger);
   }
 }

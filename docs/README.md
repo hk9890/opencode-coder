@@ -30,9 +30,9 @@ These are useful supporting docs, but they are not the default operating layer f
 |---|---|
 | `user-guide/` | Setup, usage, and focused how-to guidance |
 | `user-guide/getting-started.md` | Plugin install, `/opencode-coder/init`, and project enablement |
-| `user-guide/project-setup.md` | Symlinked entrypoint to the canonical project-doc structure reference under `ai-resources/skills/opencode-coder/references/` |
-| `user-guide/project-doc-guidelines.md` | Symlinked entrypoint to the canonical project-doc authoring rules under `ai-resources/skills/opencode-coder/references/` |
-| `user-guide/project-doc-review-guidelines.md` | Symlinked entrypoint to the canonical reviewer checklist under `ai-resources/skills/opencode-coder/references/` |
+| `user-guide/project-setup.md` | User-guide copy of the canonical project-doc structure reference under `ai-resources/skills/opencode-coder/references/` |
+| `user-guide/project-doc-guidelines.md` | User-guide copy of the canonical project-doc authoring rules under `ai-resources/skills/opencode-coder/references/` |
+| `user-guide/project-doc-review-guidelines.md` | User-guide copy of the canonical reviewer checklist under `ai-resources/skills/opencode-coder/references/` |
 | `user-guide/how-to-write-commands.md` | Active contributor reference for command-authoring conventions |
 | `user-guide/how-to-write-skills.md` | Active contributor reference for runtime skill-authoring boundaries and layering |
 | `design/*-skill-design.md` | Design notes or planning references for specific skills |

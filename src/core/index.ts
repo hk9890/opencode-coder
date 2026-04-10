@@ -11,7 +11,6 @@ export {
   AIMGR_COMMAND_TIMEOUT_MS,
   COMMAND_CHECK_TIMEOUT_MS,
   getCommandAvailabilityStatus,
-  hasResourceIssues,
   isCommandAvailable,
   isExecTimeoutError,
 } from "./exec";
@@ -21,10 +20,38 @@ export type { CommandAvailabilityStatus } from "./exec";
 export { getVersionInfo } from "./version";
 export type { VersionInfo } from "./version";
 
-// Parser
-export { parseFrontmatter } from "./parser";
-export type { Frontmatter, ParsedDocument } from "./parser";
-
 // OpenCode log locations
-export { getOpenCodeLogDirectoryCandidates } from "./opencode-log-paths";
-export type { OpenCodeLogDirectoryCandidateOptions } from "./opencode-log-paths";
+export {
+  getOpenCodeLogDirectoryCandidates,
+  resolveOpenCodeLogDirectory,
+  summarizeOpenCodeLogDirectory,
+} from "./opencode-log-paths";
+export type {
+  OpenCodeLogDirectoryCandidateOptions,
+  OpenCodeLogDirectoryResolutionOptions,
+  OpenCodeLogDirectorySummaryOptions,
+} from "./opencode-log-paths";
+
+// Project detection
+export {
+  STEALTH_MARKER,
+  detectAimgrAvailable,
+  detectBdCliAvailabilityStatus,
+  detectBdCliAvailable,
+  detectBeadsDirectory,
+  detectPackageYaml,
+  detectStealthMarker,
+  verifyAimgrResources,
+} from "./project-detection";
+export type { DetectionLogger, VerifyAimgrResourcesOptions } from "./project-detection";
+
+// Startup/config orchestration helpers
+export { runProjectStartupFlow } from "./startup";
+export type { StartupFlowDependencies } from "./startup";
+export {
+  createConfigHook,
+  DOCS_LIFECYCLE_COMMANDS,
+  LEGACY_DOCS_COMMAND,
+} from "./config-hook";
+export type { ConfigHookDependencies } from "./config-hook";
+export { withTimeout } from "./with-timeout";

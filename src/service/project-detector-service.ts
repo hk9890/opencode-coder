@@ -4,12 +4,17 @@ import { execSync } from "child_process";
 import { stringify } from "yaml";
 import {
   AIMGR_COMMAND_TIMEOUT_MS,
-  hasResourceIssues,
-  isCommandAvailable,
+  detectAimgrAvailable,
+  detectBdCliAvailable,
+  detectBeadsDirectory,
+  detectPackageYaml,
+  detectStealthMarker,
   isExecTimeoutError,
   type Logger,
   type VersionInfo,
+  verifyAimgrResources,
 } from "../core";
+import { hasResourceIssues } from "./aimgr-service";
 import type { SavedPluginMode } from "./plugin-mode-service";
 
 /**
@@ -47,10 +52,14 @@ export interface RuntimePhaseClassification {
   shouldExposeBootstrapInit: boolean;
   /** Whether runtime should rely on resource-backed opencode-coder commands. */
   shouldUseResourceBackedCommands: boolean;
-  /** User-visible required resource availability (collapsed to high-level signals). */
-  requiredSurfaceAvailability: Record<string, boolean>;
-  /** Optional resource availability (diagnostic only; does not control phase). */
+}
+
+export interface RuntimeSurfaceDiagnostics {
+  commandSurfaceAvailability: Record<string, boolean>;
+  skillSurfaceAvailability: Record<string, boolean>;
+  skillReferenceAvailability: Record<string, boolean>;
   optionalAgentAvailability: Record<string, boolean>;
+  requiredSurfaceAvailability: Record<string, boolean>;
   /** Supporting diagnostics; these are secondary to resource-surface checks. */
   diagnostics: {
     aimgrAvailable: boolean;
@@ -127,12 +136,6 @@ export interface ProjectContext {
   /** Explicit two-phase runtime classification for command registration/gating. */
   runtimePhase: RuntimePhaseClassification;
 }
-
-/**
- * Marker string embedded by `bd init --stealth` in .git/info/exclude.
- * We search for this line to determine whether the project is in stealth mode.
- */
-const STEALTH_MARKER = "# opencode-coder stealth mode";
 
 const PHASE2_REQUIRED_COMMAND_SURFACES = [
   "opencode-coder/init",
@@ -229,42 +232,21 @@ export class ProjectDetectorService {
    * Check whether .beads/ directory exists.
    */
   detectBeadsInitialized(): boolean {
-    const beadsDir = path.join(this.workdir, ".beads");
-    try {
-      fs.accessSync(beadsDir, fs.constants.F_OK);
-      this.logger.debug("Beads directory detected", { path: beadsDir });
-      return true;
-    } catch {
-      this.logger.debug("Beads directory not found", { path: beadsDir });
-      return false;
-    }
+    return detectBeadsDirectory(this.workdir, this.logger);
   }
 
   /**
    * Check whether the stealth-mode marker is present in .git/info/exclude.
    */
   detectStealthMode(): boolean {
-    const excludeFile = path.join(this.workdir, ".git", "info", "exclude");
-    try {
-      const content = fs.readFileSync(excludeFile, "utf-8");
-      const isStealthy = content.includes(STEALTH_MARKER);
-      this.logger.debug("Stealth mode detection", { stealthMode: isStealthy });
-      return isStealthy;
-    } catch {
-      this.logger.debug("Could not read .git/info/exclude, assuming no stealth mode");
-      return false;
-    }
+    return detectStealthMarker(this.workdir, this.logger);
   }
 
   /**
    * Check whether the bd CLI is available on PATH.
    */
   detectBdCliInstalled(): boolean {
-    return isCommandAvailable("bd", this.logger, {
-      successMessage: "bd CLI is available",
-      missingMessage: "bd CLI not found on PATH",
-      timeoutMessage: "bd CLI availability check timed out",
-    });
+    return detectBdCliAvailable(this.workdir, this.logger);
   }
 
   // ---------------------------------------------------------------------------
@@ -275,21 +257,14 @@ export class ProjectDetectorService {
    * Check whether the aimgr CLI is available on PATH.
    */
   detectAimgrInstalled(): boolean {
-    return isCommandAvailable("aimgr", this.logger, {
-      successMessage: "aimgr CLI is available",
-      missingMessage: "aimgr CLI not found on PATH",
-      timeoutMessage: "aimgr CLI availability check timed out",
-    });
+    return detectAimgrAvailable(this.workdir, this.logger);
   }
 
   /**
    * Check whether ai.package.yaml exists in the working directory.
    */
   detectPackageYaml(): boolean {
-    const packagePath = path.join(this.workdir, "ai.package.yaml");
-    const exists = fs.existsSync(packagePath);
-    this.logger.debug("Checking for ai.package.yaml", { path: packagePath, exists });
-    return exists;
+    return detectPackageYaml(this.workdir, this.logger);
   }
 
   /**
@@ -341,20 +316,12 @@ export class ProjectDetectorService {
       return false;
     }
 
-    try {
-      const stdout = execSync("aimgr verify --format json", {
-        encoding: "utf-8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: AIMGR_COMMAND_TIMEOUT_MS,
-      });
-      const result = JSON.parse(stdout);
-      const hasIssues = hasResourceIssues(result);
-      this.logger.debug("aimgr verify completed", { healthy: !hasIssues });
-      return !hasIssues;
-    } catch (error) {
-      this.logger.error("Failed to run aimgr verify", { error: String(error) });
+    const result = verifyAimgrResources(this.workdir, { logger: this.logger });
+    if (result === null) {
       return false;
     }
+
+    return !hasResourceIssues(result);
   }
 
   private detectResourcePath(relativePath: string): boolean {
@@ -371,12 +338,29 @@ export class ProjectDetectorService {
    * specifically opencode-coder init command + opencode-coder skill marker,
    * regardless of whether they arrived via `aimgr install package/opencode-coder`
    * or equivalent manual copying.
-   *
-   * aimgr/package metadata remains diagnostic only and must not be the sole phase gate.
    */
-  classifyRuntimePhase(overrides?: RuntimePhaseDiagnosticsOverride): RuntimePhaseClassification {
-    const commandSurfaceAvailability: Record<string, boolean> = {};
+  classifyRuntimePhase(): RuntimePhaseClassification {
+    const requiredSurfacesComplete =
+      this.detectResourcePath(path.join(".opencode", "commands", "opencode-coder", "init.md")) &&
+      this.detectResourcePath(path.join(".opencode", "skills", "opencode-coder", "SKILL.md"));
+    const classification: RuntimePhaseClassification = {
+      phase: requiredSurfacesComplete ? "normal" : "bootstrap",
+      missingRequiredSurfaces: requiredSurfacesComplete ? [] : ["resource/opencode-coder"],
+      shouldExposeBootstrapInit: !requiredSurfacesComplete,
+      shouldUseResourceBackedCommands: requiredSurfacesComplete,
+    };
 
+    this.logger.info("Runtime phase classification resolved", {
+      phase: classification.phase,
+      missingRequiredSurfaces: classification.missingRequiredSurfaces,
+      shouldExposeBootstrapInit: classification.shouldExposeBootstrapInit,
+      shouldUseResourceBackedCommands: classification.shouldUseResourceBackedCommands,
+    });
+    return classification;
+  }
+
+  collectSurfaceDiagnostics(overrides?: RuntimePhaseDiagnosticsOverride): RuntimeSurfaceDiagnostics {
+    const commandSurfaceAvailability: Record<string, boolean> = {};
     for (const command of PHASE2_REQUIRED_COMMAND_SURFACES) {
       commandSurfaceAvailability[`command/${command}`] = this.detectResourcePath(
         path.join(".opencode", "commands", "opencode-coder", `${command.replace("opencode-coder/", "")}.md`),
@@ -397,122 +381,34 @@ export class ProjectDetectorService {
       );
     }
 
-    const rawOptionalAgentAvailability: Record<string, boolean> = {};
+    const optionalAgentAvailability: Record<string, boolean> = {};
     for (const agent of PHASE2_OPTIONAL_AGENT_SURFACES) {
-      rawOptionalAgentAvailability[`agent/${agent}`] = this.detectResourcePath(
-        path.join(".opencode", "agents", `${agent}.md`),
-      );
+      optionalAgentAvailability[`agent/${agent}`] = this.detectResourcePath(path.join(".opencode", "agents", `${agent}.md`));
     }
-
-    const opencodeCoderSkillMarkerAvailable = Object.values(skillSurfaceAvailability).every(Boolean);
-
-    const requiredSurfacesComplete =
-      commandSurfaceAvailability["command/opencode-coder/init"] === true &&
-      skillSurfaceAvailability["skill/opencode-coder"] === true;
-
-    const optionalAgentsComplete = Object.values(rawOptionalAgentAvailability).every(Boolean);
-
-    const requiredSurfaceAvailability: Record<string, boolean> = {
-      "resource/opencode-coder": requiredSurfacesComplete,
-    };
-
-    const optionalAgentAvailability: Record<string, boolean> = {
-      "resource/opencode-coder/optional-agents": optionalAgentsComplete,
-    };
-
-    const missingRequiredSurfaces = requiredSurfacesComplete ? [] : ["resource/opencode-coder"];
-
-    const phase: RuntimePhase = missingRequiredSurfaces.length === 0 ? "normal" : "bootstrap";
-    const shouldExposeBootstrapInit = phase === "bootstrap";
-    const shouldUseResourceBackedCommands = phase === "normal";
 
     const aimgrAvailable = overrides?.aimgrAvailable ?? this.detectAimgrInstalled();
     const packageYamlAvailable = overrides?.packageYamlAvailable ?? this.detectPackageYaml();
     const coderPackageInstalled = overrides?.coderPackageInstalled ?? (aimgrAvailable ? this.detectCoderPackageInstalled() : false);
     const resourcesHealthy = overrides?.resourcesHealthy ?? (aimgrAvailable ? this.detectResourcesHealthy(aimgrAvailable) : false);
 
-    const classification: RuntimePhaseClassification = {
-      phase,
-      missingRequiredSurfaces,
-      shouldExposeBootstrapInit,
-      shouldUseResourceBackedCommands,
-      requiredSurfaceAvailability,
+    return {
+      commandSurfaceAvailability,
+      skillSurfaceAvailability,
+      skillReferenceAvailability,
       optionalAgentAvailability,
+      requiredSurfaceAvailability: {
+        "resource/opencode-coder":
+          commandSurfaceAvailability["command/opencode-coder/init"] === true &&
+          skillSurfaceAvailability["skill/opencode-coder"] === true,
+      },
       diagnostics: {
         aimgrAvailable,
         packageYamlAvailable,
         coderPackageInstalled,
         resourcesHealthy,
-        opencodeCoderSkillMarkerAvailable,
+        opencodeCoderSkillMarkerAvailable: Object.values(skillSurfaceAvailability).every(Boolean),
       },
     };
-
-    this.logger.info("Runtime phase classification resolved", {
-      phase: classification.phase,
-      missingRequiredSurfaces: classification.missingRequiredSurfaces,
-      shouldExposeBootstrapInit: classification.shouldExposeBootstrapInit,
-      shouldUseResourceBackedCommands: classification.shouldUseResourceBackedCommands,
-      aimgrAvailable: classification.diagnostics.aimgrAvailable,
-      coderPackageInstalled: classification.diagnostics.coderPackageInstalled,
-      resourcesHealthy: classification.diagnostics.resourcesHealthy,
-    });
-
-    return classification;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Mode derivation
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Derive the overall project mode from beads/stealth detection results.
-   *
-   * - stealth: stealth marker found in .git/info/exclude
-   * - team: .beads/ exists but no stealth marker
-   * - uninitialized: neither condition is met
-   */
-  deriveMode(beadsInitialized: boolean, stealthMode: boolean): "stealth" | "team" | "uninitialized" {
-    if (stealthMode) return "stealth";
-    if (beadsInitialized) return "team";
-    return "uninitialized";
-  }
-
-  /**
-   * Derive whether the full ecosystem is installed and operational.
-   *
-   * True when all of:
-   * - git is initialized
-   * - beads is initialized
-   * - aimgr CLI is installed
-   * - ai.package.yaml exists
-   * - all declared resources are healthy (agents, commands, skills in sync)
-   */
-  deriveEcosystemReady(
-    gitInitialized: boolean,
-    beadsInitialized: boolean,
-    aimgrInstalled: boolean,
-    packageYaml: boolean,
-    resourcesHealthy: boolean,
-  ): boolean {
-    return gitInitialized && beadsInitialized && aimgrInstalled && packageYaml && resourcesHealthy;
-  }
-
-  /**
-   * Derive whether all prerequisites for running /init are in place.
-   *
-   * True when all of:
-   * - git is initialized
-   * - bd CLI is installed
-   * - aimgr CLI is installed
-   * - package/opencode-coder is listed in ai.package.yaml
-   */
-  deriveInstallReady(
-    gitInitialized: boolean,
-    bdCliInstalled: boolean,
-    aimgrInstalled: boolean,
-    coderPackageInstalled: boolean,
-  ): boolean {
-    return gitInitialized && bdCliInstalled && aimgrInstalled && coderPackageInstalled;
   }
 
   // ---------------------------------------------------------------------------
@@ -582,26 +478,10 @@ export class ProjectDetectorService {
     const coderPackageInstalled = aimgrInstalled ? this.detectCoderPackageInstalled() : false;
 
     // Derived
-    const mode = options?.startupMode ?? this.deriveMode(beadsInitialized, stealthMode);
-    const installReady = this.deriveInstallReady(
-      gitInitialized,
-      bdCliInstalled,
-      aimgrInstalled,
-      coderPackageInstalled,
-    );
-    const ecosystemReady = this.deriveEcosystemReady(
-      gitInitialized,
-      beadsInitialized,
-      aimgrInstalled,
-      packageYaml,
-      resourcesHealthy,
-    );
-    const runtimePhase = this.classifyRuntimePhase({
-      aimgrAvailable: aimgrInstalled,
-      packageYamlAvailable: packageYaml,
-      coderPackageInstalled,
-      resourcesHealthy,
-    });
+    const mode = options?.startupMode ?? (stealthMode ? "stealth" : beadsInitialized ? "team" : "uninitialized");
+    const installReady = gitInitialized && bdCliInstalled && aimgrInstalled && coderPackageInstalled;
+    const ecosystemReady = gitInitialized && beadsInitialized && aimgrInstalled && packageYaml && resourcesHealthy;
+    const runtimePhase = this.classifyRuntimePhase();
 
     const context: ProjectContext = {
       mode,
