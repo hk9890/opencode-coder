@@ -282,6 +282,16 @@ After creating the plan, show `bd ready` and `bd blocked` so the user can see wh
 
 ## Workflow Phases
 
+### Beads write concurrency guard
+
+The default embedded-dolt backend is single-writer per workspace. When issuing
+`bd` write operations (`bd create`, `bd update`, `bd close`) for the same
+`.beads/` directory, run them **sequentially**.
+
+Do **not** launch concurrent `bd` writes in one workspace; they can fail with
+exclusive-lock/busy errors. If parallelism is required, use separate isolated
+workspaces so each writer has its own `.beads/` store.
+
 ### Discovery
 1. Ask clarifying questions if scope is unclear
 2. Research codebase (launch explore agents in parallel for complex scope)

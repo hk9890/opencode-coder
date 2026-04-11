@@ -3,6 +3,19 @@ import { join } from "path";
 import { $ } from "bun";
 
 /**
+ * Embedded beads backend write-concurrency rule (opencode-coder-eupg):
+ *
+ * The default embedded-dolt store is single-writer per workspace. Running
+ * multiple `bd` write commands concurrently against the same `.beads/` directory
+ * can fail with lock/exclusive-access errors.
+ *
+ * Test guidance:
+ * - Keep `bd create` / `bd update` / `bd close` calls serialized within a workspace.
+ * - If parallel test workers need `bd` writes, each worker should use its own
+ *   isolated workspace instead of sharing one `.beads/` directory.
+ */
+
+/**
  * Creates a .beads/ directory marker in the given workdir.
  * Use this in unit tests that only need beads directory detection (no real bd).
  */
@@ -14,11 +27,7 @@ export function ensureBeadsMarker(workdir: string): void {
  * Runs `bd init` in the given workdir to create a fully functional beads workspace.
  * Requires `bd` CLI to be available on PATH.
  *
- * **Single-writer constraint (see opencode-coder-eupg):**
- * The embedded-dolt backend is single-writer. Concurrent `bd create` / `bd update`
- * calls against the same workspace will fail with exclusive-lock errors.
- * Tests that call `bd` write commands must serialize them — do NOT run parallel
- * bd writes against the same .beads/ directory.
+ * See file-level note for single-writer constraints on embedded-dolt workspaces.
  *
  * @returns true if bd init succeeded, false if bd is not available or init failed
  */

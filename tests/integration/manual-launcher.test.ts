@@ -54,6 +54,22 @@ async function runLauncher(
 const opencodeCheck = await checkOpencodeAvailability();
 const privateTestsEnabled = process.env.OPENCODE_CODER_PRIVATE_TESTS === "true";
 
+async function checkBdAvailability(): Promise<boolean> {
+  try {
+    const proc = Bun.spawn({
+      cmd: ["bd", "version"],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const code = await proc.exited;
+    return code === 0;
+  } catch {
+    return false;
+  }
+}
+
+const bdAvailable = await checkBdAvailability();
+
 async function getLauncherPreparedEnv(stdout: string): Promise<Record<string, string>> {
   const preservedMatch = stdout.match(/Environment preserved at: (.+)\n?/);
   const preservedRoot = preservedMatch?.[1]?.trim();
@@ -175,9 +191,67 @@ describe("manual launcher preflight", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("bun run test:manual -- --mode=command --fixture=empty-project -- env");
+    expect(result.stdout).toContain("beads-initialized");
     expect(result.stdout).toContain("Automated launcher guardrails cover environment preparation + startup viability only.");
     expect(result.stdout).toContain("Auth/model-backed prompts (for example: \"say hi\") are exploratory manual checks.");
     expect(result.stdout).not.toContain('opencode run --command "pwd"');
+  });
+
+  it("accepts beads-initialized as a fixture argument", () => {
+    const args = parseArgs(["--mode=command", "--fixture=beads-initialized", "--", "env"]);
+    expect(args.fixture).toBe("beads-initialized");
+  });
+
+  it.skipIf(!bdAvailable)(
+    "createFixtureWorkspace(beads-initialized) auto-initializes metadata and enforces 0700 permissions",
+    async () => {
+      const workspace = await createFixtureWorkspace("beads-initialized");
+
+      try {
+        const metadata = Bun.file(join(workspace.workdir, ".beads", "metadata.json"));
+        expect(await metadata.exists()).toBe(true);
+
+        const beadsDirStat = await stat(join(workspace.workdir, ".beads"));
+        expect(beadsDirStat.mode & 0o777).toBe(0o700);
+      } finally {
+        await rm(workspace.tempRoot, { recursive: true, force: true });
+      }
+    }
+  );
+
+  it.skipIf(!bdAvailable)("documents single-writer behavior via concurrent bd create lock failure", async () => {
+    const workspace = await createFixtureWorkspace("beads-initialized");
+
+    try {
+      const createA = Bun.spawn({
+        cmd: ["bd", "create", "--type=task", "--title", "single-writer-a", "--description", "concurrency guard"],
+        cwd: workspace.workdir,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const createB = Bun.spawn({
+        cmd: ["bd", "create", "--type=task", "--title", "single-writer-b", "--description", "concurrency guard"],
+        cwd: workspace.workdir,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      const results = await Promise.all([
+        Promise.all([createA.exited, new Response(createA.stdout).text(), new Response(createA.stderr).text()]),
+        Promise.all([createB.exited, new Response(createB.stdout).text(), new Response(createB.stderr).text()]),
+      ]);
+
+      const exitCodes = results.map(([exitCode]) => exitCode);
+      const bothSucceeded = exitCodes.every((exitCode) => exitCode === 0);
+      expect(bothSucceeded).toBe(false);
+
+      const combinedOutput = results
+        .map(([, stdout, stderr]) => `${stdout}\n${stderr}`.toLowerCase())
+        .join("\n");
+      expect(combinedOutput).toMatch(/lock|exclusive|busy|timeout/);
+    } finally {
+      await rm(workspace.tempRoot, { recursive: true, force: true });
+    }
   });
 
   it("rejects removed --probe-plugin-load option", async () => {
