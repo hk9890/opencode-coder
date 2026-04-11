@@ -92,6 +92,12 @@ export interface IsolatedOpenCodePaths {
   env: Record<string, string>;
 }
 
+export interface BinaryAvailabilityCheckResult {
+  available: boolean;
+  resolvedBinDir?: string;
+  diagnostics?: string;
+}
+
 export interface IsolatedAuthSeedInput {
   authJsonPath?: string;
   authJsonContent?: string;
@@ -559,13 +565,33 @@ export function startProgressHeartbeat(options: ProgressHeartbeatOptions): Progr
   };
 }
 
-/**
- * Checks whether the `opencode` binary is available in PATH.
- */
-export async function checkOpencodeAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
+export async function checkOpencodeAvailability(): Promise<BinaryAvailabilityCheckResult> {
   const opencodePath = await findExecutableOnPath("opencode");
   if (opencodePath) {
     return { available: true };
+  }
+
+  const homeDir = process.env.HOME?.trim() || homedir();
+  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "opencode", "latest", "opencode");
+  try {
+    await access(miseLatestCandidate, constants.X_OK);
+    console.error(`[harness] opencode not on PATH, auto-resolved from mise: ${miseLatestCandidate}`);
+    return {
+      available: true,
+      resolvedBinDir: dirname(miseLatestCandidate),
+    };
+  } catch {
+    // fall through to full mise scan
+  }
+
+  const miseInstalls = await findMiseInstalledExecutable("opencode");
+  if (miseInstalls.length > 0) {
+    const bestCandidate = miseInstalls[miseInstalls.length - 1];
+    console.error(`[harness] opencode not on PATH, auto-resolved from mise: ${bestCandidate}`);
+    return {
+      available: true,
+      resolvedBinDir: dirname(bestCandidate),
+    };
   }
 
   const diagnostics: string[] = [
@@ -578,13 +604,7 @@ export async function checkOpencodeAvailability(): Promise<{ available: boolean;
     "Diagnostic info:",
   ];
 
-  const miseInstalls = await findMiseInstalledExecutable("opencode");
-  if (miseInstalls.length > 0) {
-    diagnostics.push(`  Found mise install: ${miseInstalls.join(", ")}`);
-    diagnostics.push("  -> OpenCode exists on disk but is not currently on PATH");
-  } else {
-    diagnostics.push("  No opencode binary found in common mise install path");
-  }
+  diagnostics.push("  No opencode binary found in common mise install path");
 
   const pathEntries = process.env.PATH?.split(":").filter((entry) => entry.includes("opencode")) ?? [];
   if (pathEntries.length > 0) {
@@ -597,10 +617,33 @@ export async function checkOpencodeAvailability(): Promise<{ available: boolean;
 /**
  * Checks whether the `aimgr` binary is available in PATH.
  */
-export async function checkAimgrAvailability(): Promise<{ available: boolean; diagnostics?: string }> {
+export async function checkAimgrAvailability(): Promise<BinaryAvailabilityCheckResult> {
   const aimgrPath = await findExecutableOnPath("aimgr");
   if (aimgrPath) {
     return { available: true };
+  }
+
+  const homeDir = process.env.HOME?.trim() || homedir();
+  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "aimgr", "latest", "aimgr");
+  try {
+    await access(miseLatestCandidate, constants.X_OK);
+    console.error(`[harness] aimgr not on PATH, auto-resolved from mise: ${miseLatestCandidate}`);
+    return {
+      available: true,
+      resolvedBinDir: dirname(miseLatestCandidate),
+    };
+  } catch {
+    // fall through to full mise scan
+  }
+
+  const miseInstalls = await findMiseInstalledExecutable("aimgr");
+  if (miseInstalls.length > 0) {
+    const bestCandidate = miseInstalls[miseInstalls.length - 1];
+    console.error(`[harness] aimgr not on PATH, auto-resolved from mise: ${bestCandidate}`);
+    return {
+      available: true,
+      resolvedBinDir: dirname(bestCandidate),
+    };
   }
 
   return {

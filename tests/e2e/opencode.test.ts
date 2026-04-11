@@ -28,11 +28,21 @@ const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
 const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
 const opencodeCheck = await checkOpencodeAvailability();
+if (opencodeCheck.resolvedBinDir) {
+  process.env.PATH = [opencodeCheck.resolvedBinDir, process.env.PATH ?? ""]
+    .filter((entry) => entry && entry.length > 0)
+    .join(":");
+}
 if (!opencodeCheck.available && opencodeCheck.diagnostics) {
   console.warn("\n" + opencodeCheck.diagnostics + "\n");
 }
 
 const aimgrCheck = await checkAimgrAvailability();
+if (aimgrCheck.resolvedBinDir) {
+  process.env.PATH = [aimgrCheck.resolvedBinDir, process.env.PATH ?? ""]
+    .filter((entry) => entry && entry.length > 0)
+    .join(":");
+}
 if (!aimgrCheck.available && aimgrCheck.diagnostics) {
   console.warn("\n" + aimgrCheck.diagnostics + "\n");
 }

@@ -49,12 +49,13 @@ function copyDefinedEnvKey(
 function buildChildEnv(
   mode: LauncherMode,
   isolatedEnv: Record<string, string | undefined>,
+  extraPathDirs: string[] = [],
   sourceEnv: NodeJS.ProcessEnv = process.env
 ): Record<string, string | undefined> {
   // Child env is intentionally allowlist-only to preserve e2e isolation parity.
   // Do not spread process.env here.
   const childEnv: Record<string, string | undefined> = {
-    PATH: sourceEnv.PATH ?? "",
+    PATH: [...extraPathDirs, sourceEnv.PATH ?? ""].filter((entry) => entry && entry.length > 0).join(":"),
   };
 
   for (const key of BASE_ENV_KEYS) {
@@ -596,6 +597,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 1;
   }
 
+  const extraPathDirs = opencodeCheck.resolvedBinDir ? [opencodeCheck.resolvedBinDir] : [];
+
   await mkdir(MANUAL_RUNS_ROOT, { recursive: true });
   const runRoot = await mkdtemp(join(MANUAL_RUNS_ROOT, "run-"));
 
@@ -683,7 +686,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     }
     console.log("");
 
-    const childEnv = buildChildEnv(args.mode, isolatedPaths.env);
+    const childEnv = buildChildEnv(args.mode, isolatedPaths.env, extraPathDirs);
 
     if (args.mode === "tui") {
       const result = await runInteractive(["opencode"], workspace.workdir, childEnv);

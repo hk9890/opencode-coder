@@ -13,6 +13,11 @@ const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
 const aimgrCheck = await checkAimgrAvailability();
+if (aimgrCheck.resolvedBinDir) {
+  process.env.PATH = [aimgrCheck.resolvedBinDir, process.env.PATH ?? ""]
+    .filter((entry) => entry && entry.length > 0)
+    .join(":");
+}
 
 const ADDITIVE_ISOLATED_LOAD_CASES = ["coder-core", "coder-beads", "coder-docs", "code-simplify"] as const;
 

@@ -52,6 +52,11 @@ async function runLauncher(
 }
 
 const opencodeCheck = await checkOpencodeAvailability();
+if (opencodeCheck.resolvedBinDir) {
+  process.env.PATH = [opencodeCheck.resolvedBinDir, process.env.PATH ?? ""]
+    .filter((entry) => entry && entry.length > 0)
+    .join(":");
+}
 const privateTestsEnabled = process.env.OPENCODE_CODER_PRIVATE_TESTS === "true";
 
 async function checkBdAvailability(): Promise<boolean> {
