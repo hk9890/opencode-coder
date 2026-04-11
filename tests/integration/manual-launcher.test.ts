@@ -5,6 +5,7 @@ import { createServer } from "net";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
+  buildInteractiveShellCommand,
   ensureInteractiveShellStartupReady,
   parseArgs,
   shouldActivateWizard,
@@ -169,6 +170,17 @@ describe("manual launcher preflight", () => {
     }
   });
 
+  it("uses interactive flags for common shells", () => {
+    expect(buildInteractiveShellCommand("/bin/zsh")).toEqual(["/bin/zsh", "-i"]);
+    expect(buildInteractiveShellCommand("/bin/bash")).toEqual(["/bin/bash", "-i"]);
+    expect(buildInteractiveShellCommand("/bin/sh")).toEqual(["/bin/sh", "-i"]);
+    expect(buildInteractiveShellCommand("/usr/bin/fish")).toEqual(["/usr/bin/fish", "-i"]);
+  });
+
+  it("does not add shell flags for unknown shells", () => {
+    expect(buildInteractiveShellCommand("/usr/bin/custom-shell")).toEqual(["/usr/bin/custom-shell"]);
+  });
+
   it("activates wizard only when project source and mode are both implicit", () => {
     const implicit = parseArgs([]);
     expect(shouldActivateWizard(implicit)).toBe(true);
@@ -197,6 +209,9 @@ describe("manual launcher preflight", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("bun run test:manual -- --mode=command --fixture=empty-project -- env");
     expect(result.stdout).toContain("beads-initialized");
+    expect(result.stdout).toContain("empty-project — committed baseline: .gitkeep + .opencode/.gitkeep");
+    expect(result.stdout).toContain("--fixture selects a committed fixture baseline, then prepares a runtime workspace");
+    expect(result.stdout).toContain("Local-build TUI/command runs may add runtime state such as .git");
     expect(result.stdout).toContain("Automated launcher guardrails cover environment preparation + startup viability only.");
     expect(result.stdout).toContain("Auth/model-backed prompts (for example: \"say hi\") are exploratory manual checks.");
     expect(result.stdout).not.toContain('opencode run --command "pwd"');
@@ -329,6 +344,40 @@ describe("manual launcher preflight", () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("Project path error: Project path does not exist:");
+  });
+
+  it("keeps shell startup as fast launcher-only path without plugin bootstrap", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=shell", "--fixture=empty-project"], {
+        SHELL: "/bin/true",
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Mode: shell");
+      expect(result.stdout).toContain("Plugin bootstrap: skipped (shell mode does not launch OpenCode)");
+      expect(result.stdout).toContain("Plugin path used: <none>");
+      expect(result.stdout).toContain("Workspace plugin dependencies prepared: no");
+      expect(result.stdout).toContain("AI resources seeded: no");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      expect(preservedMatch).not.toBeNull();
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
+      const packageJson = Bun.file(join(preservedRoot!, "project", ".opencode", "package.json"));
+      const seededCommands = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder"));
+
+      expect(await pluginLink.exists()).toBe(false);
+      expect(await packageJson.exists()).toBe(false);
+      expect(await seededCommands.exists()).toBe(false);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
   });
 
   it("fails clearly when --fixture and --project-path are both set", async () => {
@@ -469,16 +518,8 @@ describe("manual launcher preflight", () => {
         pluginSource: "local-build",
       });
 
-      const dynatracePackageJsonPath = join(
-        workspace.workdir,
-        ".opencode",
-        "node_modules",
-        "@hk9890",
-        "opencode-dynatrace",
-        "package.json"
-      );
-      const packageJson = JSON.parse(await readFile(dynatracePackageJsonPath, "utf8")) as { version?: string };
-      expect(packageJson.version).toBe("0.6.0");
+      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
+      expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });
     }
@@ -496,17 +537,53 @@ describe("manual launcher preflight", () => {
         });
       });
 
-      const dynatracePackageJsonPath = join(
+      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
+      expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
+    } finally {
+      await rm(workspace.tempRoot, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("prepares workspace dependencies for installed-configured source", async () => {
+    const workspace = await createFixtureWorkspace("empty-project");
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-installed-prepare-"));
+
+    try {
+      await writeFile(
+        join(hostConfigRoot, "opencode.json"),
+        JSON.stringify(
+          {
+            plugin: ["@dynatrace-oss/opencode-coder@0.34.2"],
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      await prepareWorkspacePluginSource({
+        projectRoot: PROJECT_ROOT,
+        workdir: workspace.workdir,
+        pluginSource: "installed-configured",
+        hostEnv: { ...process.env, OPENCODE_CONFIG_DIR: hostConfigRoot },
+      });
+
+      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
+      const installedPluginPath = join(
         workspace.workdir,
         ".opencode",
         "node_modules",
-        "@hk9890",
-        "opencode-dynatrace",
-        "package.json"
+        "@dynatrace-oss",
+        "opencode-coder",
+        "dist",
+        "opencode-coder.js"
       );
-      expect(await Bun.file(dynatracePackageJsonPath).exists()).toBe(false);
+
+      expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(true);
+      expect(await Bun.file(installedPluginPath).exists()).toBe(true);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });
+      await rm(hostConfigRoot, { recursive: true, force: true });
     }
   }, 120000);
 });

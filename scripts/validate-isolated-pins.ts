@@ -109,10 +109,10 @@ export function validateIsolatedPinsConsistencyFromInputs(inputs: IsolatedPinVal
   }
 
   const packageWriterCalls = inputs.harnessSource.match(/await\s+installWorkspacePluginDependencies\(/g)?.length ?? 0;
-  if (packageWriterCalls < 2) {
+  if (packageWriterCalls < 1) {
     failures.push({
-      rule: "both harness package-writing paths source shared scaffold helper",
-      message: `Expected both package-writing paths to call installWorkspacePluginDependencies(...) (found ${packageWriterCalls.toString()} in ${HARNESS_SOURCE_PATH})`,
+      rule: "installed-configured package prep sources shared scaffold helper",
+      message: `Expected installed-configured package prep to call installWorkspacePluginDependencies(...) (found ${packageWriterCalls.toString()} in ${HARNESS_SOURCE_PATH})`,
     });
   }
 

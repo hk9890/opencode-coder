@@ -154,6 +154,83 @@ bun run test:manual -- --help
 - `--plugin-source=installed-configured` — compare against the installed configured plugin
 - `--auth <path>` — seed auth into isolated OpenCode data when model-backed behavior is needed
 
+### Manual launcher bootstrap contract (implementation baseline)
+
+This section is the explicit bootstrap contract for `scripts/manual-test/index.ts` + `tests/e2e/helpers/harness.ts`.
+
+Legend:
+
+- **R** = required by current launcher path
+- **O** = optional / best-effort
+- **S** = skipped by design
+
+Scenario keys used below:
+
+| Key | Scenario |
+|---|---|
+| L1 | `empty-project` + `command` + `local-build` |
+| L2 | `empty-project` + `shell` + `local-build` |
+| L3 | `coder-mode-configured` + `shell` + `local-build` |
+| L4 | `coder-skill-installed` + `shell` + `local-build` |
+| L5 | `beads-initialized` + `shell` + `local-build` |
+| L6 | `--project-path <empty-like project>` + `shell` + `local-build` |
+| I1 | `empty-project` + `shell` + `installed-configured` |
+| I2 | `--project-path <empty-like project>` + `shell` + `installed-configured` |
+
+Decision table (current behavior):
+
+| Bootstrap step | L1 | L2 | L3 | L4 | L5 | L6 | I1 | I2 |
+|---|---|---|---|---|---|---|---|---|
+| Fixture copy | R | R | R | R | R | S | R | S |
+| Direct `--project-path` execution | S | S | S | S | S | R | S | R |
+| `git init` + local git user config | R | R | R | R | R | S | R | S |
+| Local plugin artifact build/reuse (`dist/opencode-coder.js`) | R | S | S | S | S | S | S | S |
+| `ensurePluginBuilt()` freshness check/build | R | S | S | S | S | S | S | S |
+| `.opencode` dependency setup (`package.json`, install context) | S | S | S | S | S | S | S | S |
+| `installWorkspacePluginDependencies()` | S | S | S | S | S | S | S | S |
+| AI resource seeding (`seedAiResources`) | R | S | S | S | S | S | S | S |
+| Isolated HOME/XDG/OpenCode config creation | R | R | R | R | R | R | R | R |
+| Auth seeding (`--auth` or default local auth path) | O | O | O | O | O | O | O | O |
+| `bd init` bootstrap | S | S | S | S | O | S | S | S |
+
+Notes on contract guarantees:
+
+- `bd init` is only attempted when the copied fixture contains `.beads/` (currently `beads-initialized`); this is best-effort and non-fatal.
+- `installed-configured` always skips `ensurePluginBuilt()` and local `dist/` artifact wiring.
+- Shell mode is a fast launcher-only path: it skips plugin artifact wiring, workspace dependency installs, and AI resource seeding.
+- `installed-configured` currently depends on resolving exactly one configured `@dynatrace-oss/opencode-coder@...` plugin spec from host config.
+- The launcher output should be interpreted as bootstrap facts for the chosen path (not semantic command guarantees).
+
+### Timing baseline (2026-04-11, local workstation)
+
+Method:
+
+- Command mode baseline: `bun run test:manual -- --mode=command --fixture=empty-project -- true`
+- Shell baselines: `SHELL=/bin/true bun run test:manual -- --mode=shell ...` (forces immediate shell exit so launcher bootstrap time dominates)
+- Single-run warm-cache measurements (implementation baseline, not perf gate)
+
+| Scenario key | Elapsed seconds | Result |
+|---|---:|---|
+| L1 | 0.88s | success |
+| L2 | 0.87s | success |
+| L3 | 0.89s | success |
+| L4 | 0.94s | success |
+| L5 | 1.15s | success |
+| L6 | 0.87s | success |
+| I1 | 0.39s | failed early in installed plugin dependency prepare |
+| I2 | 0.30s | failed early in installed plugin dependency prepare |
+
+Dominant costs (implementation baseline before optimization):
+
+1. **`installWorkspacePluginDependencies()`**
+   - Runs `bun install` for `.opencode/` every launcher invocation.
+   - In `installed-configured`, additionally runs `bun add --exact <configured package spec>` each invocation.
+2. **`ensurePluginBuilt()` freshness scan**
+   - Recursively stats `src/` and `ai-resources/` before deciding whether to rebuild.
+   - Expensive metadata walk relative to the actual build when artifact is already fresh.
+
+`opencode-coder-oj23` removes the recursive freshness scan and narrows dependency/resource bootstrap to OpenCode-launching paths.
+
 ### Recommended workflow
 
 1. Start with deterministic checks if relevant.
@@ -293,12 +370,14 @@ Why this matters:
 
 #### `local-build` runs (recommended for development)
 
-The manual launcher's `seedAiResources()` automatically copies agents, commands, and skills from `ai-resources/` into the workspace `.opencode/`. This makes `/simplify` available immediately — no manual `aimgr` steps needed.
+`seedAiResources()` runs only on OpenCode-launching paths (`--mode=tui` or `--mode=command`). Shell mode is launcher-only and does **not** seed resources.
 
 ```bash
-bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
-# /simplify is available after OpenCode starts — no manual resource installation needed
+bun run test:manual -- --mode=tui --fixture=coder-skill-installed --plugin-source=local-build
+# OpenCode launches with resources seeded from ai-resources/ into workspace .opencode/
 ```
+
+If you still need shell mode with `local-build`, install resources manually inside the isolated shell (same approach as `installed-configured`).
 
 #### `installed-configured` runs
 

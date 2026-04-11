@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { constants, existsSync } from "fs";
-import { access, chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "fs/promises";
+import { access, chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
 import { dirname, join } from "path";
@@ -68,6 +68,7 @@ export interface ResolvedInstalledConfiguredPlugin {
 
 export interface PreparedPluginSource {
   pluginSource: PluginSource;
+  workspaceDependenciesPrepared: boolean;
   localPluginSymlink?: string;
   resolvedInstalledPackageSpec?: string;
   resolvedHostConfigPath?: string;
@@ -117,6 +118,7 @@ export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
 let isolatedTestManifestCache: IsolatedTestManifest | null = null;
+const builtProjectRoots = new Set<string>();
 
 async function findExecutableOnPath(
   executableName: string,
@@ -392,21 +394,18 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
     ) + "\n"
   );
 
+  const normalizedPluginSpecs = pluginSpecsToPrepare.map((spec) => spec.trim()).filter((spec) => spec.length > 0);
+  if (normalizedPluginSpecs.length > 0) {
+    const addResult = await $`bun add --exact ${normalizedPluginSpecs}`.cwd(opencodeDir).quiet();
+    if (addResult.exitCode !== 0) {
+      throw new Error(`Failed to prepare configured plugin package(s):\n${addResult.stderr.toString()}`);
+    }
+    return;
+  }
+
   const installBaseResult = await $`bun install`.cwd(opencodeDir).quiet();
   if (installBaseResult.exitCode !== 0) {
     throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
-  }
-
-  for (const spec of pluginSpecsToPrepare) {
-    const normalizedSpec = spec.trim();
-    if (!normalizedSpec) {
-      continue;
-    }
-
-    const addResult = await $`bun add --exact ${normalizedSpec}`.cwd(opencodeDir).quiet();
-    if (addResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare configured plugin package (${normalizedSpec}):\n${addResult.stderr.toString()}`);
-    }
   }
 }
 
@@ -676,77 +675,27 @@ export async function findAvailablePort(): Promise<number> {
  */
 export async function ensurePluginBuilt(projectRoot: string): Promise<string> {
   const pluginPath = join(projectRoot, "dist", "opencode-coder.js");
-  const sourceRoots = [join(projectRoot, "src"), join(projectRoot, "ai-resources")];
+  const alreadyBuilt = builtProjectRoots.has(projectRoot);
 
-  const newestSourceMtimeMs = await getNewestMtimeMsForPaths([
-    ...sourceRoots,
-    join(projectRoot, "package.json"),
-  ]);
-
-  let pluginMtimeMs = Number.NEGATIVE_INFINITY;
-
-  try {
-    pluginMtimeMs = (await stat(pluginPath)).mtimeMs;
-  } catch {
-    // Build below when artifact is missing.
-  }
-
-  if (pluginMtimeMs < newestSourceMtimeMs) {
+  if (!alreadyBuilt) {
     const result = await $`bun run build`.cwd(projectRoot).quiet();
     if (result.exitCode !== 0) {
       throw new Error(`Failed to build plugin:\n${result.stderr.toString()}`);
+    }
+    builtProjectRoots.add(projectRoot);
+  } else {
+    try {
+      await access(pluginPath);
+    } catch {
+      const result = await $`bun run build`.cwd(projectRoot).quiet();
+      if (result.exitCode !== 0) {
+        throw new Error(`Failed to build plugin:\n${result.stderr.toString()}`);
+      }
     }
   }
 
   await access(pluginPath);
   return pluginPath;
-}
-
-async function getNewestMtimeMsForPaths(paths: string[]): Promise<number> {
-  let newestMtimeMs = Number.NEGATIVE_INFINITY;
-
-  for (const targetPath of paths) {
-    let targetStat;
-    try {
-      targetStat = await stat(targetPath);
-    } catch {
-      continue;
-    }
-
-    if (targetStat.isDirectory()) {
-      const newestInDir = await getNewestMtimeMsForDirectory(targetPath);
-      newestMtimeMs = Math.max(newestMtimeMs, newestInDir);
-      continue;
-    }
-
-    newestMtimeMs = Math.max(newestMtimeMs, targetStat.mtimeMs);
-  }
-
-  return newestMtimeMs;
-}
-
-async function getNewestMtimeMsForDirectory(directory: string): Promise<number> {
-  let newestMtimeMs = Number.NEGATIVE_INFINITY;
-  const entries = await readdir(directory, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      const newestInChild = await getNewestMtimeMsForDirectory(fullPath);
-      newestMtimeMs = Math.max(newestMtimeMs, newestInChild);
-      continue;
-    }
-
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    const fileStat = await stat(fullPath);
-    newestMtimeMs = Math.max(newestMtimeMs, fileStat.mtimeMs);
-  }
-
-  return newestMtimeMs;
 }
 
 /**
@@ -841,10 +790,8 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   const opencodeDir = join(workdir, ".opencode");
   const pluginDir = join(opencodeDir, "plugins");
   const pluginSymlink = join(pluginDir, "opencode-coder.js");
-  const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
 
   await mkdir(pluginDir, { recursive: true });
-  await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
 
   await rm(pluginSymlink, { force: true });
   await symlink(pluginPath, pluginSymlink);
@@ -893,6 +840,7 @@ export async function prepareWorkspacePluginSource(options: {
     const localPluginSymlink = await wireBuiltPluginArtifact(options.projectRoot, options.workdir);
     return {
       pluginSource,
+      workspaceDependenciesPrepared: false,
       localPluginSymlink,
     };
   }
@@ -912,6 +860,7 @@ export async function prepareWorkspacePluginSource(options: {
 
   return {
     pluginSource,
+    workspaceDependenciesPrepared: true,
     localPluginSymlink: wiredInstalledArtifact.pluginSymlink,
     resolvedInstalledPackageSpec: resolved.packageSpec,
     resolvedHostConfigPath: resolved.hostConfigPath,

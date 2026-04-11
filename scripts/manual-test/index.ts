@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { spawn } from "child_process";
 import { input, select } from "@inquirer/prompts";
 import { mkdir, mkdtemp, stat, writeFile } from "fs/promises";
 import { basename, join } from "path";
@@ -8,6 +9,7 @@ import {
   type FixtureName,
   checkOpencodeAvailability,
   createFixtureWorkspace,
+  createIsolatedOpenCodePaths,
   createIsolatedOpenCodePathsWithPluginSource,
   createProjectPathWorkspace,
   isFixtureName,
@@ -137,6 +139,29 @@ interface WizardSelection {
   mode: Exclude<LauncherMode, "command">;
 }
 
+const FIXTURE_DESCRIPTIONS: Record<FixtureName, { label: string; help: string }> = {
+  "empty-project": {
+    label: "empty-project — no committed .coder state; runtime may add .git/.opencode bootstrap",
+    help: "empty-project — committed baseline: .gitkeep + .opencode/.gitkeep; local-build TUI/command runs also prepare .git + seeded .opencode runtime state",
+  },
+  "coder-mode-configured": {
+    label: "coder-mode-configured — committed .coder/opencode-coder.yaml baseline",
+    help: "coder-mode-configured — committed baseline: empty-project + .coder/opencode-coder.yaml; local-build TUI/command runs may also prepare .git + seeded .opencode runtime state",
+  },
+  "coder-skill-installed": {
+    label: "coder-skill-installed — committed coder mode + project/ai.package baseline",
+    help: "coder-skill-installed — committed baseline: coder-mode-configured + .coder/project.yaml + ai.package.yaml; local-build TUI/command runs may also prepare .git + seeded .opencode runtime state",
+  },
+  "beads-initialized": {
+    label: "beads-initialized — committed beads marker baseline; runtime may auto-init .beads",
+    help: "beads-initialized — committed baseline: coder-skill-installed + .beads/.gitkeep; copied workspaces may also get .git and runtime .beads init when that launcher path executes it",
+  },
+};
+
+function formatFixtureHelpLines(): string {
+  return FIXTURE_NAMES.map((fixtureName) => `  ${FIXTURE_DESCRIPTIONS[fixtureName].help}`).join("\n");
+}
+
 function printHelp(): void {
   console.log(`Manual isolated plugin test launcher
 
@@ -166,12 +191,13 @@ Options:
   -h, --help        Show this help
 
 Available fixtures:
-  ${FIXTURE_NAMES.join("\n  ")}
+${formatFixtureHelpLines()}
 
 Notes:
-  --fixture uses a copied disposable workspace.
+  --fixture selects a committed fixture baseline, then prepares a runtime workspace for the chosen mode/plugin source.
   --project-path runs directly in the provided project and may mutate it.
   Use a clean branch, worktree, or disposable project when testing in place.
+  Local-build TUI/command runs may add runtime state such as .git, seeded .opencode resources, plugin wiring, and for beads fixtures a best-effort .beads init.
   Automated launcher guardrails cover environment preparation + startup viability only.
   Auth/model-backed prompts (for example: "say hi") are exploratory manual checks.
   "env" remains useful for launcher-environment debugging only.
@@ -378,7 +404,7 @@ async function runWizard(): Promise<WizardSelection> {
     fixture = await select<FixtureName>({
       message: "Fixture",
       choices: FIXTURE_NAMES.map((fixtureName) => ({
-        name: fixtureName,
+        name: FIXTURE_DESCRIPTIONS[fixtureName].label,
         value: fixtureName,
       })),
       default: DEFAULT_FIXTURE,
@@ -441,41 +467,106 @@ function exitReason(exitCode: number, signalCode: NodeJS.Signals | null): string
   return `exit code ${exitCode}`;
 }
 
+function signalToExitCode(signalCode: NodeJS.Signals | null): number {
+  switch (signalCode) {
+    case "SIGINT":
+      return 130;
+    case "SIGTERM":
+      return 143;
+    default:
+      return 1;
+  }
+}
+
+function sanitizeSpawnEnv(env: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
+}
+
+function requiresOpenCodeBootstrap(mode: LauncherMode): boolean {
+  return mode !== "shell";
+}
+
+function requiresOpencodeBinary(mode: LauncherMode): boolean {
+  return mode === "tui";
+}
+
+export function buildInteractiveShellCommand(shellPath: string): string[] {
+  const normalizedShell = shellPath.trim() || "/bin/sh";
+  const shellName = basename(normalizedShell).toLowerCase();
+
+  switch (shellName) {
+    case "sh":
+    case "bash":
+    case "zsh":
+    case "fish":
+      return [normalizedShell, "-i"];
+    default:
+      return [normalizedShell];
+  }
+}
+
 async function runInteractive(
   cmd: string[],
   cwd: string,
   env: Record<string, string | undefined>
 ): Promise<{ exitCode: number; signalCode: NodeJS.Signals | null }> {
-  const child = Bun.spawn({
-    cmd,
-    cwd,
-    env,
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  return await new Promise((resolve, reject) => {
+    const [command, ...args] = cmd;
+    const child = spawn(command, args, {
+      cwd,
+      env: sanitizeSpawnEnv(env),
+      stdio: "inherit",
+    });
 
-  const forwardSignal = (signal: NodeJS.Signals) => {
-    try {
-      child.kill(signal);
-    } catch {
-      // Child may already be exiting.
-    }
-  };
+    let settled = false;
 
-  process.on("SIGINT", forwardSignal);
-  process.on("SIGTERM", forwardSignal);
-
-  try {
-    const exitCode = await child.exited;
-    return {
-      exitCode,
-      signalCode: child.signalCode,
+    const cleanup = () => {
+      process.off("SIGINT", forwardSignal);
+      process.off("SIGTERM", forwardSignal);
+      child.off("error", onError);
+      child.off("exit", onExit);
     };
-  } finally {
-    process.off("SIGINT", forwardSignal);
-    process.off("SIGTERM", forwardSignal);
-  }
+
+    const settle = (fn: () => void) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      fn();
+    };
+
+    const forwardSignal = (signal: NodeJS.Signals) => {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        return;
+      }
+      try {
+        child.kill(signal);
+      } catch {
+        // Child may already be exiting.
+      }
+    };
+
+    const onError = (error: Error) => {
+      settle(() => reject(error));
+    };
+
+    const onExit = (exitCode: number | null, signalCode: NodeJS.Signals | null) => {
+      settle(() =>
+        resolve({
+          exitCode: exitCode ?? signalToExitCode(signalCode),
+          signalCode,
+        })
+      );
+    };
+
+    process.on("SIGINT", forwardSignal);
+    process.on("SIGTERM", forwardSignal);
+    child.on("error", onError);
+    child.on("exit", onExit);
+  });
 }
 
 async function runCaptured(
@@ -591,13 +682,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     return 1;
   }
 
-  const opencodeCheck = await checkOpencodeAvailability();
-  if (!opencodeCheck.available) {
-    console.error(opencodeCheck.diagnostics ?? "opencode binary not found in PATH.");
-    return 1;
-  }
+  let extraPathDirs: string[] = [];
+  if (requiresOpencodeBinary(args.mode)) {
+    const opencodeCheck = await checkOpencodeAvailability();
+    if (!opencodeCheck.available) {
+      console.error(opencodeCheck.diagnostics ?? "opencode binary not found in PATH.");
+      return 1;
+    }
 
-  const extraPathDirs = opencodeCheck.resolvedBinDir ? [opencodeCheck.resolvedBinDir] : [];
+    extraPathDirs = opencodeCheck.resolvedBinDir ? [opencodeCheck.resolvedBinDir] : [];
+  }
 
   await mkdir(MANUAL_RUNS_ROOT, { recursive: true });
   const runRoot = await mkdtemp(join(MANUAL_RUNS_ROOT, "run-"));
@@ -608,29 +702,44 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   let pluginPathUsed = "<none>";
   let resolvedInstalledPackage = "<none>";
   let resolvedHostConfig = "<none>";
+  let expectedPluginVersion = "<none>";
+  let workspaceDependenciesPrepared = false;
+  let aiResourcesSeeded = false;
+  let pluginBootstrapSummary = "skipped (shell mode does not launch OpenCode)";
   let exitCode = 1;
   let seededAuthPath: string | null = null;
   let authSourceCategory: string = "none";
 
   try {
-    const preparedPluginSource = await prepareWorkspacePluginSource({
-      projectRoot: PROJECT_ROOT,
-      workdir: workspace.workdir,
-      pluginSource: args.pluginSource,
-    });
+    const openCodeBootstrapRequired = requiresOpenCodeBootstrap(args.mode);
+    let selectedPluginSource = args.pluginSource;
 
-    // Seed ai-resources into workspace for normal-mode classification
-    if (preparedPluginSource.pluginSource === "local-build") {
-      await seedAiResources(PROJECT_ROOT, workspace.workdir);
+    if (openCodeBootstrapRequired) {
+      const preparedPluginSource = await prepareWorkspacePluginSource({
+        projectRoot: PROJECT_ROOT,
+        workdir: workspace.workdir,
+        pluginSource: args.pluginSource,
+      });
+
+      selectedPluginSource = preparedPluginSource.pluginSource;
+      pluginPathUsed = preparedPluginSource.localPluginSymlink ?? "<none>";
+      resolvedInstalledPackage = preparedPluginSource.resolvedInstalledPackageSpec ?? "<none>";
+      resolvedHostConfig = preparedPluginSource.resolvedHostConfigPath ?? "<none>";
+      expectedPluginVersion = preparedPluginSource.expectedLoadedPluginVersion ?? "<none>";
+      workspaceDependenciesPrepared = preparedPluginSource.workspaceDependenciesPrepared;
+      pluginBootstrapSummary = `prepared (${selectedPluginSource})`;
+
+      if (preparedPluginSource.pluginSource === "local-build") {
+        await seedAiResources(PROJECT_ROOT, workspace.workdir);
+        aiResourcesSeeded = true;
+      }
     }
 
-    const isolatedPaths = await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
-      pluginSource: preparedPluginSource.pluginSource,
-    });
-
-    pluginPathUsed = preparedPluginSource.localPluginSymlink ?? "<none>";
-    resolvedInstalledPackage = preparedPluginSource.resolvedInstalledPackageSpec ?? "<none>";
-    resolvedHostConfig = preparedPluginSource.resolvedHostConfigPath ?? "<none>";
+    const isolatedPaths = openCodeBootstrapRequired
+      ? await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
+          pluginSource: selectedPluginSource,
+        })
+      : await createIsolatedOpenCodePaths(workspace.tempRoot);
 
     if (authSeedPath) {
       seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, {
@@ -654,9 +763,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     printSection("Project source", workspace.projectSourceDir);
     printSection("Temp root", workspace.tempRoot);
     printSection("Workdir", workspace.workdir);
+    printSection("Plugin bootstrap", pluginBootstrapSummary);
     printSection("Plugin path used", pluginPathUsed);
     printSection("Resolved installed package", resolvedInstalledPackage);
     printSection("Resolved host config", resolvedHostConfig);
+    printSection("Expected loaded plugin version", expectedPluginVersion);
+    printSection("Workspace plugin dependencies prepared", workspaceDependenciesPrepared ? "yes" : "no");
+    printSection("AI resources seeded", aiResourcesSeeded ? "yes" : "no");
     printSection("Isolated HOME", isolatedPaths.homeDir);
     printSection("Isolated XDG_CONFIG_HOME", isolatedPaths.xdgConfigHome);
     printSection("Isolated XDG_DATA_HOME", isolatedPaths.xdgDataHome);
@@ -695,7 +808,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     } else if (args.mode === "shell") {
       const shell = process.env.SHELL?.trim() || "/bin/sh";
       await ensureInteractiveShellStartupReady(shell, childEnv);
-      const result = await runInteractive([shell], workspace.workdir, childEnv);
+      const result = await runInteractive(buildInteractiveShellCommand(shell), workspace.workdir, childEnv);
       exitCode = result.exitCode;
       console.log(`\nShell session finished (${exitReason(result.exitCode, result.signalCode)}).`);
     } else {

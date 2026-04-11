@@ -36,7 +36,7 @@ describe("validate-isolated-pins", () => {
         "@opencode-ai/plugin": "^1.3.17",
       },
       harnessSource:
-        "await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0']); await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0', '@dynatrace-oss/opencode-coder@0.34.2']);",
+        "await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0', '@dynatrace-oss/opencode-coder@0.34.2']);",
     });
 
     expect(result.ok).toBe(true);
@@ -52,7 +52,7 @@ describe("validate-isolated-pins", () => {
       harnessScaffoldDependencies: {
         "@opencode-ai/plugin": "^1.2.17",
       },
-      harnessSource: "await installWorkspacePluginDependencies(workdir, ['@hk9890/opencode-dynatrace@0.6.0']);",
+      harnessSource: "await someOtherHelper(workdir);",
     });
 
     expect(result.ok).toBe(false);
@@ -67,6 +67,6 @@ describe("validate-isolated-pins", () => {
       )
     ).toBe(true);
     expect(result.failures.some((failure) => failure.rule.includes("manifest @opencode-ai/plugin pin"))).toBe(true);
-    expect(result.failures.some((failure) => failure.rule.includes("both harness package-writing paths"))).toBe(true);
+    expect(result.failures.some((failure) => failure.rule.includes("installed-configured package prep"))).toBe(true);
   });
 });

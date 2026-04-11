@@ -6,6 +6,19 @@ Test helpers copy a fixture into a temp workspace before execution so tests can 
 
 The manual launcher also supports `--project-path <dir>` for reproducing behavior from a real local project. That mode now runs **directly in the provided project path** while keeping HOME/XDG/OpenCode state isolated under the launcher run directory. Use a clean branch, worktree, or disposable project when testing this way.
 
+## Manual launcher guaranteed bootstrap state (by path)
+
+This fixture doc intentionally states only what the launcher currently guarantees.
+
+- OpenCode-launching `local-build` paths (TUI and command) prepare a workspace `.opencode/plugins/opencode-coder.js` symlink to the local built artifact.
+- OpenCode-launching `local-build` paths (TUI and command) run `seedAiResources()` (agents/commands/selected skills copied into workspace `.opencode/`).
+- Shell mode is launcher-only and skips plugin wiring plus AI resource seeding.
+- `installed-configured` paths do **not** seed AI resources automatically.
+- `--project-path` paths run in place and skip fixture copy plus fixture-only git bootstrap.
+- `bd init` is only attempted for copied fixtures that contain `.beads/` (currently `beads-initialized`), and failure is non-fatal.
+
+For the full required/optional/skip scenario matrix and timing baseline, see [`docs/TESTING.md#manual-launcher-bootstrap-contract-implementation-baseline`](../../../docs/TESTING.md#manual-launcher-bootstrap-contract-implementation-baseline).
+
 ## Fixture directories
 
 - `empty-project/` — Stage 0 baseline with no committed `.coder/` state
@@ -41,12 +54,14 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 `coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
 
-**`local-build` runs** (default for development): The manual launcher calls `seedAiResources()` which copies agents, commands, and skills from `ai-resources/` into the workspace `.opencode/`. This makes `/simplify` available automatically — no manual `aimgr` steps needed.
+**`local-build` runs** (default for development): `seedAiResources()` is only called on OpenCode-launching paths (`--mode=tui` or `--mode=command`). Shell mode is launcher-only and does not seed resources.
 
 ```bash
-bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
-# /simplify is available immediately after OpenCode starts
+bun run test:manual -- --mode=tui --fixture=coder-skill-installed --plugin-source=local-build
+# OpenCode launches with resources seeded into workspace .opencode/
 ```
+
+If you need shell-mode validation with `local-build`, install resources manually in the isolated shell before launching OpenCode.
 
 **`installed-configured` runs**: Resources are not seeded automatically. Use `aimgr` to install them in the isolated shell:
 
@@ -75,7 +90,9 @@ For broader testing guidance and test-level expectations, see [`docs/TESTING.md#
 
 ### Resource seeding
 
-The manual launcher seeds `ai-resources/` (agents, commands, skills) into the workspace `.opencode/` directory when using `local-build` plugin source. This ensures `classifyRuntimePhase()` returns `normal` and all agents (orchestrator, tasker, reviewer, verifier) are available.
+The manual launcher seeds `ai-resources/` (agents, commands, skills) into the workspace `.opencode/` directory only on OpenCode-launching `local-build` paths (`--mode=tui` and `--mode=command`). Shell mode does not seed resources.
+
+No stronger runtime-semantic guarantee is implied here beyond those files being copied.
 
 ### Single-writer constraint
 
