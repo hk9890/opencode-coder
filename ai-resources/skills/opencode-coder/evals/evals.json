@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 0,
-      "prompt": "I need to build a search endpoint for my webshop. I have a markdown file at docs/search-spec.md that summarizes the details: it needs full-text search over products, faceted filtering by category and price range, and pagination. Please create an epic and tasks for this work, and if anything still needs discussion before a developer can start, handle that properly.",
+      "prompt": "I need to build a search endpoint for my webshop. I have a markdown file at docs/search-spec.md that summarizes the details: it needs full-text search over products, faceted filtering by category and price range, and pagination. Please create an epic and tasks for this work, and if anything still needs discussion before a developer can start, handle that properly. Create: one epic, child implementation tasks, one acceptance review task, and mark any open design questions as blocked discussion tasks. After creating all issues, summarize the plan and stop. Do not run bd ready, bd blocked, or begin execution.",
       "expected_output": "A beads plan with epic, child tasks, acceptance review task, numeric priorities, and proper handling of ambiguous items via needs:discussion.",
       "files": [
         "evals/files/docs/search-spec.md"
@@ -27,7 +27,7 @@
         "Uses numeric priorities like 0-4 or P0-P4 instead of high or medium or low",
         "Marks unclear or under-specified work with needs:discussion label plus blocked status",
         "Uses the bd create --body-file - pattern for structured issue bodies",
-        "Mentions showing bd ready and bd blocked before execution begins"
+        "Summarizes the created plan structure"
       ]
     },
     {

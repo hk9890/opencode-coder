@@ -32,6 +32,11 @@ if [ ! -d .beads ]; then
   bd init --skip-hooks --skip-agents --quiet
 fi
 
+mkdir -p docs
+if [ -f "evals/files/docs/search-spec.md" ]; then
+  cp "evals/files/docs/search-spec.md" "docs/search-spec.md"
+fi
+
 touch README.md
 git add README.md
 git commit -m "seed eval workspace" >/dev/null 2>&1 || true
