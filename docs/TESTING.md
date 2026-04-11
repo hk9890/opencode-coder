@@ -329,9 +329,45 @@ Notes:
 - Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling the full combined package.
 - If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in `installed-configured` mode.
 
-### Scope note
+## Beads Testing
 
-Beads-stage fixture strategy and beads-system tests are tracked in a separate epic and are out of scope for these manual fixture scenarios.
+Beads coverage uses a two-tier fixture model so tests stay reproducible without committing environment-specific runtime state. For fixture details, see [`tests/e2e/fixtures/README.md`](../tests/e2e/fixtures/README.md).
+
+### Test patterns
+
+| Pattern | Purpose | Typical level |
+|---|---|---|
+| Marker-only detection tests | Verify `.beads/` presence/phase detection behavior | Unit |
+| Runtime `bd init` tests | Verify workspace bootstrap and initialization boundaries | Integration |
+| Fixture workspace tests | Verify copied fixture + launcher/runtime behavior end-to-end | Integration / E2E |
+
+### Fixture strategy
+
+- Committed fixture state stays minimal: `.beads/.gitkeep` marker only.
+- Test harness/runtime paths create functional beads state in copied workspaces using `bd init --skip-hooks --skip-agents --quiet`.
+- This split keeps fixtures stable in git while still exercising real beads runtime behavior.
+
+### Single-writer constraint
+
+- Beads (embedded dolt backend) is single-writer per workspace.
+- Parallel `bd` writes against the same `.beads/` directory can fail with exclusive-lock errors.
+- Serialize write operations in tests/evals; see `opencode-coder-eupg` documentation references for the underlying constraint.
+
+### Relevant test files
+
+- `tests/unit/beads-service.test.ts`
+- `tests/integration/beads-init-markdown-boundary.test.ts`
+- `tests/integration/manual-launcher.test.ts` (beads fixture/init coverage)
+- `tests/helpers/beads-fixture.ts`
+
+### bd upgrade checklist
+
+When `bd` version changes, validate all of the following:
+
+1. Beads-related unit/integration/e2e coverage still passes.
+2. Runtime bootstrap still works with `bd init --skip-hooks --skip-agents --quiet`.
+3. `.beads/` runtime internal structure changes do not break the marker-only committed fixture contract (`.beads/.gitkeep` only).
+4. Single-writer assumptions remain documented and respected in test/eval paths.
 
 ## Testing Skills, Commands, and Agents
 

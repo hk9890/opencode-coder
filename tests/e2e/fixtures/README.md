@@ -65,6 +65,14 @@ bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-sou
 
 2. **Runtime generation**: The harness auto-detects `.beads/` in copied fixture workspaces and runs `bd init --skip-hooks --skip-agents --quiet` to create a functional beads workspace. This keeps committed state minimal while providing real beads for manual and integration testing.
 
+For broader testing guidance and test-level expectations, see [`docs/TESTING.md#beads-testing`](../../../docs/TESTING.md#beads-testing).
+
+### Committed fixture boundary (do not expand)
+
+- Keep committed beads fixture content at **`.beads/.gitkeep` only**.
+- Do **not** commit runtime beads state (dolt database files, daemon/lock artifacts, runtime metadata).
+- Why: runtime beads state is environment-specific and intentionally gitignored; committing it makes fixtures non-portable and can cause lock/runtime corruption across machines.
+
 ### Resource seeding
 
 The manual launcher seeds `ai-resources/` (agents, commands, skills) into the workspace `.opencode/` directory when using `local-build` plugin source. This ensures `classifyRuntimePhase()` returns `normal` and all agents (orchestrator, tasker, reviewer, verifier) are available.
@@ -72,6 +80,15 @@ The manual launcher seeds `ai-resources/` (agents, commands, skills) into the wo
 ### Single-writer constraint
 
 The embedded-dolt beads backend is single-writer. Concurrent `bd create` / `bd update` calls against the same `.beads/` workspace will fail with exclusive-lock errors. Tests and evals that issue `bd` write commands must serialize them. See `opencode-coder-eupg` for details.
+
+### Maintenance notes for bd upgrades
+
+When bumping `bd` versions, verify beads fixture assumptions still hold:
+
+1. Re-run beads-related test coverage (unit/integration/manual-launcher paths).
+2. Confirm runtime workspace bootstrap still succeeds with:
+   - `bd init --skip-hooks --skip-agents --quiet`
+3. Check that `.beads/` internal runtime structure changes (if any) remain compatible with marker-only committed fixtures and runtime generation in copied workspaces.
 
 ## Shared support fixtures
 
