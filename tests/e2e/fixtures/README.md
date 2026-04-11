@@ -21,6 +21,7 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 | Stage 0 | `empty-project` | `.gitkeep`, `.opencode/.gitkeep` |
 | Stage 1 | `coder-mode-configured` | Stage 0 + `.coder/opencode-coder.yaml` |
 | Stage 2 | `coder-skill-installed` | Stage 1 + `.coder/project.yaml`, `ai.package.yaml` |
+| Stage 3 | `beads-initialized` | Stage 2 + `.beads/.gitkeep` |
 
 ## Scenarios vs fixture identity
 
@@ -40,18 +41,37 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 `coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
 
-For reproducible semantic validation without manual file copying:
+**`local-build` runs** (default for development): The manual launcher calls `seedAiResources()` which copies agents, commands, and skills from `ai-resources/` into the workspace `.opencode/`. This makes `/simplify` available automatically — no manual `aimgr` steps needed.
 
-1. `bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build`
+```bash
+bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
+# /simplify is available immediately after OpenCode starts
+```
+
+**`installed-configured` runs**: Resources are not seeded automatically. Use `aimgr` to install them in the isolated shell:
+
+1. `bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=installed-configured`
 2. inside shell:
    - `aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources`
    - `aimgr install package/opencode-coder`
    - do not run `aimgr init` for this fixture (`ai.package.yaml` is already committed)
 3. run OpenCode and validate `/simplify`
 
-## Out of scope for this fixture set
+## Beads-stage fixture strategy
 
-Beads-stage fixture strategy and beads-system tests are tracked in a separate epic and are not represented as fixture directories in this matrix.
+### Two-tier approach
+
+1. **Committed marker**: `.beads/.gitkeep` is the only beads content committed in fixtures. This is sufficient for plugin detection tests (`detectBeadsDirectory()` only checks directory existence).
+
+2. **Runtime generation**: The harness auto-detects `.beads/` in copied fixture workspaces and runs `bd init --skip-hooks --skip-agents --quiet` to create a functional beads workspace. This keeps committed state minimal while providing real beads for manual and integration testing.
+
+### Resource seeding
+
+The manual launcher seeds `ai-resources/` (agents, commands, skills) into the workspace `.opencode/` directory when using `local-build` plugin source. This ensures `classifyRuntimePhase()` returns `normal` and all agents (orchestrator, tasker, reviewer, verifier) are available.
+
+### Single-writer constraint
+
+The embedded-dolt beads backend is single-writer. Concurrent `bd create` / `bd update` calls against the same `.beads/` workspace will fail with exclusive-lock errors. Tests and evals that issue `bd` write commands must serialize them. See `opencode-coder-eupg` for details.
 
 ## Shared support fixtures
 

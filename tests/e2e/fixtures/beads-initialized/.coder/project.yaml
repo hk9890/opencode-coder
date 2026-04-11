@@ -1,0 +1,15 @@
+mode: team
+installReady: true
+ecosystemReady: false
+git:
+  initialized: true
+beads:
+  initialized: false
+  stealthMode: false
+  bdCliInstalled: false
+aimgr:
+  installed: false
+  packageYaml: false
+  resourcesHealthy: false
+  coderPackageInstalled: false
+pluginVersion: fixture

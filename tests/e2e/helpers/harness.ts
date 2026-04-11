@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { constants, existsSync } from "fs";
-import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "fs/promises";
+import { access, chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
 import { dirname, join } from "path";
@@ -20,6 +20,7 @@ export const FIXTURE_NAMES = [
   "empty-project",
   "coder-mode-configured",
   "coder-skill-installed",
+  "beads-initialized",
 ] as const;
 
 export type FixtureName = (typeof FIXTURE_NAMES)[number];
@@ -761,6 +762,24 @@ async function createWorkspaceFromSource(
   await $`git config user.name "opencode-coder-test"`.cwd(workdir).quiet();
   await $`git config user.email "test@opencode-coder.local"`.cwd(workdir).quiet();
 
+  // Auto-initialize beads if .beads/ marker exists in fixture
+  const beadsMarker = join(workdir, ".beads");
+  try {
+    await access(beadsMarker);
+    // bd init creates a functional beads workspace from the marker
+    const bdInit = await $`bd init --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
+    if (bdInit.exitCode !== 0) {
+      // Non-fatal: beads init failure should not break fixture setup
+      // bd may not be installed in all test environments
+      console.error(`[harness] beads auto-init skipped (bd init exit ${bdInit.exitCode})`);
+    } else {
+      // Secure .beads/ permissions to avoid bd warning (expects 0700)
+      await chmod(beadsMarker, 0o700);
+    }
+  } catch {
+    // No .beads/ marker — nothing to do
+  }
+
   return {
     fixtureName: workspaceSource.kind === "fixture" ? workspaceSource.fixtureName : undefined,
     fixtureSourceDir: workspaceSource.kind === "fixture" ? workspaceSource.sourceDir : undefined,
@@ -788,6 +807,34 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   await symlink(pluginPath, pluginSymlink);
 
   return pluginSymlink;
+}
+
+export async function seedAiResources(projectRoot: string, workdir: string): Promise<void> {
+  const aiResourcesDir = join(projectRoot, "ai-resources");
+  const opencodeDir = join(workdir, ".opencode");
+
+  // Agents
+  const agentsSource = join(aiResourcesDir, "agents");
+  const agentsDest = join(opencodeDir, "agents");
+  await cp(agentsSource, agentsDest, { recursive: true });
+
+  // Commands
+  const commandsSource = join(aiResourcesDir, "commands");
+  const commandsDest = join(opencodeDir, "commands");
+  await cp(commandsSource, commandsDest, { recursive: true });
+
+  // Skills (only the three coder skills)
+  for (const skill of ["opencode-coder", "code-simplify", "coder-beads"]) {
+    const skillSource = join(aiResourcesDir, "skills", skill);
+    const skillDest = join(opencodeDir, "skills", skill);
+    // Check source exists before copying (some skills may not exist in all setups)
+    try {
+      await access(skillSource);
+      await cp(skillSource, skillDest, { recursive: true });
+    } catch {
+      // Skip missing skill directories
+    }
+  }
 }
 
 export async function prepareWorkspacePluginSource(options: {

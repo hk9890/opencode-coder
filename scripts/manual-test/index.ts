@@ -14,6 +14,7 @@ import {
   type PluginSource,
   prepareWorkspacePluginSource,
   resolveAuthSeedPath,
+  seedAiResources,
   seedIsolatedOpenCodeAuth,
 } from "../../tests/e2e/helpers/harness";
 
@@ -614,6 +615,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       workdir: workspace.workdir,
       pluginSource: args.pluginSource,
     });
+
+    // Seed ai-resources into workspace for normal-mode classification
+    if (preparedPluginSource.pluginSource === "local-build") {
+      await seedAiResources(PROJECT_ROOT, workspace.workdir);
+    }
 
     const isolatedPaths = await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
       pluginSource: preparedPluginSource.pluginSource,

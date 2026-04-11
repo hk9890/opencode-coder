@@ -281,26 +281,36 @@ Precondition for `installed-configured`:
 
 `env` remains useful for checking isolated launcher environment wiring.
 
-### Scenario G — Isolated `/simplify` semantic validation (no manual copying)
+### Scenario G — Isolated `/simplify` semantic validation
 
 Use when:
 - you need reproducible `/simplify` semantic validation in an isolated workspace
-- you want to avoid ad hoc copying of command/skill files into `.opencode/`
+- you want to verify standalone `code-simplify` skill routing
 
-Why this is needed:
+Why this matters:
 - `/simplify` behavior is owned by standalone `code-simplify` and routed via command/skill composition.
 - `coder-skill-installed` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill) or explicit standalone simplify package installation.
-- A stock isolated run can therefore still start in bootstrap phase, where `/simplify` is not exposed yet.
 
-Reproducible path:
+#### `local-build` runs (recommended for development)
 
-1. Launch isolated shell on the fixture using local build:
+The manual launcher's `seedAiResources()` automatically copies agents, commands, and skills from `ai-resources/` into the workspace `.opencode/`. This makes `/simplify` available immediately — no manual `aimgr` steps needed.
+
+```bash
+bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
+# /simplify is available after OpenCode starts — no manual resource installation needed
+```
+
+#### `installed-configured` runs
+
+Resources are not seeded automatically. Use `aimgr` to install them in the isolated shell:
+
+1. Launch isolated shell on the fixture:
 
    ```bash
-   bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=local-build
+   bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=installed-configured
    ```
 
-2. In that shell, bootstrap resources through `aimgr` (repo-supported path):
+2. In that shell, bootstrap resources through `aimgr`:
 
    ```bash
     # coder-skill-installed already includes ai.package.yaml, so do not run `aimgr init` here
@@ -315,10 +325,9 @@ Reproducible path:
 3. Start OpenCode from the same shell and run `/simplify ...` for semantic validation.
 
 Notes:
-- This replaces manual file copying with a repeatable package install flow.
 - `aimgr install package/opencode-coder` requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
 - Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling the full combined package.
-- If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in isolated mode.
+- If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in `installed-configured` mode.
 
 ### Scope note
 
