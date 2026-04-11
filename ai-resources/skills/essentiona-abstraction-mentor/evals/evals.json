@@ -1,0 +1,65 @@
+{
+  "skill_name": "essentiona-abstraction-mentor",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Review these requirements for a new reporting feature. The proposal includes CSV export, PDF export, scheduled reports, role-based templates, custom branding, per-user saved presets, and an admin dashboard for usage analytics. We only know that one customer wants to export a weekly report to CSV. Give me a skeptical review.",
+      "expected_output": "A requirements review that narrows scope to the minimal valuable outcome, identifies speculative featurism, and uses the skill's required review structure.",
+      "files": [],
+      "expectations": [
+        "Uses the required review structure including Verdict, Principle pressure points, Findings, Open questions, What to remove/defer/simplify, and What is justified",
+        "Identifies the likely minimal acceptable scope as weekly CSV export or an equivalently narrow first slice",
+        "Calls out speculative features such as PDF export, branding, role-based templates, saved presets, or analytics as candidates to remove or defer",
+        "Frames the critique in terms of simplicity, earned features, and accidental complexity rather than generic product advice"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Please review this architecture proposal. A small internal tool currently runs as one service with a Postgres database. The proposal splits it into five microservices, adds Kafka, an API gateway, a workflow engine, and a new policy DSL. Current load is low and there is one small team maintaining it. I want a critique focused on simplicity and manageability.",
+      "expected_output": "An architecture review that names the core model, distinguishes essential versus accidental complexity, and challenges the added machinery.",
+      "files": [],
+      "expectations": [
+        "Uses the required review structure",
+        "Identifies the main accidental complexity as the new services, Kafka, gateway, workflow engine, or policy DSL",
+        "Questions whether a single competent engineer or small team can still hold the design in their head",
+        "Proposes a smaller flatter alternative such as keeping a single service or introducing only the minimum proven change"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review this code change idea. A function used in one place is being wrapped in a new interface, service class, factory, and plugin registry because we might support more providers later. Right now there is only one provider and no timeline for more. Give me a strict PR-style review.",
+      "expected_output": "A code/PR review that rejects speculative abstraction, recommends a simpler direct implementation, and explicitly evaluates abstraction impact.",
+      "files": [],
+      "expectations": [
+        "Uses the required review structure",
+        "Flags the interface, service class, factory, or plugin registry as unearned abstraction for a single current use",
+        "Recommends a simpler alternative such as keeping the function direct or narrowing abstraction to the current need",
+        "Explicitly discusses readability/manageability impact and the burden of proof on the added complexity"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review this API change. We want to rename several existing response fields and remove one query parameter because the new names are cleaner. Existing clients would break unless they update. There is no migration plan yet. Evaluate this with a bias toward not breaking what works.",
+      "expected_output": "A review that treats compatibility breaks as high-burden decisions and demands justification or a migration path.",
+      "files": [],
+      "expectations": [
+        "Uses the required review structure",
+        "Treats backward compatibility as a major principle pressure point",
+        "Questions the need for breaking field renames and removed parameters without a migration plan",
+        "Requests compatibility-preserving alternatives or a concrete migration path before approval"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I have a design note but parts of it are vague: it mentions scalability, flexibility, and future extensibility, but it does not clearly define the core entities, constraints, or current problem. Use the mentor skill to review it and tell me what is missing before design discussion can even proceed.",
+      "expected_output": "A review that identifies missing shared understanding and core model definition, and asks focused blocking questions rather than pretending certainty.",
+      "files": [],
+      "expectations": [
+        "Uses the required review structure",
+        "Identifies lack of clear core model or problem framing as a blocking issue",
+        "Uses Open questions to ask for missing constraints, entities, relationships, or goals",
+        "Returns needs clarification or reject rather than inventing certainty from vague inputs"
+      ]
+    }
+  ]
+}

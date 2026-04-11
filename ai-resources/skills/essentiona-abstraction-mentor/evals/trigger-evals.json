@@ -1,0 +1,66 @@
+[
+  {
+    "query": "Review these product requirements and tell me what should be removed or deferred before we build anything.",
+    "should_trigger": true
+  },
+  {
+    "query": "I want a skeptical architecture review of this design. Challenge every new service, dependency, and abstraction.",
+    "should_trigger": true
+  },
+  {
+    "query": "Please review this PR for accidental complexity, unnecessary indirection, and anything that has not earned its place.",
+    "should_trigger": true
+  },
+  {
+    "query": "Can you pressure-test this system design for simplicity, intellectual manageability, and justified boundaries?",
+    "should_trigger": true
+  },
+  {
+    "query": "I have a feature proposal with lots of options and configuration. I want you to push back hard and tell me the minimal acceptable scope.",
+    "should_trigger": true
+  },
+  {
+    "query": "Act like a harsh reviewer for this code change: what should be deleted, inlined, simplified, or better justified?",
+    "should_trigger": true
+  },
+  {
+    "query": "Review this API redesign with a strong bias toward backward compatibility and fewer moving parts.",
+    "should_trigger": true
+  },
+  {
+    "query": "I want an architecture critique that separates essential complexity from accidental complexity before we commit to this approach.",
+    "should_trigger": true
+  },
+  {
+    "query": "Can you rewrite this TypeScript module and add tests for it?",
+    "should_trigger": false
+  },
+  {
+    "query": "Create a beads epic and tasks for this architecture migration.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run /simplify on my recent changes and clean up duplication.",
+    "should_trigger": false
+  },
+  {
+    "query": "Help me write a release plan and publish a GitHub release.",
+    "should_trigger": false
+  },
+  {
+    "query": "Please summarize this PR in friendly language for the team.",
+    "should_trigger": false
+  },
+  {
+    "query": "Troubleshoot why opencode-coder is not loading in this repo.",
+    "should_trigger": false
+  },
+  {
+    "query": "Analyze production logs and create bugs for the failures you find.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review this markdown doc for grammar and tone only.",
+    "should_trigger": false
+  }
+]
