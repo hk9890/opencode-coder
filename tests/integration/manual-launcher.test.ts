@@ -211,7 +211,7 @@ describe("manual launcher preflight", () => {
     expect(result.stdout).toContain("beads-initialized");
     expect(result.stdout).toContain("empty-project — committed baseline: .gitkeep + .opencode/.gitkeep");
     expect(result.stdout).toContain("--fixture selects a committed fixture baseline, then prepares a runtime workspace");
-    expect(result.stdout).toContain("Local-build TUI/command runs may add runtime state such as .git");
+    expect(result.stdout).toContain("Shell and TUI runs prepare the same runtime workspace state");
     expect(result.stdout).toContain("Automated launcher guardrails cover environment preparation + startup viability only.");
     expect(result.stdout).toContain("Auth/model-backed prompts (for example: \"say hi\") are exploratory manual checks.");
     expect(result.stdout).not.toContain('opencode run --command "pwd"');
@@ -346,7 +346,7 @@ describe("manual launcher preflight", () => {
     expect(result.stderr).toContain("Project path error: Project path does not exist:");
   });
 
-  it("keeps shell startup as fast launcher-only path without plugin bootstrap", async () => {
+  it("prepares shell workspaces with the same bootstrap state as TUI for empty-project", async () => {
     let preservedRoot: string | undefined;
 
     try {
@@ -356,10 +356,10 @@ describe("manual launcher preflight", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Mode: shell");
-      expect(result.stdout).toContain("Plugin bootstrap: skipped (shell mode does not launch OpenCode)");
-      expect(result.stdout).toContain("Plugin path used: <none>");
+      expect(result.stdout).toContain("Plugin bootstrap: prepared (local-build)");
+      expect(result.stdout).not.toContain("Plugin path used: <none>");
       expect(result.stdout).toContain("Workspace plugin dependencies prepared: no");
-      expect(result.stdout).toContain("AI resources seeded: no");
+      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
       expect(preservedMatch).not.toBeNull();
@@ -368,11 +368,13 @@ describe("manual launcher preflight", () => {
 
       const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
       const packageJson = Bun.file(join(preservedRoot!, "project", ".opencode", "package.json"));
-      const seededCommands = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder"));
+      const seededCommandFile = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md")
+      );
 
-      expect(await pluginLink.exists()).toBe(false);
+      expect(await pluginLink.exists()).toBe(true);
       expect(await packageJson.exists()).toBe(false);
-      expect(await seededCommands.exists()).toBe(false);
+      expect(await seededCommandFile.exists()).toBe(true);
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });
@@ -620,6 +622,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Plugin path used:");
       expect(result.stdout).toContain("Resolved installed package: <none>");
       expect(result.stdout).toContain("Resolved host config: <none>");
+      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
       expect(result.stdout).toContain("Cleanup plan: preserve copied workspace and isolated environment");
       expect(result.stdout).not.toContain("--keep: accepted (backward-compatible no-op)");
@@ -724,6 +727,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain(`Project source: ${sourceRoot}`);
       expect(result.stdout).toContain(`Workdir: ${sourceRoot}`);
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
+      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
       expect(result.stdout).toContain("Project mutation risk: yes (project-path runs execute in place)");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
@@ -819,6 +823,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Resolved installed package: @dynatrace-oss/opencode-coder@0.34.2");
       expect(result.stdout).toContain(`Resolved host config: ${join(hostConfigRoot, "opencode.json")}`);
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
+      expect(result.stdout).toContain("AI resources prepared: no");
       expect(result.stdout).toContain("One-shot command: env");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
@@ -841,6 +846,55 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
         await rm(preservedRoot, { recursive: true, force: true });
       }
       await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("bootstraps coder fixture resources through aimgr for local-build command runs", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=command", "--fixture=beads-initialized", "--", "env"]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("AI resources prepared: yes (aimgr-installed)");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const projectYaml = await readFile(join(preservedRoot!, "project", ".coder", "project.yaml"), "utf8");
+      expect(projectYaml).toContain("ecosystemReady: true");
+      expect(projectYaml).toContain("resourcesHealthy: true");
+      expect(projectYaml).toContain("coderPackageInstalled: true");
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  }, 120000);
+
+  it("prepares beads shell workspaces through aimgr so manual opencode launch matches TUI", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=shell", "--fixture=beads-initialized"], {
+        SHELL: "/bin/true",
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Plugin bootstrap: prepared (local-build)");
+      expect(result.stdout).toContain("AI resources prepared: yes (aimgr-installed)");
+
+      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
+      preservedRoot = preservedMatch?.[1]?.trim();
+      expect(Boolean(preservedRoot)).toBe(true);
+
+      const packageSkill = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "skills", "opencode-coder", "SKILL.md")
+      );
+      expect(await packageSkill.exists()).toBe(true);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
     }
   }, 120000);
 });

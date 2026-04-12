@@ -10,9 +10,9 @@ The manual launcher also supports `--project-path <dir>` for reproducing behavio
 
 This fixture doc intentionally states only what the launcher currently guarantees.
 
-- OpenCode-launching `local-build` paths (TUI and command) prepare a workspace `.opencode/plugins/opencode-coder.js` symlink to the local built artifact.
-- OpenCode-launching `local-build` paths (TUI and command) run `seedAiResources()` (agents/commands/selected skills copied into workspace `.opencode/`).
-- Shell mode is launcher-only and skips plugin wiring plus AI resource seeding.
+- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare a workspace `.opencode/plugins/opencode-coder.js` symlink to the local built artifact.
+- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare workspace resources. Non-coder fixtures use direct seeding; `coder-skill-installed` and `beads-initialized` bootstrap isolated aimgr state and install `package/opencode-coder`.
+- Shell mode prepares the same workspace/runtime state as TUI, but stops before launching OpenCode.
 - `installed-configured` paths do **not** seed AI resources automatically.
 - `--project-path` paths run in place and skip fixture copy plus fixture-only git bootstrap.
 - `bd init` is only attempted for copied fixtures that contain `.beads/` (currently `beads-initialized`), and failure is non-fatal.
@@ -54,14 +54,14 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 `coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
 
-**`local-build` runs** (default for development): `seedAiResources()` is only called on OpenCode-launching paths (`--mode=tui` or `--mode=command`). Shell mode is launcher-only and does not seed resources.
+**`local-build` runs** (default for development): shell, TUI, and command paths prepare resources automatically. Shell mode stops after preparation so you can inspect the workspace or launch `opencode` manually.
 
 ```bash
 bun run test:manual -- --mode=tui --fixture=coder-skill-installed --plugin-source=local-build
-# OpenCode launches with resources seeded into workspace .opencode/
+# OpenCode launches with fixture resources prepared automatically
 ```
 
-If you need shell-mode validation with `local-build`, install resources manually in the isolated shell before launching OpenCode.
+Shell mode is the inspect-first parity path for `local-build`: it prepares the same workspace/runtime state as TUI, then stops before launching OpenCode.
 
 **`installed-configured` runs**: Resources are not seeded automatically. Use `aimgr` to install them in the isolated shell:
 
@@ -78,7 +78,7 @@ If you need shell-mode validation with `local-build`, install resources manually
 
 1. **Committed marker**: `.beads/.gitkeep` is the only beads content committed in fixtures. This is sufficient for plugin detection tests (`detectBeadsDirectory()` only checks directory existence).
 
-2. **Runtime generation**: The harness auto-detects `.beads/` in copied fixture workspaces and runs `bd init --skip-hooks --skip-agents --quiet` to create a functional beads workspace. This keeps committed state minimal while providing real beads for manual and integration testing.
+2. **Runtime generation**: The harness auto-detects `.beads/` in copied fixture workspaces and runs `bd init --non-interactive --skip-hooks --skip-agents --quiet` to create a functional beads workspace. This keeps committed state minimal while providing real beads for manual and integration testing.
 
 For broader testing guidance and test-level expectations, see [`docs/TESTING.md#beads-testing`](../../../docs/TESTING.md#beads-testing).
 
@@ -88,11 +88,12 @@ For broader testing guidance and test-level expectations, see [`docs/TESTING.md#
 - Do **not** commit runtime beads state (dolt database files, daemon/lock artifacts, runtime metadata).
 - Why: runtime beads state is environment-specific and intentionally gitignored; committing it makes fixtures non-portable and can cause lock/runtime corruption across machines.
 
-### Resource seeding
+### Resource preparation
 
-The manual launcher seeds `ai-resources/` (agents, commands, skills) into the workspace `.opencode/` directory only on OpenCode-launching `local-build` paths (`--mode=tui` and `--mode=command`). Shell mode does not seed resources.
+The manual launcher prepares OpenCode resources on `local-build` shell, TUI, and command paths. Shell mode stops after preparation so you can inspect files or launch `opencode` manually from the same prepared workspace.
 
-No stronger runtime-semantic guarantee is implied here beyond those files being copied.
+- `empty-project` and `coder-mode-configured` use direct `.opencode/` seeding.
+- `coder-skill-installed` and `beads-initialized` use isolated `aimgr repo init` + `aimgr repo add local:.../ai-resources` + `aimgr install package/opencode-coder` so runtime readiness matches fixture intent.
 
 ### Single-writer constraint
 
@@ -104,7 +105,7 @@ When bumping `bd` versions, verify beads fixture assumptions still hold:
 
 1. Re-run beads-related test coverage (unit/integration/manual-launcher paths).
 2. Confirm runtime workspace bootstrap still succeeds with:
-   - `bd init --skip-hooks --skip-agents --quiet`
+   - `bd init --non-interactive --skip-hooks --skip-agents --quiet`
 3. Check that `.beads/` internal runtime structure changes (if any) remain compatible with marker-only committed fixtures and runtime generation in copied workspaces.
 
 ## Shared support fixtures

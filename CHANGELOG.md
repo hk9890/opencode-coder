@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Manual launcher shell/TUI parity**: Shell mode now prepares the same plugin, resource, and fixture bootstrap state as TUI before dropping to an interactive shell, so manually launching `opencode` from the shell matches TUI startup behavior.
+- **Beads fixture shell blocking**: Beads fixture bootstrap now runs `bd init --non-interactive` so manual shell sessions no longer require an extra Enter press to proceed.
+
+### Added
+
+- **Launcher parity coverage**: Added integration coverage for shell/TUI bootstrap parity and aimgr-backed coder fixture preparation in manual launcher flows.
+
+### Docs
+
+- **Manual fixture bootstrap contract**: Updated manual testing and fixture docs to describe shell parity, aimgr-backed coder fixture preparation, and the non-interactive beads bootstrap path.
+
 ## [0.36.1] - 2026-03-31
 
 ### Added

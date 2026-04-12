@@ -14,9 +14,9 @@ import {
   createProjectPathWorkspace,
   isFixtureName,
   type PluginSource,
+  prepareCoderFixtureResources,
   prepareWorkspacePluginSource,
   resolveAuthSeedPath,
-  seedAiResources,
   seedIsolatedOpenCodeAuth,
 } from "../../tests/e2e/helpers/harness";
 
@@ -142,15 +142,15 @@ interface WizardSelection {
 const FIXTURE_DESCRIPTIONS: Record<FixtureName, { label: string; help: string }> = {
   "empty-project": {
     label: "empty-project — no committed .coder state; runtime may add .git/.opencode bootstrap",
-    help: "empty-project — committed baseline: .gitkeep + .opencode/.gitkeep; local-build TUI/command runs also prepare .git + seeded .opencode runtime state",
+    help: "empty-project — committed baseline: .gitkeep + .opencode/.gitkeep; local-build shell/TUI/command runs also prepare .git + seeded .opencode runtime state",
   },
   "coder-mode-configured": {
     label: "coder-mode-configured — committed .coder/opencode-coder.yaml baseline",
-    help: "coder-mode-configured — committed baseline: empty-project + .coder/opencode-coder.yaml; local-build TUI/command runs may also prepare .git + seeded .opencode runtime state",
+    help: "coder-mode-configured — committed baseline: empty-project + .coder/opencode-coder.yaml; local-build shell/TUI/command runs may also prepare .git + seeded .opencode runtime state",
   },
   "coder-skill-installed": {
     label: "coder-skill-installed — committed coder mode + project/ai.package baseline",
-    help: "coder-skill-installed — committed baseline: coder-mode-configured + .coder/project.yaml + ai.package.yaml; local-build TUI/command runs may also prepare .git + seeded .opencode runtime state",
+    help: "coder-skill-installed — committed baseline: coder-mode-configured + .coder/project.yaml + ai.package.yaml; local-build shell/TUI/command runs may also prepare .git + prepared .opencode runtime state",
   },
   "beads-initialized": {
     label: "beads-initialized — committed beads marker baseline; runtime may auto-init .beads",
@@ -197,7 +197,8 @@ Notes:
   --fixture selects a committed fixture baseline, then prepares a runtime workspace for the chosen mode/plugin source.
   --project-path runs directly in the provided project and may mutate it.
   Use a clean branch, worktree, or disposable project when testing in place.
-  Local-build TUI/command runs may add runtime state such as .git, seeded .opencode resources, plugin wiring, and for beads fixtures a best-effort .beads init.
+   Shell and TUI runs prepare the same runtime workspace state; shell stops before launching OpenCode.
+   Local-build prepared runs may add runtime state such as .git, prepared OpenCode resources, plugin wiring, and for beads fixtures a best-effort .beads init.
   Automated launcher guardrails cover environment preparation + startup viability only.
   Auth/model-backed prompts (for example: "say hi") are exploratory manual checks.
   "env" remains useful for launcher-environment debugging only.
@@ -485,11 +486,11 @@ function sanitizeSpawnEnv(env: Record<string, string | undefined>): Record<strin
 }
 
 function requiresOpenCodeBootstrap(mode: LauncherMode): boolean {
-  return mode !== "shell";
+  return true;
 }
 
 function requiresOpencodeBinary(mode: LauncherMode): boolean {
-  return mode === "tui";
+  return mode === "tui" || mode === "shell";
 }
 
 export function buildInteractiveShellCommand(shellPath: string): string[] {
@@ -704,8 +705,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   let resolvedHostConfig = "<none>";
   let expectedPluginVersion = "<none>";
   let workspaceDependenciesPrepared = false;
-  let aiResourcesSeeded = false;
-  let pluginBootstrapSummary = "skipped (shell mode does not launch OpenCode)";
+  let aiResourcesPrepared = false;
+  let aiResourceStrategy: "none" | "seeded" | "aimgr-installed" = "none";
+  let pluginBootstrapSummary = "pending";
   let exitCode = 1;
   let seededAuthPath: string | null = null;
   let authSourceCategory: string = "none";
@@ -729,10 +731,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       workspaceDependenciesPrepared = preparedPluginSource.workspaceDependenciesPrepared;
       pluginBootstrapSummary = `prepared (${selectedPluginSource})`;
 
-      if (preparedPluginSource.pluginSource === "local-build") {
-        await seedAiResources(PROJECT_ROOT, workspace.workdir);
-        aiResourcesSeeded = true;
-      }
     }
 
     const isolatedPaths = openCodeBootstrapRequired
@@ -740,6 +738,21 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           pluginSource: selectedPluginSource,
         })
       : await createIsolatedOpenCodePaths(workspace.tempRoot);
+
+    if (openCodeBootstrapRequired) {
+      const preparedCoderResources = await prepareCoderFixtureResources({
+        projectRoot: PROJECT_ROOT,
+        workdir: workspace.workdir,
+        fixtureName: workspace.fixtureName,
+        pluginSource: selectedPluginSource,
+        env: {
+          ...process.env,
+          ...isolatedPaths.env,
+        },
+      });
+      aiResourcesPrepared = preparedCoderResources.prepared;
+      aiResourceStrategy = preparedCoderResources.strategy;
+    }
 
     if (authSeedPath) {
       seededAuthPath = await seedIsolatedOpenCodeAuth(isolatedPaths, {
@@ -769,7 +782,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     printSection("Resolved host config", resolvedHostConfig);
     printSection("Expected loaded plugin version", expectedPluginVersion);
     printSection("Workspace plugin dependencies prepared", workspaceDependenciesPrepared ? "yes" : "no");
-    printSection("AI resources seeded", aiResourcesSeeded ? "yes" : "no");
+    printSection(
+      "AI resources prepared",
+      aiResourcesPrepared ? `yes (${aiResourceStrategy})` : "no"
+    );
     printSection("Isolated HOME", isolatedPaths.homeDir);
     printSection("Isolated XDG_CONFIG_HOME", isolatedPaths.xdgConfigHome);
     printSection("Isolated XDG_DATA_HOME", isolatedPaths.xdgDataHome);

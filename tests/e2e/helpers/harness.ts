@@ -15,6 +15,7 @@ export const OPENCODE_CONFIG_FIXTURE_DIR = join(SHARED_FIXTURES_DIR, "opencode-c
 export const OPENCODE_CONFIG_FIXTURE_PATH = join(OPENCODE_CONFIG_FIXTURE_DIR, "opencode.json");
 export const ISOLATED_TEST_MANIFEST_PATH = join(SHARED_FIXTURES_DIR, "test-manifest.json");
 export const HARNESS_SOURCE_PATH = join(E2E_DIR, "helpers", "harness.ts");
+export const AI_RESOURCES_DIR = join(fileURLToPath(new URL("../../..", import.meta.url)), "ai-resources");
 
 export const FIXTURE_NAMES = [
   "empty-project",
@@ -73,6 +74,11 @@ export interface PreparedPluginSource {
   resolvedInstalledPackageSpec?: string;
   resolvedHostConfigPath?: string;
   expectedLoadedPluginVersion?: string;
+}
+
+export interface PreparedCoderResourcesResult {
+  prepared: boolean;
+  strategy: "none" | "seeded" | "aimgr-installed";
 }
 
 export interface IsolatedOpenCodePathOptions {
@@ -758,8 +764,9 @@ async function createWorkspaceFromSource(
   const beadsMarker = join(workdir, ".beads");
   try {
     await access(beadsMarker);
-    // bd init creates a functional beads workspace from the marker
-    const bdInit = await $`bd init --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
+    // bd init creates a functional beads workspace from the marker.
+    // Force non-interactive mode so manual launcher TTY sessions never block on prompts.
+    const bdInit = await $`bd init --non-interactive --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
     if (bdInit.exitCode !== 0) {
       // Non-fatal: beads init failure should not break fixture setup
       // bd may not be installed in all test environments
@@ -825,6 +832,56 @@ export async function seedAiResources(projectRoot: string, workdir: string): Pro
       // Skip missing skill directories
     }
   }
+}
+
+export async function prepareCoderFixtureResources(options: {
+  projectRoot: string;
+  workdir: string;
+  fixtureName?: FixtureName;
+  pluginSource?: PluginSource;
+  env?: Record<string, string>;
+}): Promise<PreparedCoderResourcesResult> {
+  const fixtureName = options.fixtureName;
+  const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
+
+  if (!fixtureName || (fixtureName !== "coder-skill-installed" && fixtureName !== "beads-initialized")) {
+    if (pluginSource === "local-build") {
+      await seedAiResources(options.projectRoot, options.workdir);
+      return { prepared: true, strategy: "seeded" };
+    }
+
+    return { prepared: false, strategy: "none" };
+  }
+
+  if (pluginSource !== "local-build") {
+    return { prepared: false, strategy: "none" };
+  }
+
+  const env = options.env ?? process.env;
+  const workspacePackageYaml = await Bun.file(join(options.workdir, "ai.package.yaml")).exists();
+  if (!workspacePackageYaml) {
+    const initResult = await $`aimgr init`.cwd(options.workdir).env(env).quiet();
+    if (initResult.exitCode !== 0) {
+      throw new Error(`Failed to initialize aimgr project manifest:\n${initResult.stderr.toString()}`);
+    }
+  }
+
+  const repoInitResult = await $`aimgr repo init`.cwd(options.workdir).env(env).quiet();
+  if (repoInitResult.exitCode !== 0) {
+    throw new Error(`Failed to initialize isolated aimgr repo:\n${repoInitResult.stderr.toString()}`);
+  }
+
+  const repoAddResult = await $`aimgr repo add local:${AI_RESOURCES_DIR}`.cwd(options.workdir).env(env).quiet();
+  if (repoAddResult.exitCode !== 0) {
+    throw new Error(`Failed to add local ai-resources repo:\n${repoAddResult.stderr.toString()}`);
+  }
+
+  const installResult = await $`aimgr install package/opencode-coder`.cwd(options.workdir).env(env).quiet();
+  if (installResult.exitCode !== 0) {
+    throw new Error(`Failed to install package/opencode-coder for fixture workspace:\n${installResult.stderr.toString()}`);
+  }
+
+  return { prepared: true, strategy: "aimgr-installed" };
 }
 
 export async function prepareWorkspacePluginSource(options: {

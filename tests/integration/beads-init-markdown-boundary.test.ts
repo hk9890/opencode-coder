@@ -57,7 +57,7 @@ async function listMarkdownFiles(
 }
 
 describe("bd init markdown boundary", () => {
-  it("bd init --skip-agents creates tracker state without creating or mutating markdown docs", async () => {
+  it("bd init --non-interactive --skip-agents creates tracker state without creating or mutating markdown docs", async () => {
     const workspace = await mkdtemp(join(tmpdir(), "opencode-coder-bd-init-"));
 
     try {
@@ -75,7 +75,10 @@ describe("bd init markdown boundary", () => {
       const markdownBefore = await listMarkdownFiles(workspace);
       expect(markdownBefore).toEqual(["README.md"]);
 
-      const initResult = await runCommand(["bd", "init", "--skip-hooks", "--skip-agents", "--quiet"], workspace);
+      const initResult = await runCommand(
+        ["bd", "init", "--non-interactive", "--skip-hooks", "--skip-agents", "--quiet"],
+        workspace
+      );
       expect(initResult.exitCode).toBe(0);
 
       const beadsDirStats = await stat(join(workspace, ".beads"));

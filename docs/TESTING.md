@@ -188,16 +188,16 @@ Decision table (current behavior):
 | `ensurePluginBuilt()` freshness check/build | R | S | S | S | S | S | S | S |
 | `.opencode` dependency setup (`package.json`, install context) | S | S | S | S | S | S | S | S |
 | `installWorkspacePluginDependencies()` | S | S | S | S | S | S | S | S |
-| AI resource seeding (`seedAiResources`) | R | S | S | S | S | S | S | S |
+| AI/OpenCode resource preparation | R | S | S | S | S | S | S | S |
 | Isolated HOME/XDG/OpenCode config creation | R | R | R | R | R | R | R | R |
 | Auth seeding (`--auth` or default local auth path) | O | O | O | O | O | O | O | O |
 | `bd init` bootstrap | S | S | S | S | O | S | S | S |
 
 Notes on contract guarantees:
 
-- `bd init` is only attempted when the copied fixture contains `.beads/` (currently `beads-initialized`); this is best-effort and non-fatal.
+- `bd init --non-interactive` is only attempted when the copied fixture contains `.beads/` (currently `beads-initialized`); this is best-effort and non-fatal.
 - `installed-configured` always skips `ensurePluginBuilt()` and local `dist/` artifact wiring.
-- Shell mode is a fast launcher-only path: it skips plugin artifact wiring, workspace dependency installs, and AI resource seeding.
+- Shell mode prepares the same bootstrap state as TUI, then stops before launching OpenCode.
 - `installed-configured` currently depends on resolving exactly one configured `@dynatrace-oss/opencode-coder@...` plugin spec from host config.
 - The launcher output should be interpreted as bootstrap facts for the chosen path (not semantic command guarantees).
 
@@ -370,11 +370,11 @@ Why this matters:
 
 #### `local-build` runs (recommended for development)
 
-`seedAiResources()` runs only on OpenCode-launching paths (`--mode=tui` or `--mode=command`). Shell mode is launcher-only and does **not** seed resources.
+OpenCode resource preparation runs on shell, TUI, and command paths. Shell mode is inspection-first: it prepares the workspace, then drops to an interactive shell instead of auto-starting OpenCode.
 
 ```bash
 bun run test:manual -- --mode=tui --fixture=coder-skill-installed --plugin-source=local-build
-# OpenCode launches with resources seeded from ai-resources/ into workspace .opencode/
+# OpenCode launches with resources prepared into the workspace before startup
 ```
 
 If you still need shell mode with `local-build`, install resources manually inside the isolated shell (same approach as `installed-configured`).
@@ -423,7 +423,7 @@ Beads coverage uses a two-tier fixture model so tests stay reproducible without 
 ### Fixture strategy
 
 - Committed fixture state stays minimal: `.beads/.gitkeep` marker only.
-- Test harness/runtime paths create functional beads state in copied workspaces using `bd init --skip-hooks --skip-agents --quiet`.
+- Test harness/runtime paths create functional beads state in copied workspaces using `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
 - This split keeps fixtures stable in git while still exercising real beads runtime behavior.
 
 ### Single-writer constraint
@@ -444,7 +444,7 @@ Beads coverage uses a two-tier fixture model so tests stay reproducible without 
 When `bd` version changes, validate all of the following:
 
 1. Beads-related unit/integration/e2e coverage still passes.
-2. Runtime bootstrap still works with `bd init --skip-hooks --skip-agents --quiet`.
+2. Runtime bootstrap still works with `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
 3. `.beads/` runtime internal structure changes do not break the marker-only committed fixture contract (`.beads/.gitkeep` only).
 4. Single-writer assumptions remain documented and respected in test/eval paths.
 

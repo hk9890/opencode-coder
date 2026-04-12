@@ -33,7 +33,7 @@ export function ensureBeadsMarker(workdir: string): void {
  */
 export async function initBeadsWorkspace(workdir: string): Promise<boolean> {
   try {
-    const result = await $`bd init --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
+    const result = await $`bd init --non-interactive --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
     return result.exitCode === 0;
   } catch {
     return false;
