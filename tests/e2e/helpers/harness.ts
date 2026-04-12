@@ -389,6 +389,15 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
   const scaffoldDependencies = await readHarnessScaffoldDependenciesFromManifest();
 
   await writeFile(
+    join(opencodeDir, ".npmrc"),
+    [
+      "@dynatrace-oss:registry=https://npm.pkg.github.com",
+      "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}",
+      "",
+    ].join("\n")
+  );
+
+  await writeFile(
     join(opencodeDir, "package.json"),
     JSON.stringify(
       {

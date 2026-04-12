@@ -571,6 +571,7 @@ describe("manual launcher preflight", () => {
       });
 
       const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
+      const npmrcPath = join(workspace.workdir, ".opencode", ".npmrc");
       const installedPluginPath = join(
         workspace.workdir,
         ".opencode",
@@ -582,6 +583,8 @@ describe("manual launcher preflight", () => {
       );
 
       expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(true);
+      expect(await Bun.file(npmrcPath).exists()).toBe(true);
+      expect(await Bun.file(npmrcPath).text()).toContain("@dynatrace-oss:registry=https://npm.pkg.github.com");
       expect(await Bun.file(installedPluginPath).exists()).toBe(true);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });

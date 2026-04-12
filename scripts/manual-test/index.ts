@@ -490,7 +490,7 @@ function requiresOpenCodeBootstrap(mode: LauncherMode): boolean {
 }
 
 function requiresOpencodeBinary(mode: LauncherMode): boolean {
-  return mode === "tui" || mode === "shell";
+  return mode === "tui";
 }
 
 export function buildInteractiveShellCommand(shellPath: string): string[] {
