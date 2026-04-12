@@ -2,10 +2,6 @@ resources:
     - skill/opencode-coder-skill-creator
     - skill/ai-resource-manager
     - skill/self-reflection
-    - package/coder-core
-    - package/coder-beads
-    - package/coder-docs
-    - package/code-simplify
     - skill/github-releases
     - skill/opencode-coder-dev
     - command/opencode-coder-dev/analyze-logs
@@ -16,3 +12,13 @@ resources:
     - skill/task-sync
     - skill/observability-triage
     - skill/essential-abstraction-mentor
+
+    # packages
+
+    # coder packages
+    - package/coder-core
+    - package/coder-beads
+    - package/coder-docs
+    - package/code-simplify
+
+

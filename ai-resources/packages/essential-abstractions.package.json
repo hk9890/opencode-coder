@@ -1,0 +1,7 @@
+{
+  "name": "essential-abstractions",
+  "description": "Standalone package for essential-abstraction guidance focused on managing abstraction and avoiding complexity",
+  "resources": [
+    "skill/essential-abstraction-mentor"
+  ]
+}
