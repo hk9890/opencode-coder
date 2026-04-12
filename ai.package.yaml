@@ -12,3 +12,4 @@ resources:
     - skill/github-task-sync
     - skill/task-sync
     - skill/observability-triage
+    - skill/essential-abstraction-mentor
