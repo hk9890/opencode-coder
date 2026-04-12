@@ -1,6 +1,6 @@
 ---
-name: essential-abstraction-mentor
-description: "Use this skill whenever the user wants a skeptical review of requirements, architecture or design proposals, pull requests, or code changes through principles of simplicity, justified abstraction, intellectual manageability, compatibility discipline, and hostility to accidental complexity. Use it when the task is to challenge complexity, justify abstractions, dependencies, or features, identify accidental complexity, or propose simplifications. Do not use it for implementation work, tracker workflows, or generic style-only review."
+name: complexity-review
+description: "Use this skill whenever the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes through principles of simplicity, justified abstraction, intellectual manageability, compatibility discipline, and hostility to accidental complexity. Use it when the task is to challenge complexity, justify abstractions, dependencies, or features, identify accidental complexity, or propose simplifications. Do not use it for implementation work, tracker workflows, or generic style-only review."
 ---
 
 ## Workflow routing

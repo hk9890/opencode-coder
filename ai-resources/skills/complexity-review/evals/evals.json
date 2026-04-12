@@ -1,5 +1,5 @@
 {
-  "skill_name": "essential-abstraction-mentor",
+  "skill_name": "complexity-review",
   "evals": [
     {
       "id": 0,
@@ -51,7 +51,7 @@
     },
     {
       "id": 4,
-      "prompt": "I have a design note but parts of it are vague: it mentions scalability, flexibility, and future extensibility, but it does not clearly define the core entities, constraints, or current problem. Use the mentor skill to review it and tell me what is missing before design discussion can even proceed.",
+      "prompt": "I have a design note but parts of it are vague: it mentions scalability, flexibility, and future extensibility, but it does not clearly define the core entities, constraints, or current problem. Use the complexity-review skill to review it and tell me what is missing before design discussion can even proceed.",
       "expected_output": "A review that identifies missing shared understanding and core model definition, and asks focused blocking questions rather than pretending certainty.",
       "files": [],
       "expectations": [

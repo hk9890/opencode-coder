@@ -1,0 +1,7 @@
+{
+  "name": "complexity-review",
+  "description": "Standalone package for skeptical complexity review focused on simplicity and justified design",
+  "resources": [
+    "skill/complexity-review"
+  ]
+}

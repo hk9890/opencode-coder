@@ -11,7 +11,7 @@ resources:
     - skill/github-task-sync
     - skill/task-sync
     - skill/observability-triage
-    - skill/essential-abstraction-mentor
+    - skill/complexity-review
 
     # packages
 
@@ -20,5 +20,4 @@ resources:
     - package/coder-beads
     - package/coder-docs
     - package/code-simplify
-
 
