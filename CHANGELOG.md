@@ -7,27 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-04-12
+
 ### Changed
 
-- **Split-skill ownership model**: Updated contributor-facing architecture and repo guidance to the split capability model where plugin runtime tracks only bootstrap/core availability plus beads readiness; `coder-core` is plugin-coupled, `coder-beads` is plugin-integrated only for defaults/activation, and `coder-docs` + `code-simplify` are standalone owners.
-- **Canonical docs source paths**: Repointed docs-lifecycle guidance from historical combined-skill paths to `ai-resources/skills/coder-docs/references/` with explicit user-guide copy-sync expectations.
+- **Split capability package migration**: Migrated the plugin runtime to the split capability package model so bootstrap/core ownership remains plugin-coupled while docs/simplify/beads capabilities are handled by their dedicated package surfaces.
+- **Skill-boundary architecture guidance**: Updated contributor-facing architecture guidance so normal-mode/runtime checks align with the split package ownership model.
 
-### Deprecated
+### Docs
 
-- **Additive rollout matrix as active policy**: Marked additive-rollout validation docs as historical-only so contributors do not treat additive no-touch/coexistence constraints as the current architecture contract.
+- **Canonical docs ownership alignment**: Refined docs and references to reflect the split capability package boundaries and their canonical ownership paths.
+
+## [0.36.3] - 2026-04-12
 
 ### Fixed
 
-- **Manual launcher shell/TUI parity**: Shell mode now prepares the same plugin, resource, and fixture bootstrap state as TUI before dropping to an interactive shell, so manually launching `opencode` from the shell matches TUI startup behavior.
+- **Manual launcher shell/TUI parity**: Shell mode now prepares the same plugin and resource bootstrap state as TUI before dropping to an interactive shell.
 - **Beads fixture shell blocking**: Beads fixture bootstrap now runs `bd init --non-interactive` so manual shell sessions no longer require an extra Enter press to proceed.
 
 ### Added
 
-- **Launcher parity coverage**: Added integration coverage for shell/TUI bootstrap parity and aimgr-backed coder fixture preparation in manual launcher flows.
+- **Launcher parity coverage**: Added coverage for shell/TUI bootstrap parity and aimgr-backed coder fixture preparation in manual launcher flows.
 
 ### Docs
 
-- **Manual fixture bootstrap contract**: Updated manual testing and fixture docs to describe shell parity, aimgr-backed coder fixture preparation, and the non-interactive beads bootstrap path.
+- **Manual launcher bootstrap behavior**: Added documentation for aimgr-backed coder fixture preparation and the current manual launcher bootstrap contract.
+
+## [0.36.2] - 2026-04-06
+
+### Changed
+
+- **Docs lifecycle command naming and flow**: Renamed `/opencode-coder/docs` to `/opencode-coder/init-or-update-docs` and extended `/opencode-coder/improve-doc` with discussion-first improvement flow support.
+- **Runtime threshold and CI/release hardening**: Narrowed normal-mode threshold to the minimal init+skill surfaces and hardened CI/release workflows to ensure a real `bd` binary is available for integration checks.
+
+### Fixed
+
+- **Docs-command gating reliability**: Fixed startup gating so `improve-doc` stays available in the intended partial-resource scenario under the narrowed normal-mode threshold.
+- **Functional-eval tracker isolation stability**: Stabilized tracker isolation checks to compare pre/post `bd` behavior and removed CI assumptions about pre-existing tracker state.
+- **Workflow beads installation path**: Replaced unreliable npm-based beads installation attempts with direct release-binary installation in workflows.
+
+### Docs
+
+- **Docs lifecycle source-of-truth rules**: Standardized guidance around AGENTS-owned routing, canonical `ai-resources` ownership, and user-guide project-doc entrypoint conventions.
+
+- **Release confidence note**: This release carries the accepted gap from `docs/RELEASING.md` where private-package-dependent coverage is not fully enforced in GitHub Actions.
 
 ## [0.36.1] - 2026-03-31
 
