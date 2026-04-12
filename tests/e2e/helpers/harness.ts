@@ -392,7 +392,6 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
     join(opencodeDir, ".npmrc"),
     [
       "@dynatrace-oss:registry=https://npm.pkg.github.com",
-      "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}",
       "",
     ].join("\n")
   );
