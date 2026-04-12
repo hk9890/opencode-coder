@@ -43,10 +43,11 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 
 ### Docs Lifecycle Work
 
-- Edit canonical docs-lifecycle references under `ai-resources/skills/opencode-coder/references/`.
-- Edit `ai-resources/skills/opencode-coder/SKILL.md` when the published opencode-coder skill entrypoint itself must change.
+- Edit canonical project-doc references under `ai-resources/skills/coder-docs/references/`.
+- Edit `ai-resources/skills/coder-docs/SKILL.md` when the published docs-lifecycle entrypoint itself must change.
+- Treat `ai-resources/skills/coder-core/SKILL.md` as plugin-coupled runtime/bootstrap ownership, not docs-lifecycle ownership.
 - Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are aimgr-managed installed runtime surfaces, not authoring sources.
-- Treat `docs/user-guide/project-setup.md`, `docs/user-guide/project-doc-guidelines.md`, and `docs/user-guide/project-doc-review-guidelines.md` as copied entrypoints for the canonical skill references; keep them aligned with the `ai-resources/` source.
+- Treat `docs/user-guide/project-setup.md`, `docs/user-guide/project-doc-guidelines.md`, and `docs/user-guide/project-doc-review-guidelines.md` as copied entrypoints for the canonical `coder-docs` references; keep them aligned with the `ai-resources/` source.
 
 ## Landing the Plane (Session Completion)
 

@@ -40,7 +40,8 @@ For implementation architecture and build guidance, see [`CODING.md`](CODING.md)
 | Pure service/helper logic | `bun run typecheck`, targeted `bun test tests/unit/...` | adjacent unit tests for touched modules |
 | Startup / mode / detection changes | `bun run typecheck`, touched service unit tests, `bun test tests/integration/plugin.test.ts` | targeted e2e/manual check if CLI-visible behavior changed |
 | Published commands / skills / agents | `bun run typecheck`, `bun test tests/integration/plugin.test.ts` | targeted `bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario ..."` and manual semantic validation |
-| Docs lifecycle / init / improve-doc guidance | `bun test tests/unit/docs-lifecycle-contract.test.ts`, `bun test tests/integration/plugin.test.ts` | targeted e2e scenarios and manual acceptance |
+| Split-skill ownership/routing docs changes | targeted `bun test tests/integration/plugin.test.ts` | `bun test tests/e2e/opencode.test.ts --test-name-pattern "scenario [1-4]"` and manual checks for split package install flows |
+| Docs lifecycle / init / improve-doc guidance (`coder-docs` canonical refs + `docs/user-guide/` copies) | `bun test tests/unit/docs-lifecycle-contract.test.ts`, `bun test tests/integration/plugin.test.ts` | targeted e2e scenarios and manual acceptance |
 | Manual launcher / isolated harness changes | `bun test tests/integration/manual-launcher.test.ts`, `bun run validate:isolated-pins` | targeted e2e/manual run on a representative fixture |
 | Logs / diagnostics changes | targeted unit tests such as `tests/unit/log-analyzer.test.ts`, `tests/unit/collect-diagnostics.test.ts`, `tests/unit/coder-tool-logs.test.ts` | manual evidence collection if output shape changed |
 
@@ -301,7 +302,7 @@ bun run test:manual -- --mode=shell --fixture=coder-skill-installed
 
 Use when:
 - you want to confirm init-only behavior
-- docs lifecycle commands should remain gated
+- coder tool should remain inactive until the project is explicitly enabled
 
 Recommended command:
 
@@ -366,7 +367,14 @@ Use when:
 
 Why this matters:
 - `/simplify` behavior is owned by standalone `code-simplify` and routed via command/skill composition.
-- `coder-skill-installed` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill) or explicit standalone simplify package installation.
+- `coder-skill-installed` is an active-startup fixture baseline, but it does not guarantee the minimal normal-mode threshold (`/opencode-coder/init` command availability + `coder-core` runtime capability) or explicit standalone simplify package installation.
+
+Split-skill test workflow reminder:
+
+- plugin runtime checks should focus on bootstrap/core availability and beads readiness behavior
+- `/simplify` semantic ownership remains in standalone `code-simplify`
+- docs lifecycle semantic ownership remains in standalone `coder-docs`
+- `coder-beads` package checks should focus on runtime defaults/activation behavior only when beads is ready
 
 #### `local-build` runs (recommended for development)
 
@@ -394,8 +402,8 @@ Resources are not seeded automatically. Use `aimgr` to install them in the isola
    ```bash
     # coder-skill-installed already includes ai.package.yaml, so do not run `aimgr init` here
     aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
-    # Option A (full combined surface):
-    aimgr install package/opencode-coder
+    # Option A (full split surface):
+    aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads
 
     # Option B (targeted ownership check for standalone simplify):
     aimgr install package/code-simplify
@@ -404,8 +412,8 @@ Resources are not seeded automatically. Use `aimgr` to install them in the isola
 3. Start OpenCode from the same shell and run `/simplify ...` for semantic validation.
 
 Notes:
-- `aimgr install package/opencode-coder` requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
-- Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling the full combined package.
+- Split-package install requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
+- Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling core/docs/beads packages.
 - If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in `installed-configured` mode.
 
 ## Beads Testing

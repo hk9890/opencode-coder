@@ -2,6 +2,10 @@
   "name": "coder-beads",
   "description": "Standalone beads workflow skill package for planning, issue execution orchestration, acceptance review, and beads troubleshooting/health workflows",
   "resources": [
-    "skill/coder-beads"
+    "skill/coder-beads",
+    "agent/orchestrator",
+    "agent/reviewer",
+    "agent/tasker",
+    "agent/verifier"
   ]
 }

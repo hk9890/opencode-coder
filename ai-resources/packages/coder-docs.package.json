@@ -2,6 +2,8 @@
   "name": "coder-docs",
   "description": "Standalone docs lifecycle package for project-doc setup, review, and AGENTS guidance",
   "resources": [
-    "skill/coder-docs"
+    "skill/coder-docs",
+    "command/opencode-coder/init-or-update-docs",
+    "command/opencode-coder/improve-doc"
   ]
 }

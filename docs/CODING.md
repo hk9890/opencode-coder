@@ -24,7 +24,7 @@ Use this guide when changing this repo.
 | Installed runtime resources under `.opencode/` | Do **not** edit `.opencode/` directly; update the owning source in `ai-resources/`, `src/`, or test fixtures instead | only inspect `.opencode/` to verify runtime/install state after updating the real source | targeted tests for the affected workflow |
 | `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests | `bun run typecheck`, targeted unit tests |
 | Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests | targeted unit/integration tests, `bun run validate:isolated-pins` when harness pins change |
-| Docs lifecycle / project setup guidance | `ai-resources/skills/opencode-coder/references/` (and `ai-resources/skills/opencode-coder/SKILL.md` when the skill entrypoint itself changes) | keep the matching copies under `docs/user-guide/` aligned with the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
+| Docs lifecycle / project setup guidance | `ai-resources/skills/coder-docs/references/` (and `ai-resources/skills/coder-docs/SKILL.md` when the docs-lifecycle entrypoint itself changes) | keep the matching copies under `docs/user-guide/` aligned with the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
 
 ## Repository Structure
 
@@ -120,13 +120,20 @@ For runtime skill content boundaries, see [`user-guide/how-to-write-skills.md`](
 
 ### 6. Respect canonical doc sources and copied user-guide entrypoints
 
-Docs lifecycle work in this repo has one authoring source plus user-guide copies:
+Docs lifecycle work in this repo follows split ownership:
 
-- published canonical references under `ai-resources/skills/opencode-coder/references/`
-- the published skill entrypoint at `ai-resources/skills/opencode-coder/SKILL.md`
+- published canonical references under `ai-resources/skills/coder-docs/references/`
+- the published docs-lifecycle entrypoint at `ai-resources/skills/coder-docs/SKILL.md`
+- plugin-coupled runtime/bootstrap entrypoint at `ai-resources/skills/coder-core/SKILL.md`
 - contributor-facing copies under `docs/user-guide/`
 
-The published references are the source of truth for docs-lifecycle content. If the opencode-coder skill entrypoint itself must change, edit `ai-resources/skills/opencode-coder/SKILL.md`.
+The `coder-docs` references are the source of truth for docs-lifecycle content. If the docs-lifecycle skill entrypoint itself must change, edit `ai-resources/skills/coder-docs/SKILL.md`.
+
+The plugin runtime should track only bootstrap/core availability and beads readiness. Keep this ownership split explicit in docs:
+
+- `coder-core` = plugin-coupled runtime/bootstrap owner
+- `coder-beads` = plugin-integrated only for defaults/activation when beads is ready
+- `coder-docs` and `code-simplify` = standalone skill owners
 
 Do **not** edit `.opencode/skills/` or `.opencode/commands/` directly; they are installed runtime surfaces derived from the published sources.
 
@@ -138,15 +145,15 @@ In this repo:
 
 When you change one of these areas:
 
-1. update the canonical source under `ai-resources/skills/opencode-coder/references/`
+1. update the canonical source under `ai-resources/skills/coder-docs/references/`
 2. keep the matching `docs/user-guide/` copy in sync
 3. do not edit `.opencode/`; update the published source and matching user-guide copy together
 
 Examples:
 
-- `ai-resources/skills/opencode-coder/references/project-setup.md` ↔ `docs/user-guide/project-setup.md`
-- `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md` ↔ `docs/user-guide/project-doc-guidelines.md`
-- `ai-resources/skills/opencode-coder/references/project-doc-review-guidelines.md` ↔ `docs/user-guide/project-doc-review-guidelines.md`
+- `ai-resources/skills/coder-docs/references/project-setup.md` ↔ `docs/user-guide/project-setup.md`
+- `ai-resources/skills/coder-docs/references/project-doc-guidelines.md` ↔ `docs/user-guide/project-doc-guidelines.md`
+- `ai-resources/skills/coder-docs/references/project-doc-review-guidelines.md` ↔ `docs/user-guide/project-doc-review-guidelines.md`
 
 ## How to Change This Repo Safely
 
@@ -234,8 +241,9 @@ Good rule: if a change affects isolated harness behavior or pins, run `bun run v
 
 Edit here first:
 
-- `ai-resources/skills/opencode-coder/references/`
-- `ai-resources/skills/opencode-coder/SKILL.md` when the published skill entrypoint wording changes
+- `ai-resources/skills/coder-docs/references/`
+- `ai-resources/skills/coder-docs/SKILL.md` when the docs-lifecycle entrypoint wording changes
+- `ai-resources/skills/coder-core/SKILL.md` when plugin-coupled bootstrap/runtime guidance wording changes
 
 Also inspect:
 
@@ -254,9 +262,9 @@ Good rule: keep routing docs short, move deep detail into focused docs, and neve
 | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, `docs/MONITORING.md`, unit tests |
 | `scripts/log-analyzer/` | `docs/MONITORING.md`, `tests/unit/log-analyzer.test.ts` |
 | `scripts/validate-isolated-pins.ts` or harness setup | `docs/TESTING.md`, `tests/unit/validate-isolated-pins.test.ts`, `tests/integration/manual-launcher.test.ts` |
-| `ai-resources/skills/opencode-coder/references/project-setup.md` | `docs/user-guide/project-setup.md` |
-| `ai-resources/skills/opencode-coder/references/project-doc-guidelines.md` | `docs/user-guide/project-doc-guidelines.md` |
-| `ai-resources/skills/opencode-coder/references/project-doc-review-guidelines.md` | `docs/user-guide/project-doc-review-guidelines.md` |
+| `ai-resources/skills/coder-docs/references/project-setup.md` | `docs/user-guide/project-setup.md` |
+| `ai-resources/skills/coder-docs/references/project-doc-guidelines.md` | `docs/user-guide/project-doc-guidelines.md` |
+| `ai-resources/skills/coder-docs/references/project-doc-review-guidelines.md` | `docs/user-guide/project-doc-review-guidelines.md` |
 
 ## Representative References
 

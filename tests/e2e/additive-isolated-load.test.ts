@@ -57,7 +57,11 @@ describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
         expect(opencodeCoderSkill).toBe(false);
 
         const rootManifest = await readFile(join(PROJECT_ROOT, "ai.package.yaml"), "utf8");
-        expect(rootManifest).not.toContain(`package/${packageName}`);
+        expect(rootManifest).toContain("package/coder-core");
+        expect(rootManifest).toContain("package/coder-beads");
+        expect(rootManifest).toContain("package/coder-docs");
+        expect(rootManifest).toContain("package/code-simplify");
+        expect(rootManifest).not.toContain("package/opencode-coder");
       } finally {
         await cleanupFixtureWorkspace(workspace);
       }

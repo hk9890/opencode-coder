@@ -15,8 +15,6 @@ export type {
   ProjectContext,
   RuntimePhase,
   RuntimePhaseClassification,
-  RuntimeSurfaceDiagnostics,
-  RuntimePhaseDiagnosticsOverride,
 } from "./project-detector-service";
 
 export { PluginModeService } from "./plugin-mode-service";

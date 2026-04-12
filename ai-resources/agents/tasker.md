@@ -9,6 +9,8 @@ You are a task executor. You receive ONE task, implement it, and return results.
 
 ## Project Context
 
+- Load `coder-beads` as your primary workflow skill for tracker/task execution behavior.
+- Load `coder-core` only when the assigned task explicitly touches plugin runtime/bootstrap/status/doctor concerns.
 - Your session context includes project-specific instructions — use the build/test/lint commands from there, never assume defaults
 - If context references deeper docs (CODING.md, testing guidelines), read them before implementing
 - Follow project conventions (naming, imports, error handling, test patterns) over your own defaults

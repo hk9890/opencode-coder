@@ -11,7 +11,7 @@ The manual launcher also supports `--project-path <dir>` for reproducing behavio
 This fixture doc intentionally states only what the launcher currently guarantees.
 
 - OpenCode-ready `local-build` paths (TUI, shell, and command) prepare a workspace `.opencode/plugins/opencode-coder.js` symlink to the local built artifact.
-- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare workspace resources. Non-coder fixtures use direct seeding; `coder-skill-installed` and `beads-initialized` bootstrap isolated aimgr state and install `package/opencode-coder`.
+- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare workspace resources. Non-coder fixtures use direct seeding; `coder-skill-installed` and `beads-initialized` bootstrap isolated aimgr state and install split packages (`package/coder-core`, `package/coder-docs`, `package/code-simplify`, `package/coder-beads`).
 - Shell mode prepares the same workspace/runtime state as TUI, but stops before launching OpenCode.
 - `installed-configured` paths do **not** seed AI resources automatically.
 - `--project-path` paths run in place and skip fixture copy plus fixture-only git bootstrap.
@@ -52,7 +52,7 @@ Each fixture intentionally keeps content minimal. Scenario-specific files can be
 
 ### `/simplify` validation note for `coder-skill-installed`
 
-`coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `opencode-coder` skill). In isolated runs, `/simplify` may be unavailable until resources are installed through the normal path.
+`coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `coder-core` runtime skill). In isolated runs, `/simplify` may be unavailable until split packages are installed through the normal path (or seeded by the local-build launcher path).
 
 **`local-build` runs** (default for development): shell, TUI, and command paths prepare resources automatically. Shell mode stops after preparation so you can inspect the workspace or launch `opencode` manually.
 
@@ -68,7 +68,7 @@ Shell mode is the inspect-first parity path for `local-build`: it prepares the s
 1. `bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=installed-configured`
 2. inside shell:
    - `aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources`
-   - `aimgr install package/opencode-coder`
+   - `aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads`
    - do not run `aimgr init` for this fixture (`ai.package.yaml` is already committed)
 3. run OpenCode and validate `/simplify`
 
@@ -93,7 +93,7 @@ For broader testing guidance and test-level expectations, see [`docs/TESTING.md#
 The manual launcher prepares OpenCode resources on `local-build` shell, TUI, and command paths. Shell mode stops after preparation so you can inspect files or launch `opencode` manually from the same prepared workspace.
 
 - `empty-project` and `coder-mode-configured` use direct `.opencode/` seeding.
-- `coder-skill-installed` and `beads-initialized` use isolated `aimgr repo init` + `aimgr repo add local:.../ai-resources` + `aimgr install package/opencode-coder` so runtime readiness matches fixture intent.
+- `coder-skill-installed` and `beads-initialized` use isolated `aimgr repo init` + `aimgr repo add local:.../ai-resources` + split package install (`package/coder-core package/coder-docs package/code-simplify package/coder-beads`) so runtime readiness matches fixture intent.
 
 ### Single-writer constraint
 

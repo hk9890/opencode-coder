@@ -184,17 +184,29 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     await mkdir(skillsRootDir, { recursive: true });
 
     const commandsTargetDir = join(commandsRootDir, "opencode-coder");
-    const skillTargetDir = join(skillsRootDir, "opencode-coder");
     await rm(commandsTargetDir, { recursive: true, force: true });
-    await rm(skillTargetDir, { recursive: true, force: true });
+    await mkdir(commandsTargetDir, { recursive: true });
+    await cp(join(AI_RESOURCES_DIR, "commands", "opencode-coder", "init.md"), join(commandsTargetDir, "init.md"));
+    await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "init-or-update-docs.md"),
+      join(commandsTargetDir, "init-or-update-docs.md")
+    );
+    await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "improve-doc.md"),
+      join(commandsTargetDir, "improve-doc.md")
+    );
 
-    await cp(join(AI_RESOURCES_DIR, "commands", "opencode-coder"), commandsTargetDir, { recursive: true });
-    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder"), skillTargetDir, { recursive: true });
+    const coreSkillTargetDir = join(skillsRootDir, "coder-core");
+    const docsSkillTargetDir = join(skillsRootDir, "coder-docs");
+    await rm(coreSkillTargetDir, { recursive: true, force: true });
+    await rm(docsSkillTargetDir, { recursive: true, force: true });
+    await cp(join(AI_RESOURCES_DIR, "skills", "coder-core"), coreSkillTargetDir, { recursive: true });
+    await cp(join(AI_RESOURCES_DIR, "skills", "coder-docs"), docsSkillTargetDir, { recursive: true });
   };
 
   const seedMinimalNormalThresholdResources = async (workspaceDir: string) => {
     const commandsTargetDir = join(workspaceDir, ".opencode", "commands", "opencode-coder");
-    const skillTargetDir = join(workspaceDir, ".opencode", "skills", "opencode-coder");
+    const skillTargetDir = join(workspaceDir, ".opencode", "skills", "coder-core");
 
     await mkdir(commandsTargetDir, { recursive: true });
     await mkdir(skillTargetDir, { recursive: true });
@@ -209,8 +221,8 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     );
     await rm(join(commandsTargetDir, "init-or-update-docs.md"), { force: true });
 
-    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder", "SKILL.md"), join(skillTargetDir, "SKILL.md"));
-    await cp(join(AI_RESOURCES_DIR, "skills", "opencode-coder", "references"), join(skillTargetDir, "references"), {
+    await cp(join(AI_RESOURCES_DIR, "skills", "coder-core", "SKILL.md"), join(skillTargetDir, "SKILL.md"));
+    await cp(join(AI_RESOURCES_DIR, "skills", "coder-core", "references"), join(skillTargetDir, "references"), {
       recursive: true,
     });
   };

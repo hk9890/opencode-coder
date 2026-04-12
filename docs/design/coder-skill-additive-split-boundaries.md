@@ -1,4 +1,9 @@
-# Coder Skill Additive Split Boundaries (Epic `opencode-coder-3mv8`)
+# Coder Skill Additive Split Boundaries (Epic `opencode-coder-3mv8`) (Historical)
+
+> **Status (2026-04-12): Historical reference only.**
+>
+> This document freezes the old additive-only split contract and is not the active runtime/package validation contract after split bootstrap migration (`opencode-coder-9dfx`).
+> Keep for design history; do not treat its no-touch/coexistence constraints as current validation requirements.
 
 ## Purpose
 

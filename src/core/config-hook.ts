@@ -85,44 +85,15 @@ export function createConfigHook({
       delete input.command["opencode-coder/init"];
     }
 
-    const docsLifecycleResourcesAvailable = activeMode !== null && runtimePhase.shouldUseResourceBackedCommands;
-    if (docsLifecycleResourcesAvailable) {
-      logger.info("Runtime diagnostic signal", {
-        signal: "runtime.command_registration.docs_lifecycle",
-        startupMode: activeMode,
-        action: "registered",
-        projectContextAvailable: projectContext !== null,
-        runtimePhase: runtimePhase.phase,
-        missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
-        resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
-      });
-    } else {
-      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        if (input.command[commandName]) {
-          delete input.command[commandName];
-        }
-      }
-
-      logger.info("Runtime diagnostic signal", {
-        signal: "runtime.command_registration.docs_lifecycle",
-        startupMode: activeMode,
-        action: "suppressed",
-        projectContextAvailable: projectContext !== null,
-        runtimePhase: runtimePhase.phase,
-        missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
-        resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
-      });
-    }
-
-    if (activeMode && !docsLifecycleResourcesAvailable) {
-      logger.info("Docs lifecycle commands not registered because runtime phase is bootstrap", {
-        mode: activeMode,
-        runtimePhase: runtimePhase.phase,
-        missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
-        projectContextAvailable: projectContext !== null,
-        resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
-      });
-    }
+    logger.info("Runtime diagnostic signal", {
+      signal: "runtime.command_registration.docs_lifecycle",
+      startupMode: activeMode,
+      action: "not-gated",
+      projectContextAvailable: projectContext !== null,
+      runtimePhase: runtimePhase.phase,
+      missingRequiredSurfaces: runtimePhase.missingRequiredSurfaces,
+      resourcesHealthy: projectContext?.aimgr.resourcesHealthy ?? null,
+    });
 
     if (input.command[LEGACY_DOCS_COMMAND]) {
       delete input.command[LEGACY_DOCS_COMMAND];
@@ -151,16 +122,17 @@ export function createConfigHook({
       });
     } else if (!projectContext) {
       logger.info("Project context unavailable, not setting default_agent");
-    } else if (!projectContext.ecosystemReady) {
-      logger.info("ecosystemReady=false, not setting default_agent to orchestrator", {
-        ecosystemReady: projectContext.ecosystemReady,
+    } else if (!projectContext.beadsReady) {
+      logger.info("beadsReady=false, not setting default_agent to orchestrator", {
+        beadsReady: projectContext.beadsReady,
       });
       void showToast(
         client,
         logger,
         {
           title: "Orchestrator not enabled",
-          message: "Orchestrator was not made the default agent because the project is not fully ready yet. Check aimgr/beads setup or run /opencode-coder/doctor.",
+          message:
+            "Orchestrator was not made the default agent because beads runtime prerequisites are not ready yet. Check coder-beads/orchestrator markers, bd setup, or run /opencode-coder/doctor.",
           variant: "warning",
           duration: 8000,
         },
@@ -168,7 +140,7 @@ export function createConfigHook({
       );
     } else {
       cfg["default_agent"] = "orchestrator";
-      logger.info("Set default_agent to orchestrator (ecosystem ready)");
+      logger.info("Set default_agent to orchestrator (beads ready)");
     }
   };
 }
@@ -176,8 +148,9 @@ export function createConfigHook({
 function getRuntimePhase(projectContext: ProjectContext | null): RuntimePhaseClassification {
   return projectContext?.runtimePhase ?? {
     phase: "bootstrap",
+    coreAvailable: false,
+    bootstrapRequired: true,
     missingRequiredSurfaces: ["project-context-unavailable"],
     shouldExposeBootstrapInit: true,
-    shouldUseResourceBackedCommands: false,
   };
 }

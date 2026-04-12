@@ -14,17 +14,25 @@ function createService(workdir: string) {
 function createProjectContextFixture(overrides?: Partial<ProjectContext>): ProjectContext {
   return {
     mode: "team",
-    installReady: true,
-    ecosystemReady: true,
+    coreAvailable: true,
+    bootstrapRequired: false,
+    beadsReady: true,
     git: { initialized: true },
-    beads: { initialized: true, stealthMode: false, bdCliInstalled: true },
-    aimgr: { installed: true, packageYaml: true, resourcesHealthy: true, coderPackageInstalled: true },
+    beads: {
+      initialized: true,
+      stealthMode: false,
+      bdCliInstalled: true,
+      coderBeadsSkillAvailable: true,
+      orchestratorAgentAvailable: true,
+    },
+    aimgr: { installed: true, packageYaml: true, resourcesHealthy: true },
     pluginVersion: "1.0.0",
     runtimePhase: {
       phase: "normal",
+      coreAvailable: true,
+      bootstrapRequired: false,
       missingRequiredSurfaces: [],
       shouldExposeBootstrapInit: false,
-      shouldUseResourceBackedCommands: true,
     },
     ...overrides,
   };
@@ -55,14 +63,23 @@ describe("ProjectDetectorService", () => {
 
       const context = createProjectContextFixture({
         mode: "stealth",
-        installReady: false,
+        coreAvailable: false,
+        bootstrapRequired: true,
+        beadsReady: false,
         pluginVersion: "2.3.4",
-        beads: { initialized: true, stealthMode: true, bdCliInstalled: false },
+        beads: {
+          initialized: true,
+          stealthMode: true,
+          bdCliInstalled: false,
+          coderBeadsSkillAvailable: false,
+          orchestratorAgentAvailable: false,
+        },
         runtimePhase: {
           phase: "bootstrap",
-          missingRequiredSurfaces: ["resource/opencode-coder"],
+          coreAvailable: false,
+          bootstrapRequired: true,
+          missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
           shouldExposeBootstrapInit: true,
-          shouldUseResourceBackedCommands: false,
         },
       });
 
@@ -77,13 +94,16 @@ describe("ProjectDetectorService", () => {
 
       const yaml = readFileSync(projectYamlPath, "utf-8");
       expect(yaml).toContain("mode: stealth");
-      expect(yaml).toContain("installReady: false");
+      expect(yaml).toContain("coreAvailable: false");
+      expect(yaml).toContain("bootstrapRequired: true");
+      expect(yaml).toContain("beadsReady: false");
       expect(yaml).toContain("stealthMode: true");
       expect(yaml).toContain("bdCliInstalled: false");
       expect(yaml).toContain("pluginVersion: 2.3.4");
       expect(yaml).toContain("phase: bootstrap");
       expect(yaml).toContain("missingRequiredSurfaces:");
-      expect(yaml).toContain("- resource/opencode-coder");
+      expect(yaml).toContain("- command/opencode-coder/init");
+      expect(yaml).toContain("- skill/coder-core");
     });
 
     it("writeProjectContext() does not overwrite existing .coder/.gitignore", () => {
@@ -138,9 +158,10 @@ describe("ProjectDetectorService", () => {
 
       expect(service.classifyRuntimePhase()).toEqual({
         phase: "bootstrap",
-        missingRequiredSurfaces: ["resource/opencode-coder"],
+        coreAvailable: false,
+        bootstrapRequired: true,
+        missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
         shouldExposeBootstrapInit: true,
-        shouldUseResourceBackedCommands: false,
       });
 
       mkdirSync(join(workdir, ".opencode", "commands", "opencode-coder"), { recursive: true });
@@ -148,14 +169,15 @@ describe("ProjectDetectorService", () => {
 
       expect(service.classifyRuntimePhase().phase).toBe("bootstrap");
 
-      mkdirSync(join(workdir, ".opencode", "skills", "opencode-coder"), { recursive: true });
-      writeFileSync(join(workdir, ".opencode", "skills", "opencode-coder", "SKILL.md"), "# skill\n", "utf-8");
+      mkdirSync(join(workdir, ".opencode", "skills", "coder-core"), { recursive: true });
+      writeFileSync(join(workdir, ".opencode", "skills", "coder-core", "SKILL.md"), "# skill\n", "utf-8");
 
       expect(service.classifyRuntimePhase()).toEqual({
         phase: "normal",
+        coreAvailable: true,
+        bootstrapRequired: false,
         missingRequiredSurfaces: [],
         shouldExposeBootstrapInit: false,
-        shouldUseResourceBackedCommands: true,
       });
     });
   });
@@ -193,22 +215,6 @@ describe("ProjectDetectorService", () => {
       execSyncSpy.mockRestore();
     });
 
-    it("detectCoderPackageInstalled() parses aimgr list json and handles malformed output", () => {
-      const service = new ProjectDetectorService({ logger: createMockLogger(), workdir: "/tmp/nonexistent" });
-      const execSyncSpy = spyOn(childProcess, "execSync");
-
-      execSyncSpy.mockReturnValueOnce(JSON.stringify([{ type: "package", name: "opencode-coder" }]) as any);
-      expect(service.detectCoderPackageInstalled()).toBe(true);
-
-      execSyncSpy.mockReturnValueOnce("[]" as any);
-      expect(service.detectCoderPackageInstalled()).toBe(false);
-
-      execSyncSpy.mockReturnValueOnce("not-json" as any);
-      expect(service.detectCoderPackageInstalled()).toBe(false);
-
-      execSyncSpy.mockRestore();
-    });
-
     it("detectResourcesHealthy() returns healthy only when verify has no issues", () => {
       const service = new ProjectDetectorService({ logger: createMockLogger(), workdir: "/tmp/nonexistent" });
       const execSyncSpy = spyOn(childProcess, "execSync");
@@ -241,18 +247,19 @@ describe("ProjectDetectorService", () => {
       mkdirSync(join(workdir, ".git"), { recursive: true });
       mkdirSync(join(workdir, ".beads"), { recursive: true });
       mkdirSync(join(workdir, ".opencode", "commands", "opencode-coder"), { recursive: true });
-      mkdirSync(join(workdir, ".opencode", "skills", "opencode-coder"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "skills", "coder-core"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "skills", "coder-beads"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "agents"), { recursive: true });
       writeFileSync(join(workdir, ".opencode", "commands", "opencode-coder", "init.md"), "# init\n", "utf-8");
-      writeFileSync(join(workdir, ".opencode", "skills", "opencode-coder", "SKILL.md"), "# skill\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "skills", "coder-core", "SKILL.md"), "# skill\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "skills", "coder-beads", "SKILL.md"), "# skill\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "agents", "orchestrator.md"), "# orchestrator\n", "utf-8");
       writeFileSync(join(workdir, "ai.package.yaml"), "resources: []\n", "utf-8");
 
       const service = createService(workdir);
       const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
         if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
         if (cmd === "command -v aimgr") return "/usr/local/bin/aimgr" as any;
-        if (cmd === 'aimgr list "package/opencode-coder" --format json') {
-          return JSON.stringify([{ type: "package", name: "opencode-coder" }]) as any;
-        }
         if (cmd === "aimgr verify --format json") {
           throw new Error("verify should not be called when override is provided");
         }
@@ -265,14 +272,16 @@ describe("ProjectDetectorService", () => {
       });
 
       expect(result.mode).toBe("team");
-      expect(result.installReady).toBe(true);
-      expect(result.ecosystemReady).toBe(true);
+      expect(result.coreAvailable).toBe(true);
+      expect(result.bootstrapRequired).toBe(false);
+      expect(result.beadsReady).toBe(true);
       expect(result.runtimePhase.phase).toBe("normal");
 
       const yaml = readFileSync(join(workdir, ".coder", "project.yaml"), "utf-8");
       expect(yaml).toContain("mode: team");
-      expect(yaml).toContain("installReady: true");
-      expect(yaml).toContain("ecosystemReady: true");
+      expect(yaml).toContain("coreAvailable: true");
+      expect(yaml).toContain("bootstrapRequired: false");
+      expect(yaml).toContain("beadsReady: true");
       expect(yaml).toContain("pluginVersion: 1.2.3");
 
       execSyncSpy.mockRestore();

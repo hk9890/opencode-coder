@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the desired end state for the plugin after the current additive split work. It is not an implementation plan for the current epics. It is a target design for what the plugin should do at a high level when the new skills exist.
+This document describes the current split-skill target architecture after migration. It is an architecture reference for contributor guidance, runtime ownership, and package boundaries.
 
 ## Desired outcome
 
@@ -11,7 +11,7 @@ The plugin should be a small runtime/orchestration layer that helps a project be
 At a high level, the plugin should:
 
 1. support users to install and configure OpenCode / opencode-coder project setup
-2. use beads integration when beads is installed and configured
+2. use beads integration only when beads is installed, configured, and runtime-ready
 3. use aimgr integration when aimgr is installed and configured
 4. write the current project state to a local project context file
 
@@ -34,10 +34,10 @@ If beads is installed and the project is using beads, the plugin should enable b
 
 This includes:
 
-- injecting beads-aware workflow guidance/messages
 - recognizing beads project state
 - configuring `orchestrator` as the default agent when no other default agent is configured
 - keeping beads behavior optional rather than required for the plugin to function
+- applying plugin-integrated defaults/activation behavior only when beads readiness checks pass
 
 If beads is not installed, the plugin should still work in a degraded but valid core mode.
 
@@ -74,7 +74,7 @@ The plugin should have one minimal baseline capability that works without beads 
 
 ### Optional capability layers
 
-Beads and docs should be additive capabilities on top of the core experience.
+Beads readiness is a plugin-integrated capability layer. Docs and simplify are standalone skill capabilities.
 
 ### Graceful degradation
 
@@ -82,7 +82,7 @@ Missing integrations should reduce capability, not break startup.
 
 ### Clear ownership
 
-The plugin should own runtime detection/orchestration. Skills should own workflow guidance.
+The plugin owns runtime detection/orchestration. `coder-core` is plugin-coupled for runtime/bootstrap guidance. `coder-beads` is plugin-integrated for runtime defaults/activation only. `coder-docs` and `code-simplify` are standalone skill owners.
 
 ## How this should work with the new skills
 
@@ -109,10 +109,9 @@ If only `coder-core` is available, the plugin should still be useful.
 
 It should own:
 
-- beads workflow guidance
-- beads tracker/planning behavior
+- beads workflow guidance and tracker/planning behavior
 - beads-specific troubleshooting
-- beads-specific follow-up behavior
+- plugin-integrated defaults/activation guidance when beads is runtime-ready
 
 The plugin should enable beads-aware runtime behavior only when beads is actually available in the project.
 
@@ -128,6 +127,8 @@ It should own:
 
 The plugin should not require `coder-docs` in order to provide core setup/bootstrap behavior.
 
+`coder-docs` is standalone and should not be treated as a plugin-coupled runtime dependency.
+
 ### `code-simplify`
 
 `code-simplify` should own base `/simplify` workflow guidance.
@@ -140,6 +141,8 @@ It should own:
 
 `coder-core` should not own simplify baseline workflow in this model.
 
+`code-simplify` is standalone and should not be treated as a plugin-coupled runtime dependency.
+
 ## Runtime model with new skills
 
 The runtime should be organized around capabilities instead of one large combined skill.
@@ -150,16 +153,16 @@ The runtime should be organized around capabilities instead of one large combine
 
 ### Optional capabilities
 
-- `coder-beads` present + beads available -> enable beads-aware behavior
+- `coder-beads` present + beads available/ready -> enable beads-aware defaults/activation behavior
 - `coder-docs` present -> enable docs lifecycle behavior
 - `code-simplify` present -> enable dedicated simplify workflow guidance
 
-This means the plugin should move toward:
+This means the plugin should enforce:
 
-- **core required**
-- **beads optional**
-- **docs optional**
-- **simplify capability optional and standalone**
+- **core required (plugin-coupled)**
+- **beads optional (plugin-integrated when ready)**
+- **docs optional and standalone**
+- **simplify optional and standalone**
 
 ## Proposed plugin responsibilities in V2
 
@@ -169,11 +172,13 @@ The plugin itself should be responsible for:
 2. detecting which capabilities are available
 3. writing `.coder/project.yaml`
 4. exposing bootstrap/init behavior when core is not ready
-5. enabling beads-aware behavior only when beads is available
-6. enabling docs behavior only when docs capability is available
+5. enabling beads-aware defaults/activation behavior only when beads is available and ready
+6. exposing docs entrypoints only when docs capability is available
 7. helping with aimgr verify/repair when aimgr exists
 
 The plugin should not require every capability to exist before it can load.
+
+The plugin should not treat `coder-docs` or `code-simplify` as runtime readiness gates.
 
 ## Proposed readiness model
 

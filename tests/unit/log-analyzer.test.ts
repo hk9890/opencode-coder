@@ -24,7 +24,7 @@ describe("log-analyzer", () => {
 
   it("parses project-local plugin log lines and extra context", () => {
     const line =
-      '2026-03-23T10:40:00.123Z INFO [opencode-coder] (pid=1234) Runtime diagnostic signal extra={"signal":"runtime.project_context.available","installReady":true,"ecosystemReady":true}';
+      '2026-03-23T10:40:00.123Z INFO [opencode-coder] (pid=1234) Runtime diagnostic signal extra={"signal":"runtime.project_context.available","coreAvailable":true,"beadsReady":true}';
 
     const parsed = parseLine(line, "/repo/.coder/logs/coder-2026-03-23.log", "project-local");
 
@@ -34,7 +34,7 @@ describe("log-analyzer", () => {
     expect(parsed?.pid).toBe(1234);
     expect(parsed?.message).toBe("Runtime diagnostic signal");
     expect(parsed?.fields["signal"]).toBe("runtime.project_context.available");
-    expect(parsed?.fields["installReady"]).toBe("true");
+    expect(parsed?.fields["beadsReady"]).toBe("true");
   });
 
   it("matches source filter correctly", () => {

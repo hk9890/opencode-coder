@@ -2,7 +2,7 @@
 
 This folder contains setup, usage, and focused how-to documentation for the opencode-coder plugin.
 
-Canonical project-doc references also live under `ai-resources/skills/opencode-coder/references/`.
+Canonical project-doc references also live under `ai-resources/skills/coder-docs/references/`.
 
 The copies in this folder are regular markdown files for easier browsing from `docs/user-guide/`.
 

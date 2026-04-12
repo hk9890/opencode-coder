@@ -9,7 +9,7 @@ export function getInstallGuideTemplate(): string {
   return `
 # opencode-coder Bootstrap Init (Phase 1)
 
-Use this template only for Phase 1 runtime bootstrap, before full opencode-coder markdown resources are available.
+Use this template only for Phase 1 runtime bootstrap, before core-backed coder resources are available.
 
 ## Scope
 
@@ -47,22 +47,22 @@ npm install -g beads
 
 ### aimgr missing
 If \`aimgr\` is missing, explain both paths:
-- Standard path (recommended): install aimgr, then use \`aimgr init\` and \`aimgr install package/opencode-coder\`
-- Manual equivalent path: install/copy the opencode-coder resource as one unit under \`.opencode/\`:
-  - required marker for the resource: \`.opencode/skills/opencode-coder/SKILL.md\`
-  - copy the full skill directory: \`.opencode/skills/opencode-coder/\`
+- Standard path (recommended): install aimgr, then use \`aimgr init\` and \`aimgr install package/coder-core\`
+- Manual equivalent path: install/copy the minimal coder-core runtime surfaces under \`.opencode/\`:
+  - required skill marker: \`.opencode/skills/coder-core/SKILL.md\`
+  - copy the full skill directory: \`.opencode/skills/coder-core/\`
   - copy the matching command directory: \`.opencode/commands/opencode-coder/\`
-  - optional (helpful, not Phase 2 required): \`.opencode/agents/\`
+  - optional for orchestrator defaults (not required for core bootstrap): \`.opencode/skills/coder-beads/\` and \`.opencode/agents/orchestrator.md\`
 
 Do not auto-install aimgr. Ask user what path they want.
 
 ### aimgr available but package missing
-If aimgr is available and \`package/opencode-coder\` is missing, MUST ask via \`question()\` whether to run:
+If aimgr is available and \`package/coder-core\` is missing, MUST ask via \`question()\` whether to run:
 \`\`\`
-aimgr init && aimgr install package/opencode-coder
+aimgr init && aimgr install package/coder-core
 \`\`\`
 
-If user declines, provide the same manual resource guidance above (install the opencode-coder resource as one unit with SKILL.md marker) and explicitly state degraded Phase 1 continues until required surfaces are present.
+If user declines, provide the same manual resource guidance above (install required coder-core surfaces with SKILL.md marker) and explicitly state degraded Phase 1 continues until required surfaces are present.
 
 ## Step 3 — Bootstrap handoff
 

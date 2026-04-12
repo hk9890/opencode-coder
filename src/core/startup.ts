@@ -78,14 +78,18 @@ export async function runProjectStartupFlow({
         signal: "runtime.project_context.available",
         startupMode: activeMode,
         mode: ctx.mode,
-        installReady: ctx.installReady,
-        ecosystemReady: ctx.ecosystemReady,
+        coreAvailable: ctx.coreAvailable,
+        bootstrapRequired: ctx.bootstrapRequired,
+        beadsReady: ctx.beadsReady,
         runtimePhase: ctx.runtimePhase.phase,
         missingRequiredSurfaces: ctx.runtimePhase.missingRequiredSurfaces,
         resourcesHealthy: ctx.aimgr.resourcesHealthy,
-        coderPackageInstalled: ctx.aimgr.coderPackageInstalled,
       });
-      logger.debug("Project context written to .coder/project.yaml", { ecosystemReady: ctx.ecosystemReady });
+      logger.debug("Project context written to .coder/project.yaml", {
+        coreAvailable: ctx.coreAvailable,
+        bootstrapRequired: ctx.bootstrapRequired,
+        beadsReady: ctx.beadsReady,
+      });
       return ctx;
     })
     .catch((err) => {
@@ -97,8 +101,9 @@ export async function runProjectStartupFlow({
 export function getFallbackRuntimePhase(projectContext: ProjectContext | null): RuntimePhaseClassification {
   return projectContext?.runtimePhase ?? {
     phase: "bootstrap",
+    coreAvailable: false,
+    bootstrapRequired: true,
     missingRequiredSurfaces: ["project-context-unavailable"],
     shouldExposeBootstrapInit: true,
-    shouldUseResourceBackedCommands: false,
   };
 }

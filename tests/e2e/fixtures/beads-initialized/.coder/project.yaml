@@ -1,15 +1,25 @@
 mode: team
-installReady: true
-ecosystemReady: false
+coreAvailable: false
+bootstrapRequired: true
+beadsReady: false
 git:
   initialized: true
 beads:
   initialized: false
   stealthMode: false
   bdCliInstalled: false
+  coderBeadsSkillAvailable: false
+  orchestratorAgentAvailable: false
 aimgr:
   installed: false
   packageYaml: false
   resourcesHealthy: false
-  coderPackageInstalled: false
 pluginVersion: fixture
+runtimePhase:
+  phase: bootstrap
+  coreAvailable: false
+  bootstrapRequired: true
+  missingRequiredSurfaces:
+    - command/opencode-coder/init
+    - skill/coder-core
+  shouldExposeBootstrapInit: true

@@ -23,6 +23,8 @@ You are a critical thinker. Your default posture is skepticism.
 
 ## Project Context
 
+- Load `coder-beads` as your primary workflow skill for beads review behavior.
+- Load `coder-core` only when the reviewed work explicitly touches plugin runtime/bootstrap/status/doctor concerns.
 - AGENTS.md is already in your session context — check it for coding conventions, architecture patterns, and standards
 - If it references deeper docs (CONTRIBUTING.md, architecture docs), read them before reviewing
 - Judge code against the **project's own standards**, not just generic best practices

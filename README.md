@@ -101,7 +101,7 @@ When the plugin starts in an active project mode, it can automatically:
 1. **Check** if `ai.package.yaml` exists in your project
 2. **Detect** if `aimgr` is installed on your system
 3. **Initialize** aimgr if available (`aimgr init`)
-4. **Install** the `opencode-coder` package if available in your aimgr repository
+4. **Install/verify** split packages (`coder-core` baseline, optional `coder-beads`, `coder-docs`, `code-simplify`) from your aimgr repository when needed
 5. **Notify** you via toast when initialization completes
 
 Fresh or saved-disabled projects skip these startup side effects until explicitly enabled.
@@ -198,11 +198,13 @@ The following are **not plugin commands** — they are commands from the [beads 
 
 Skills extend the agent's capabilities with specialized workflows and domain expertise.
 
-### Core Plugin Skills
+### Split capability skills
 
 | Skill | Description |
 |-------|-------------|
-| `opencode-coder` | Core workflow hub for planning, setup, troubleshooting, health checks, and docs lifecycle workflows. |
+| `coder-core` | Plugin-coupled runtime/bootstrap owner for setup, mode/runtime guidance, and core troubleshooting. |
+| `coder-beads` | Plugin-integrated beads guidance for tracker workflows and runtime defaults/activation when beads is ready. |
+| `coder-docs` | Standalone docs-lifecycle and project-doc guidance owner. |
 | `code-simplify` | Standalone skill behind `/simplify` for recent-change cleanup with scoped simplification guardrails. |
 
 ### Release and Development Skills

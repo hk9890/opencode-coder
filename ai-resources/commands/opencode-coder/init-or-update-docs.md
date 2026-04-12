@@ -2,7 +2,7 @@
 description: Run docs lifecycle initialize/update workflow with optional focus weighting
 ---
 
-Load the `opencode-coder` skill.
+Load the `coder-docs` skill.
 
 Treat `$ARGUMENTS` as optional focus/weighting guidance only.
 

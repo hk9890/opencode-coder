@@ -54,9 +54,11 @@ Startup classifies sessions as `bootstrap` vs `normal` for command gating.
 Normal mode requires the minimal core surfaces:
 
 - `command/opencode-coder/init`
-- `skill/opencode-coder`
+- `skill/coder-core`
 
-`resource/opencode-coder` is the collapsed readiness signal for that minimal core threshold. It does not assert that every command/reference surface is installed.
+`resource/coder-core` is the collapsed readiness signal for that minimal core threshold. It does not assert that every command/reference surface is installed.
+
+> Historical note: `skill/opencode-coder` and `resource/opencode-coder` belonged to the old combined runtime package and are no longer current runtime guidance.
 
 ### Hard override
 

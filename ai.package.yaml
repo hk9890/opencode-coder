@@ -2,7 +2,10 @@ resources:
     - skill/opencode-coder-skill-creator
     - skill/ai-resource-manager
     - skill/self-reflection
-    - package/opencode-coder
+    - package/coder-core
+    - package/coder-beads
+    - package/coder-docs
+    - package/code-simplify
     - skill/github-releases
     - skill/opencode-coder-dev
     - command/opencode-coder-dev/analyze-logs

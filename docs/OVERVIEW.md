@@ -33,6 +33,14 @@ At a high level, the codebase is organized as a small startup entry point plus f
 - `ai-resources/` contains published, reusable AI resources (agents, commands, skills)
 - `.opencode/` contains project-local resources for developing this plugin repository
 
+Runtime ownership is capability-split:
+
+- plugin runtime is limited to bootstrap/core availability checks and beads readiness detection
+- `coder-core` is plugin-coupled and owns core runtime/bootstrap guidance
+- `coder-beads` is plugin-integrated only for runtime defaults/activation when beads is ready
+- `coder-docs` is standalone and owns docs lifecycle/project-doc references
+- `code-simplify` is standalone and owns `/simplify` workflow guidance
+
 For implementation details, conventions, and architecture rules, see the focused coding guide instead of this overview.
 
 ## Common change areas
@@ -42,7 +50,7 @@ For implementation details, conventions, and architecture rules, see the focused
 - **Installed runtime resources (inspect only; do not edit directly)** — `.opencode/`
 - **Diagnostics and log tooling** — `src/core/opencode-log-paths.ts`, `scripts/log-analyzer/`, `scripts/collect-diagnostics/`
 - **Testing harness and fixtures** — `tests/`, `scripts/manual-test/`, `docs/TESTING.md`
-- **Docs lifecycle and project-doc guidance** — canonical references in `ai-resources/skills/opencode-coder/references/`, the published skill entrypoint at `ai-resources/skills/opencode-coder/SKILL.md`, and copied user-guide entrypoints in `docs/user-guide/`
+- **Docs lifecycle and project-doc guidance** — canonical references in `ai-resources/skills/coder-docs/references/`, the published docs-lifecycle skill entrypoint at `ai-resources/skills/coder-docs/SKILL.md`, and copied user-guide entrypoints in `docs/user-guide/`
 
 ## Where to go next
 

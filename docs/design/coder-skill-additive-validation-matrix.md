@@ -1,11 +1,18 @@
-# Additive Validation Matrix for `coder-core`, `coder-beads`, and `coder-docs`
+# Additive Validation Matrix for `coder-core`, `coder-beads`, and `coder-docs` (Historical)
+
+> **Status (2026-04-12): Historical reference only (retired for active contributor validation).**
+>
+> This matrix documents the old additive rollout contract and is no longer the active validation model for the split runtime/packages migration (`opencode-coder-9dfx`).
+> Current validation must follow the split bootstrap/core/beads/docs/simplify contract in active tests/docs (`tests/integration/plugin.test.ts`, `tests/e2e/helpers/harness.ts`, `docs/TESTING.md`), not this additive-era no-touch/coexistence matrix.
+>
+> **Contributor rule:** do not use this document as a current implementation or acceptance checklist. Keep it only as design-history evidence for additive rollout decisions.
 
 Epic: `opencode-coder-3mv8`  
 Task: `opencode-coder-3mv8.2`
 
 ## 1) Hard rollout contract (normative)
 
-This matrix implements the frozen contract from `docs/design/coder-skill-additive-split-boundaries.md` and is **mandatory** for child epics `.3`, `.4`, and `.5`.
+This matrix implemented the frozen additive contract from `docs/design/coder-skill-additive-split-boundaries.md` and was mandatory for child epics `.3`, `.4`, and `.5` in that historical rollout.
 
 > **Amendment (2026-04-08, epic `opencode-coder-wlpd`)**
 > This matrix remains a historical additive-rollout record for `opencode-coder-3mv8`. The simplify ownership aspect referenced below is superseded for current-state ownership: base `/simplify` moved from `coder-core` to standalone `code-simplify` once compatibility-surface routing was migrated.

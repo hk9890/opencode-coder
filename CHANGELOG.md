@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Split-skill ownership model**: Updated contributor-facing architecture and repo guidance to the split capability model where plugin runtime tracks only bootstrap/core availability plus beads readiness; `coder-core` is plugin-coupled, `coder-beads` is plugin-integrated only for defaults/activation, and `coder-docs` + `code-simplify` are standalone owners.
+- **Canonical docs source paths**: Repointed docs-lifecycle guidance from historical combined-skill paths to `ai-resources/skills/coder-docs/references/` with explicit user-guide copy-sync expectations.
+
+### Deprecated
+
+- **Additive rollout matrix as active policy**: Marked additive-rollout validation docs as historical-only so contributors do not treat additive no-touch/coexistence constraints as the current architecture contract.
+
 ### Fixed
 
 - **Manual launcher shell/TUI parity**: Shell mode now prepares the same plugin, resource, and fixture bootstrap state as TUI before dropping to an interactive shell, so manually launching `opencode` from the shell matches TUI startup behavior.

@@ -193,14 +193,14 @@ describe("AimgrService", () => {
     it("should return true when package exists", () => {
       const mockOutput = JSON.stringify({
         packages: [
-          { name: "opencode-coder" },
+          { name: "coder-core" },
           { name: "other-package" },
         ],
       });
 
       execSyncMock.mockReturnValue(mockOutput);
 
-      const result = aimgrService.isPackageAvailable("opencode-coder");
+      const result = aimgrService.isPackageAvailable("coder-core");
 
       expect(result).toBe(true);
       expect(execSyncMock).toHaveBeenCalledWith("aimgr repo list --format=json", {
@@ -219,7 +219,7 @@ describe("AimgrService", () => {
 
       execSyncMock.mockReturnValue(mockOutput);
 
-      const result = aimgrService.isPackageAvailable("opencode-coder");
+      const result = aimgrService.isPackageAvailable("coder-core");
 
       expect(result).toBe(false);
     });
@@ -229,7 +229,7 @@ describe("AimgrService", () => {
         throw new Error("command failed");
       });
 
-      const result = aimgrService.isPackageAvailable("opencode-coder");
+      const result = aimgrService.isPackageAvailable("coder-core");
 
       expect(result).toBe(false);
       expect(mockLogger.error).toHaveBeenCalled();
@@ -248,14 +248,14 @@ describe("AimgrService", () => {
     it("should successfully install package", () => {
       execSyncMock.mockReturnValue(Buffer.from("Installed"));
 
-      aimgrService.installPackage("opencode-coder");
+      aimgrService.installPackage("coder-core");
 
-      expect(execSyncMock).toHaveBeenCalledWith("aimgr install package/opencode-coder", {
+      expect(execSyncMock).toHaveBeenCalledWith("aimgr install package/coder-core", {
         cwd: "/test/path",
         stdio: "ignore",
         timeout: 10000,
       });
-      expect(mockLogger.info).toHaveBeenCalledWith("Package installed successfully", { packageName: "opencode-coder" });
+      expect(mockLogger.info).toHaveBeenCalledWith("Package installed successfully", { packageName: "coder-core" });
     });
 
     it("should throw error when install fails", () => {
@@ -263,7 +263,7 @@ describe("AimgrService", () => {
         throw new Error("install failed");
       });
 
-      expect(() => aimgrService.installPackage("opencode-coder")).toThrow("install failed");
+      expect(() => aimgrService.installPackage("coder-core")).toThrow("install failed");
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });
@@ -433,8 +433,8 @@ describe("AimgrService", () => {
         } else if (cmd === "aimgr init") {
           return Buffer.from("Initialized");
         } else if (cmd === "aimgr repo list --format=json") {
-          return JSON.stringify({ packages: [{ name: "opencode-coder" }] });
-        } else if (cmd === "aimgr install package/opencode-coder") {
+          return JSON.stringify({ packages: [{ name: "coder-core" }] });
+        } else if (cmd === "aimgr install package/coder-core") {
           return Buffer.from("Installed");
         }
         return Buffer.from("");
@@ -444,7 +444,7 @@ describe("AimgrService", () => {
 
       expect(mockClient.tui.showToast).toHaveBeenCalledWith({
         title: "aimgr Initialized",
-        message: "Detected aimgr and installed opencode-coder package",
+        message: "Detected aimgr and installed coder-core package",
         variant: "success",
         duration: 6000,
       });
@@ -472,7 +472,7 @@ describe("AimgrService", () => {
 
       expect(mockClient.tui.showToast).toHaveBeenCalledWith({
         title: "aimgr Initialized",
-        message: "Created ai.package.yaml. Run 'aimgr repo search opencode' to discover resources.",
+        message: "Created ai.package.yaml. Run 'aimgr repo search coder-core' to discover resources.",
         variant: "info",
         duration: 6000,
       });

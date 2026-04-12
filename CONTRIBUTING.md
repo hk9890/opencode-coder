@@ -35,6 +35,21 @@ bun run typecheck
 
 Add the targeted unit, integration, e2e, or manual checks required by [`docs/TESTING.md`](docs/TESTING.md#change-type-matrix).
 
+## Split-skill package model (current)
+
+Contributor guidance and tests should follow the split capability model:
+
+- plugin runtime is responsible for bootstrap/core availability and beads readiness detection
+- `coder-core` is plugin-coupled runtime/bootstrap ownership
+- `coder-beads` is plugin-integrated for defaults/activation only when beads is ready
+- `coder-docs` and `code-simplify` are standalone skill owners
+
+When manually validating split-package behavior in isolated runs, use `aimgr` installs such as:
+
+```bash
+aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads
+```
+
 ## Contribution Workflow
 
 1. Pick or create an issue (this repo uses `bd` for issue tracking)

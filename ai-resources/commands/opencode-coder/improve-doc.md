@@ -2,7 +2,7 @@
 description: Improve docs via incident-driven fixes or discussion-first analysis and proposal
 ---
 
-Load the `opencode-coder` skill.
+Load the `coder-docs` skill.
 
 Treat this as optional context/focus guidance:
 

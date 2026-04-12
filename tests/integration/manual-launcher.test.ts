@@ -865,9 +865,9 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(Boolean(preservedRoot)).toBe(true);
 
       const projectYaml = await readFile(join(preservedRoot!, "project", ".coder", "project.yaml"), "utf8");
-      expect(projectYaml).toContain("ecosystemReady: true");
+      expect(projectYaml).toContain("beadsReady: true");
       expect(projectYaml).toContain("resourcesHealthy: true");
-      expect(projectYaml).toContain("coderPackageInstalled: true");
+      expect(projectYaml).toContain("coreAvailable: true");
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });
@@ -891,7 +891,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(Boolean(preservedRoot)).toBe(true);
 
       const packageSkill = Bun.file(
-        join(preservedRoot!, "project", ".opencode", "skills", "opencode-coder", "SKILL.md")
+        join(preservedRoot!, "project", ".opencode", "skills", "coder-core", "SKILL.md")
       );
       expect(await packageSkill.exists()).toBe(true);
     } finally {

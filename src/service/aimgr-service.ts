@@ -51,7 +51,7 @@ export interface AimgrServiceOptions {
  * Features:
  * - Detects if aimgr CLI is installed
  * - Checks for ai.package.yaml existence
- * - Runs aimgr init and install opencode-coder package automatically
+ * - Runs aimgr init and installs coder-core package automatically
  * - Shows user notifications for auto-initialization
  */
 export class AimgrService {
@@ -265,7 +265,7 @@ export class AimgrService {
    * 1. Checks if ai.package.yaml exists
    * 2. If not, checks if aimgr is available
    * 3. If available, runs aimgr init
-   * 4. Checks if opencode-coder package is available
+    * 4. Checks if coder-core package is available
    * 5. If yes, installs it
    * 6. Shows user notification
    * 
@@ -290,26 +290,26 @@ export class AimgrService {
       // Step 3: Run aimgr init
       this.initializeAimgr();
 
-      // Step 4: Check if opencode-coder package is available
-      const packageAvailable = this.isPackageAvailable("opencode-coder");
+      // Step 4: Check if coder-core package is available
+      const packageAvailable = this.isPackageAvailable("coder-core");
       if (!packageAvailable) {
-        this.logger.debug("opencode-coder package not available in repo");
+        this.logger.debug("coder-core package not available in repo");
         await showToast(this.client, this.logger, {
           title: "aimgr Initialized",
-          message: "Created ai.package.yaml. Run 'aimgr repo search opencode' to discover resources.",
+          message: "Created ai.package.yaml. Run 'aimgr repo search coder-core' to discover resources.",
           variant: "info",
           duration: 6000,
         });
         return;
       }
 
-      // Step 5: Install opencode-coder package
-      this.installPackage("opencode-coder");
+      // Step 5: Install coder-core package
+      this.installPackage("coder-core");
 
       // Step 6: Show success notification
       await showToast(this.client, this.logger, {
         title: "aimgr Initialized",
-        message: "Detected aimgr and installed opencode-coder package",
+        message: "Detected aimgr and installed coder-core package",
         variant: "success",
         duration: 6000,
       });

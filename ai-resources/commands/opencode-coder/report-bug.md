@@ -2,7 +2,7 @@
 description: Report issues with the opencode-coder plugin
 ---
 
-Load the `opencode-coder` skill.
+Load the `coder-core` skill.
 
 Treat this as bug context:
 

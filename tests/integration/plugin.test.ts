@@ -10,28 +10,31 @@ import type { PluginModeResolution, ProjectContext } from "../../src/service";
 import { createMockPluginInput, asMockPluginInput } from "../helpers/mock-client";
 
 function createProjectContext(overrides?: Partial<ProjectContext>): ProjectContext {
-  const runtimePhase = {
+  const runtimePhase: ProjectContext["runtimePhase"] = {
     phase: "normal" as const,
+    coreAvailable: true,
+    bootstrapRequired: false,
     missingRequiredSurfaces: [],
     shouldExposeBootstrapInit: false,
-    shouldUseResourceBackedCommands: true,
   };
 
   return {
     mode: "team",
-    installReady: true,
-    ecosystemReady: true,
+    coreAvailable: true,
+    bootstrapRequired: false,
+    beadsReady: true,
     git: { initialized: true },
     beads: {
       initialized: true,
       stealthMode: false,
       bdCliInstalled: true,
+      coderBeadsSkillAvailable: true,
+      orchestratorAgentAvailable: true,
     },
     aimgr: {
       installed: true,
       packageYaml: true,
       resourcesHealthy: true,
-      coderPackageInstalled: true,
     },
     pluginVersion: "1.0.0",
     runtimePhase,
@@ -185,7 +188,7 @@ describe("OpencodeCoder Plugin Integration", () => {
           repairSucceeded: false,
         });
         const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-          createProjectContext({ ecosystemReady: true })
+          createProjectContext()
         );
 
         mkdirSync(join(worktree, ".coder"), { recursive: true });
@@ -220,7 +223,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         expect(
           evidenceLines.some((line) =>
             line.includes('"signal":"runtime.command_registration.docs_lifecycle"') &&
-            line.includes('"action":"registered"')
+            line.includes('"action":"not-gated"')
           )
         ).toBe(true);
 
@@ -252,7 +255,7 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
       for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeUndefined();
+        expect(cfg.command?.[commandName]).toBeDefined();
       }
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
       expect(cfg.default_agent).toBeUndefined();
@@ -292,7 +295,7 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
       for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeUndefined();
+        expect(cfg.command?.[commandName]).toBeDefined();
       }
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
       expect(cfg.default_agent).toBeUndefined();
@@ -317,9 +320,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: true })
-      );
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
@@ -361,7 +362,6 @@ describe("OpencodeCoder Plugin Integration", () => {
             ...createProjectContext().runtimePhase,
             phase: "normal",
             shouldExposeBootstrapInit: false,
-            shouldUseResourceBackedCommands: true,
             missingRequiredSurfaces: [],
           },
         })
@@ -409,7 +409,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairSucceeded: false,
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ mode: "stealth", ecosystemReady: true })
+        createProjectContext({ mode: "stealth" })
       );
 
       const mockInput = createMockPluginInput();
@@ -435,7 +435,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("suppresses docs lifecycle commands for active team mode when runtime phase is bootstrap", async () => {
+    it("keeps docs lifecycle commands for active team mode even when runtime phase is bootstrap", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -446,14 +446,15 @@ describe("OpencodeCoder Plugin Integration", () => {
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
-          ecosystemReady: false,
+          beadsReady: false,
           aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
           runtimePhase: {
             ...createProjectContext().runtimePhase,
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
-            shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["resource/opencode-coder"],
+            coreAvailable: false,
+            bootstrapRequired: true,
+            missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
           },
         })
       );
@@ -465,20 +466,15 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
       for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeUndefined();
+        expect(cfg.command?.[commandName]).toBeDefined();
       }
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
-      expect(
-        mockInput.client.app.logs.some(
-          (entry) => entry.message === "Docs lifecycle commands not registered because runtime phase is bootstrap"
-        )
-      ).toBe(true);
       expect(
         mockInput.client.app.logs.some(
           (entry) =>
             entry.message === "Runtime diagnostic signal" &&
             entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
-            entry.extra?.["action"] === "suppressed"
+            entry.extra?.["action"] === "not-gated"
         )
       ).toBe(true);
 
@@ -499,13 +495,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
-          ecosystemReady: false,
+          beadsReady: false,
           runtimePhase: {
             ...createProjectContext().runtimePhase,
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
-            shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["resource/opencode-coder"],
+            coreAvailable: false,
+            bootstrapRequired: true,
+            missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
           },
         })
       );
@@ -518,7 +515,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("question()");
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("restart/reopen OpenCode");
       expect(cfg.command?.["opencode-coder/init"]?.template).toContain("Manual equivalent path");
-      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("install/copy the opencode-coder resource as one unit");
+      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("install package/coder-core");
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -526,7 +523,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("suppresses docs lifecycle commands for active stealth mode when runtime phase is bootstrap", async () => {
+    it("keeps docs lifecycle commands for active stealth mode even when runtime phase is bootstrap", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -538,14 +535,15 @@ describe("OpencodeCoder Plugin Integration", () => {
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
           mode: "stealth",
-          ecosystemReady: false,
+          beadsReady: false,
           aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
           runtimePhase: {
             ...createProjectContext().runtimePhase,
             phase: "bootstrap",
             shouldExposeBootstrapInit: true,
-            shouldUseResourceBackedCommands: false,
-            missingRequiredSurfaces: ["resource/opencode-coder"],
+            coreAvailable: false,
+            bootstrapRequired: true,
+            missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
           },
         })
       );
@@ -557,20 +555,15 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
       for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeUndefined();
+        expect(cfg.command?.[commandName]).toBeDefined();
       }
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
-      expect(
-        mockInput.client.app.logs.some(
-          (entry) => entry.message === "Docs lifecycle commands not registered because runtime phase is bootstrap"
-        )
-      ).toBe(true);
       expect(
         mockInput.client.app.logs.some(
           (entry) =>
             entry.message === "Runtime diagnostic signal" &&
             entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
-            entry.extra?.["action"] === "suppressed"
+            entry.extra?.["action"] === "not-gated"
         )
       ).toBe(true);
 
@@ -609,7 +602,7 @@ describe("OpencodeCoder Plugin Integration", () => {
           repairSucceeded: false,
         });
         const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-          createProjectContext({ ecosystemReady: true })
+          createProjectContext()
         );
 
         const mockInput = createMockPluginInput({ worktree, directory: worktree });
@@ -633,7 +626,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       }
     });
 
-    it("sets default_agent to orchestrator when ecosystem is ready and no default exists", async () => {
+    it("sets default_agent to orchestrator when beads runtime is ready and no default exists", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -642,9 +635,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: true })
-      );
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
@@ -668,9 +659,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: true })
-      );
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
@@ -719,7 +708,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("shows readiness toast when default_agent assignment is skipped because ecosystem is not ready", async () => {
+    it("shows readiness toast when default_agent assignment is skipped because beads runtime is not ready", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -729,7 +718,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairSucceeded: false,
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: false })
+        createProjectContext({ beadsReady: false })
       );
 
       const mockInput = createMockPluginInput();
@@ -740,9 +729,9 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(cfg.default_agent).toBeUndefined();
       expect(
         mockInput.client.app.logs.some(
-          (entry) => entry.message === "ecosystemReady=false, not setting default_agent to orchestrator"
-        )
-      ).toBe(true);
+            (entry) => entry.message === "beadsReady=false, not setting default_agent to orchestrator"
+          )
+        ).toBe(true);
       expect(mockInput.client.tui.toasts).toHaveLength(1);
       expect(mockInput.client.tui.toasts[0]).toMatchObject({
         title: "Orchestrator not enabled",
@@ -765,7 +754,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairSucceeded: false,
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: false })
+        createProjectContext({ beadsReady: false })
       );
 
       const mockInput = createMockPluginInput();
@@ -807,7 +796,7 @@ describe("OpencodeCoder Plugin Integration", () => {
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(() => {
         order.push("detectAndWrite");
         return createProjectContext({
-          ecosystemReady: repaired,
+          beadsReady: repaired,
           aimgr: { ...createProjectContext().aimgr, resourcesHealthy: repaired },
         });
       });
@@ -855,7 +844,7 @@ describe("OpencodeCoder Plugin Integration", () => {
 
         expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
         for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-          expect(cfg.command?.[commandName]).toBeUndefined();
+          expect(cfg.command?.[commandName]).toBeDefined();
         }
         expect(cfg.default_agent).toBeUndefined();
 
@@ -863,7 +852,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         expect(context.aimgr.installed).toBe(false);
         expect(context.aimgr.resourcesHealthy).toBe(false);
         expect(context.beads.bdCliInstalled).toBe(true);
-        expect(context.installReady).toBe(false);
+        expect(context.beadsReady).toBe(false);
 
         expect(
           mockInput.client.app.logs.some(
@@ -878,7 +867,7 @@ describe("OpencodeCoder Plugin Integration", () => {
             (entry) =>
               entry.message === "Runtime diagnostic signal" &&
               entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
-              entry.extra?.["action"] === "suppressed"
+              entry.extra?.["action"] === "not-gated"
           )
         ).toBe(true);
       } finally {
@@ -954,10 +943,10 @@ describe("OpencodeCoder Plugin Integration", () => {
         }
 
         if (command === "aimgr repo list --format=json") {
-          return JSON.stringify({ packages: [{ name: "opencode-coder" }] }) as any;
+          return JSON.stringify({ packages: [{ name: "coder-core" }] }) as any;
         }
 
-        if (command === "aimgr install package/opencode-coder") {
+        if (command === "aimgr install package/coder-core") {
           return Buffer.from("installed") as any;
         }
 
@@ -973,10 +962,6 @@ describe("OpencodeCoder Plugin Integration", () => {
           return JSON.stringify({ status: "ok", fixed: ["missing-resource"] }) as any;
         }
 
-        if (command === 'aimgr list "package/opencode-coder" --format json') {
-          return JSON.stringify([{ name: "package/opencode-coder" }]) as any;
-        }
-
         throw new Error(`Unexpected command in 7rn sequencing integration test: ${command}`);
       });
 
@@ -990,15 +975,12 @@ describe("OpencodeCoder Plugin Integration", () => {
         const firstVerifyIndex = callOrder.indexOf("aimgr verify --format json");
         const repairIndex = callOrder.indexOf("aimgr repair --format json");
         const secondVerifyIndex = callOrder.findIndex((command, index) => command === "aimgr verify --format json" && index > firstVerifyIndex);
-        const detectListIndex = callOrder.indexOf('aimgr list "package/opencode-coder" --format json');
         expect(firstVerifyIndex).toBeGreaterThan(-1);
         expect(repairIndex).toBeGreaterThan(firstVerifyIndex);
         expect(secondVerifyIndex).toBeGreaterThan(repairIndex);
-        expect(detectListIndex).toBeGreaterThan(secondVerifyIndex);
 
         const context = readProjectContextFromWorktree(worktree);
         expect(context.aimgr.resourcesHealthy).toBe(true);
-        expect(context.aimgr.coderPackageInstalled).toBe(true);
         expect(cfg.default_agent).toBeUndefined();
 
         expect(
@@ -1035,10 +1017,6 @@ describe("OpencodeCoder Plugin Integration", () => {
           return JSON.stringify({ status: "ok", issues: [] }) as any;
         }
 
-        if (command === 'aimgr list "package/opencode-coder" --format json') {
-          return JSON.stringify([{ name: "package/opencode-coder" }]) as any;
-        }
-
         throw new Error(`Unexpected command in partial-availability integration test: ${command}`);
       });
 
@@ -1051,16 +1029,15 @@ describe("OpencodeCoder Plugin Integration", () => {
         const context = readProjectContextFromWorktree(worktree);
         expect(context.aimgr.installed).toBe(true);
         expect(context.beads.bdCliInstalled).toBe(false);
-        expect(context.installReady).toBe(false);
-        expect(context.ecosystemReady).toBe(true);
-        expect(cfg.default_agent).toBe("orchestrator");
+        expect(context.beadsReady).toBe(false);
+        expect(cfg.default_agent).toBeUndefined();
 
         expect(
           mockInput.client.app.logs.some(
             (entry) =>
               entry.message === "Runtime diagnostic signal" &&
               entry.extra?.["signal"] === "runtime.project_context.available" &&
-              entry.extra?.["installReady"] === false &&
+              entry.extra?.["beadsReady"] === false &&
               entry.extra?.["resourcesHealthy"] === true
           )
         ).toBe(true);
@@ -1074,9 +1051,10 @@ describe("OpencodeCoder Plugin Integration", () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const classifySpy = spyOn(ProjectDetectorService.prototype, "classifyRuntimePhase").mockReturnValue({
         phase: "normal",
+        coreAvailable: true,
+        bootstrapRequired: false,
         missingRequiredSurfaces: [],
         shouldExposeBootstrapInit: false,
-        shouldUseResourceBackedCommands: true,
       });
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
@@ -1087,12 +1065,11 @@ describe("OpencodeCoder Plugin Integration", () => {
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
-          ecosystemReady: false,
+          beadsReady: false,
           aimgr: {
             installed: true,
             packageYaml: false,
             resourcesHealthy: false,
-            coderPackageInstalled: false,
           },
         })
       );
@@ -1135,9 +1112,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         repairAttempted: false,
         repairSucceeded: false,
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ ecosystemReady: true })
-      );
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
       const originalSetTimeout = globalThis.setTimeout;
       const originalClearTimeout = globalThis.clearTimeout;
@@ -1157,7 +1132,7 @@ describe("OpencodeCoder Plugin Integration", () => {
         expect(cfg.command).toBeDefined();
         expect((cfg.command as Record<string, unknown>)["opencode-coder/init"]).toBeDefined();
         for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-          expect((cfg.command as Record<string, unknown>)[commandName]).toBeUndefined();
+          expect((cfg.command as Record<string, unknown>)[commandName]).toBeDefined();
         }
         expect(
           mockInput.client.app.logs.some(

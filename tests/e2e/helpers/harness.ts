@@ -856,8 +856,8 @@ export async function seedAiResources(projectRoot: string, workdir: string): Pro
   const commandsDest = join(opencodeDir, "commands");
   await cp(commandsSource, commandsDest, { recursive: true });
 
-  // Skills (only the three coder skills)
-  for (const skill of ["opencode-coder", "code-simplify", "coder-beads"]) {
+  // Skills (seed split ownership surfaces only)
+  for (const skill of ["coder-core", "coder-docs", "code-simplify", "coder-beads"]) {
     const skillSource = join(aiResourcesDir, "skills", skill);
     const skillDest = join(opencodeDir, "skills", skill);
     // Check source exists before copying (some skills may not exist in all setups)
@@ -912,9 +912,14 @@ export async function prepareCoderFixtureResources(options: {
     throw new Error(`Failed to add local ai-resources repo:\n${repoAddResult.stderr.toString()}`);
   }
 
-  const installResult = await $`aimgr install package/opencode-coder`.cwd(options.workdir).env(env).quiet();
+  const installResult = await $`aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads`
+    .cwd(options.workdir)
+    .env(env)
+    .quiet();
   if (installResult.exitCode !== 0) {
-    throw new Error(`Failed to install package/opencode-coder for fixture workspace:\n${installResult.stderr.toString()}`);
+    throw new Error(
+      `Failed to install split capability packages for fixture workspace:\n${installResult.stderr.toString()}`
+    );
   }
 
   return { prepared: true, strategy: "aimgr-installed" };
