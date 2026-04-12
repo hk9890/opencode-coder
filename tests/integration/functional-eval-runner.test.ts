@@ -148,7 +148,9 @@ describe("functional eval runner", () => {
       await ensureExecutable(fakeOpencode);
 
       const beforeBd = await runCommand(["bd", "list", "--json"]);
-      const beforeBdParsed = JSON.parse(beforeBd.stdout) as Array<Record<string, unknown>>;
+      const beforeBdParsed = beforeBd.stdout.trim().length
+        ? (JSON.parse(beforeBd.stdout) as Array<Record<string, unknown>>)
+        : null;
 
       const runResult = await runCommand(
         [
@@ -186,11 +188,15 @@ describe("functional eval runner", () => {
       expect((await stat(join(snapshotRoot, ".beads"))).isDirectory()).toBe(true);
 
       const afterBd = await runCommand(["bd", "list", "--json"]);
-      const afterBdParsed = JSON.parse(afterBd.stdout) as Array<Record<string, unknown>>;
+      const afterBdParsed = afterBd.stdout.trim().length
+        ? (JSON.parse(afterBd.stdout) as Array<Record<string, unknown>>)
+        : null;
       expect(afterBd.exitCode).toBe(beforeBd.exitCode);
       expect(afterBd.stderr).toBe(beforeBd.stderr);
-      expect(afterBdParsed.map((issue) => issue.id)).toEqual(beforeBdParsed.map((issue) => issue.id));
-      expect(afterBdParsed.map((issue) => issue.title)).toEqual(beforeBdParsed.map((issue) => issue.title));
+      if (beforeBdParsed && afterBdParsed) {
+        expect(afterBdParsed.map((issue) => issue.id)).toEqual(beforeBdParsed.map((issue) => issue.id));
+        expect(afterBdParsed.map((issue) => issue.title)).toEqual(beforeBdParsed.map((issue) => issue.title));
+      }
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }

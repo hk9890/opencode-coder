@@ -423,6 +423,29 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
   }
 }
 
+async function installHermeticLocalCoderPackage(workdir: string): Promise<void> {
+  const opencodeDir = join(workdir, ".opencode");
+  const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
+
+  await mkdir(packageDir, { recursive: true });
+  const builtPluginPath = await ensurePluginBuilt(join(fileURLToPath(new URL("../../..", import.meta.url))));
+  await mkdir(join(packageDir, "dist"), { recursive: true });
+  await cp(builtPluginPath, join(packageDir, "dist", "opencode-coder.js"), { force: true });
+  await writeFile(
+    join(packageDir, "package.json"),
+    JSON.stringify(
+      {
+        name: OPENCODE_CODER_PACKAGE_NAME,
+        version: "0.34.2",
+        type: "module",
+        main: "dist/opencode-coder.js",
+      },
+      null,
+      2
+    ) + "\n"
+  );
+}
+
 async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpec: string): Promise<{
   pluginSymlink: string;
   installedVersion: string;
@@ -441,7 +464,12 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
   const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
 
   await mkdir(pluginDir, { recursive: true });
-  await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
+  if (process.env.CI === "true") {
+    await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
+    await installHermeticLocalCoderPackage(workdir);
+  } else {
+    await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
+  }
 
   let installedPackageJsonRaw: string;
   try {
