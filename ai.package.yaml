@@ -16,4 +16,7 @@ resources:
     # packages
 
     # coder packages
-    - package/opencode-coder
+    - package/coder-core
+    - package/coder-beads
+    - package/coder-docs
+    - package/code-simplify

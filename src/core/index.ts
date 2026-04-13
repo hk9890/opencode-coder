@@ -46,6 +46,16 @@ export {
 export type { DetectionLogger, VerifyAimgrResourcesOptions } from "./project-detection";
 
 // Startup/config orchestration helpers
+export {
+  createStartupState,
+  getFallbackRuntimeCapability,
+  resolveStartupState,
+} from "./startup-state";
+export type {
+  DefaultAgentDecision,
+  StartupResolvedState,
+  StartupState,
+} from "./startup-state";
 export { runProjectStartupFlow } from "./startup";
 export type { StartupFlowDependencies } from "./startup";
 export {

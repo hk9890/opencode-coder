@@ -1,16 +1,16 @@
 import type { Logger } from "./logger";
+import { getFallbackRuntimeCapability, type StartupState } from "./startup-state";
 import type { VersionInfo } from "./version";
 import type {
   AimgrService,
   ProjectContext,
   ProjectDetectorService,
   RuntimePhaseClassification,
-  SavedPluginMode,
 } from "../service";
 
 export interface StartupFlowDependencies {
   logger: Logger;
-  activeMode: Exclude<SavedPluginMode, "disabled">;
+  startupState: StartupState;
   versionInfo: VersionInfo;
   projectDetector: ProjectDetectorService;
   aimgrService: AimgrService;
@@ -18,17 +18,22 @@ export interface StartupFlowDependencies {
 
 export async function runProjectStartupFlow({
   logger,
-  activeMode,
+  startupState,
   versionInfo,
   projectDetector,
   aimgrService,
 }: StartupFlowDependencies): Promise<ProjectContext | null> {
+  const activeMode = startupState.activeMode;
+  if (!activeMode) {
+    return null;
+  }
+
   const aimgrInitStart = Date.now();
-  const startupRuntimePhase = projectDetector.classifyRuntimePhase();
+  const startupRuntimePhase = startupState.runtimeCapability;
 
   logger.info("Runtime diagnostic signal", {
     signal: "runtime.phase.classified",
-    startupMode: activeMode,
+    startupMode: startupState.activeMode,
     runtimePhase: startupRuntimePhase.phase,
     missingRequiredSurfaces: startupRuntimePhase.missingRequiredSurfaces,
     shouldBootstrap: startupRuntimePhase.shouldExposeBootstrapInit,
@@ -56,11 +61,12 @@ export async function runProjectStartupFlow({
         .then((health) => {
           logger.debug("aimgr verify/repair startup flow completed", {
             durationMs: Date.now() - aimgrInitStart,
-            repairAttempted: health.repairAttempted,
-            repairSucceeded: health.repairSucceeded,
-            resourcesHealthy: health.resourcesHealthy,
+            verifyAvailable: health.verify.available,
+            repairAttempted: health.repair.attempted,
+            repairHealthy: health.repair.healthy,
+            resourcesHealthy: health.verify.healthy,
           });
-          if (health.verifyResult === null) {
+          if (!health.verify.available) {
             return projectDetector.detectAndWrite(versionInfo, {
               startupMode: activeMode,
             });
@@ -68,7 +74,7 @@ export async function runProjectStartupFlow({
 
           return projectDetector.detectAndWrite(versionInfo, {
             startupMode: activeMode,
-            resourcesHealthyOverride: health.resourcesHealthy,
+            resourcesHealthyOverride: health.verify.healthy,
           });
         });
 
@@ -76,7 +82,7 @@ export async function runProjectStartupFlow({
     .then((ctx) => {
       logger.info("Runtime diagnostic signal", {
         signal: "runtime.project_context.available",
-        startupMode: activeMode,
+        startupMode: startupState.activeMode,
         mode: ctx.mode,
         coreAvailable: ctx.coreAvailable,
         bootstrapRequired: ctx.bootstrapRequired,
@@ -99,11 +105,5 @@ export async function runProjectStartupFlow({
 }
 
 export function getFallbackRuntimePhase(projectContext: ProjectContext | null): RuntimePhaseClassification {
-  return projectContext?.runtimePhase ?? {
-    phase: "bootstrap",
-    coreAvailable: false,
-    bootstrapRequired: true,
-    missingRequiredSurfaces: ["project-context-unavailable"],
-    shouldExposeBootstrapInit: true,
-  };
+  return projectContext?.runtimePhase ?? getFallbackRuntimeCapability();
 }

@@ -66,6 +66,8 @@ When changing startup behavior, preserve these invariants:
 - fresh or saved-disabled projects must not trigger active side effects
 - inactive startup paths must not create active-project artifacts by accident
 - project detection should use the final startup health result, not a stale pre-repair snapshot
+- startup/config branching should derive from the shared startup-state model
+  (`src/core/startup-state.ts`) rather than recomputing mode/phase decisions in multiple files
 
 Start with:
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { hasResourceIssues } from "../../../src/service/aimgr-service";
+import { interpretAimgrVerifyHealth } from "../../../src/service/aimgr-health";
 
 describe("service/aimgr-service hasResourceIssues", () => {
   it("returns true for invalid results", () => {
@@ -23,5 +24,10 @@ describe("service/aimgr-service hasResourceIssues", () => {
     expect(hasResourceIssues({ status: "ok", issues: [], errors: [] })).toBe(false);
     expect(hasResourceIssues({ status: "healthy", issues: [], errors: [], error: "" })).toBe(false);
     expect(hasResourceIssues({ issues: [], errors: [] })).toBe(false);
+  });
+
+  it("uses typed verify health interpretation as source of truth", () => {
+    const payload = { status: "degraded", issues: [{ id: "missing" }] };
+    expect(hasResourceIssues(payload)).toBe(interpretAimgrVerifyHealth(payload).hasIssues);
   });
 });

@@ -423,7 +423,17 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
   }
 }
 
-async function installHermeticLocalCoderPackage(workdir: string): Promise<void> {
+function isGithubPackagesAuthFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const stderr =
+    error && typeof error === "object" && "stderr" in error
+      ? String((error as { stderr?: unknown }).stderr ?? "")
+      : "";
+  const normalized = `${message}\n${stderr}`.toLowerCase();
+  return normalized.includes("npm.pkg.github.com") && (normalized.includes("401") || normalized.includes("unauthorized"));
+}
+
+async function installHermeticLocalCoderPackage(workdir: string, version: string = "0.34.2"): Promise<void> {
   const opencodeDir = join(workdir, ".opencode");
   const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
 
@@ -434,12 +444,12 @@ async function installHermeticLocalCoderPackage(workdir: string): Promise<void> 
   await writeFile(
     join(packageDir, "package.json"),
     JSON.stringify(
-      {
-        name: OPENCODE_CODER_PACKAGE_NAME,
-        version: "0.34.2",
-        type: "module",
-        main: "dist/opencode-coder.js",
-      },
+        {
+          name: OPENCODE_CODER_PACKAGE_NAME,
+          version,
+          type: "module",
+          main: "dist/opencode-coder.js",
+        },
       null,
       2
     ) + "\n"
@@ -462,13 +472,23 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
   const pluginEntrypoint = join(packageDir, "dist", "opencode-coder.js");
   const packageJsonPath = join(packageDir, "package.json");
   const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
+  const requestedVersionFromSpec = parseExactVersionFromPluginSpec(normalizedSpec);
 
   await mkdir(pluginDir, { recursive: true });
   if (process.env.CI === "true") {
     await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
-    await installHermeticLocalCoderPackage(workdir);
+    await installHermeticLocalCoderPackage(workdir, requestedVersionFromSpec ?? "0.34.2");
   } else {
-    await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
+    try {
+      await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
+    } catch (error) {
+      if (!isGithubPackagesAuthFailure(error)) {
+        throw error;
+      }
+
+      await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
+      await installHermeticLocalCoderPackage(workdir, requestedVersionFromSpec ?? "0.34.2");
+    }
   }
 
   let installedPackageJsonRaw: string;
@@ -485,10 +505,13 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
     throw new Error(`Installed package metadata is invalid JSON: ${packageJsonPath}`);
   }
 
-  const installedVersion =
+  let installedVersion =
     typeof (installedPackageJson as { version?: unknown }).version === "string"
       ? (installedPackageJson as { version: string }).version.trim()
       : "";
+  if (!installedVersion && requestedVersionFromSpec) {
+    installedVersion = requestedVersionFromSpec;
+  }
   if (!installedVersion) {
     throw new Error(`Installed package metadata missing version field: ${packageJsonPath}`);
   }

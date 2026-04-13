@@ -12,10 +12,14 @@ export { ProjectDetectorService } from "./project-detector-service";
 export type {
   ProjectDetectorServiceOptions,
   ProjectDetectionOptions,
+  ProjectDetectionFacts,
   ProjectContext,
   RuntimePhase,
   RuntimePhaseClassification,
 } from "./project-detector-service";
+
+export { ProjectContextWriter } from "./project-context-writer";
+export type { ProjectContextWriterOptions } from "./project-context-writer";
 
 export { PluginModeService } from "./plugin-mode-service";
 export type {

@@ -7,30 +7,20 @@ import {
   verifyAimgrResources,
 } from "../core";
 import { execSync } from "child_process";
+import {
+  interpretAimgrRepairHealth,
+  interpretAimgrVerifyHealth,
+  type AimgrRepairHealth,
+  type AimgrVerifyHealth,
+} from "./aimgr-health";
 
 export interface AimgrStartupHealthResult {
-  verifyResult: any | null;
-  resourcesHealthy: boolean;
-  repairAttempted: boolean;
-  repairSucceeded: boolean;
+  verify: AimgrVerifyHealth;
+  repair: AimgrRepairHealth;
 }
 
 export function hasResourceIssues(result: unknown): boolean {
-  if (!result || typeof result !== "object") return true;
-
-  const verifyResult = result as {
-    issues?: unknown[];
-    errors?: unknown[];
-    error?: unknown;
-    status?: unknown;
-  };
-
-  return (
-    (Array.isArray(verifyResult.issues) && verifyResult.issues.length > 0) ||
-    (Array.isArray(verifyResult.errors) && verifyResult.errors.length > 0) ||
-    (typeof verifyResult.error === "string" && verifyResult.error !== "") ||
-    (typeof verifyResult.status === "string" && verifyResult.status !== "ok" && verifyResult.status !== "healthy")
-  );
+  return interpretAimgrVerifyHealth(result).hasIssues;
 }
 
 /**
@@ -154,7 +144,7 @@ export class AimgrService {
    * later once the aimgr verify output format is stabilised), or null if aimgr
    * is not available or the command fails.
    */
-  verifyResources(): any {
+  verifyResources(): unknown | null {
     if (!this.isAimgrAvailable()) {
       this.logger.debug("aimgr not available, skipping verifyResources");
       return null;
@@ -178,7 +168,7 @@ export class AimgrService {
    * Note: aimgr repair outputs human-readable text to stderr and JSON to stdout.
    * We capture stdout only via execSync.
    */
-  repairResources(): any {
+  repairResources(): unknown | null {
     if (!this.isAimgrAvailable()) {
       this.logger.debug("aimgr not available, skipping repairResources");
       return null;
@@ -206,23 +196,25 @@ export class AimgrService {
    * The post-repair verify result is authoritative when repair is attempted.
    */
   async verifyAndAutoRepairResources(): Promise<AimgrStartupHealthResult> {
-    const initialVerify = this.verifyResources();
+    const initialVerifyHealth = interpretAimgrVerifyHealth(this.verifyResources());
 
-    if (initialVerify === null) {
+    if (!initialVerifyHealth.available) {
       return {
-        verifyResult: null,
-        resourcesHealthy: false,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: initialVerifyHealth,
+        repair: {
+          attempted: false,
+          healthy: false,
+        },
       };
     }
 
-    if (!hasResourceIssues(initialVerify)) {
+    if (initialVerifyHealth.healthy) {
       return {
-        verifyResult: initialVerify,
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: initialVerifyHealth,
+        repair: {
+          attempted: false,
+          healthy: false,
+        },
       };
     }
 
@@ -230,9 +222,19 @@ export class AimgrService {
     this.repairResources();
 
     const postRepairVerify = this.verifyResources();
-    const postRepairHealthy = postRepairVerify !== null && !hasResourceIssues(postRepairVerify);
+    const postRepairVerifyHealth = interpretAimgrVerifyHealth(postRepairVerify);
+    const repair = interpretAimgrRepairHealth(postRepairVerify, true);
 
-    if (postRepairHealthy) {
+    await this.notifyAutoRepairOutcome(postRepairVerifyHealth.healthy);
+
+    return {
+      verify: postRepairVerifyHealth,
+      repair,
+    };
+  }
+
+  private async notifyAutoRepairOutcome(healthyAfterRepair: boolean): Promise<void> {
+    if (healthyAfterRepair) {
       await showToast(this.client, this.logger, {
         title: "aimgr",
         message: "aimgr auto-repair fixed resource issues.",
@@ -249,13 +251,6 @@ export class AimgrService {
       });
       this.logger.warn("aimgr auto-repair attempted but resources are still unhealthy");
     }
-
-    return {
-      verifyResult: postRepairVerify,
-      resourcesHealthy: postRepairHealthy,
-      repairAttempted: true,
-      repairSucceeded: postRepairHealthy,
-    };
   }
 
   /**

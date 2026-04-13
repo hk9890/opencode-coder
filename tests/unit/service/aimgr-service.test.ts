@@ -289,10 +289,15 @@ describe("AimgrService", () => {
       const result = await aimgrService.verifyAndAutoRepairResources();
 
       expect(result).toEqual({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: {
+          available: true,
+          healthy: true,
+          hasIssues: false,
+        },
+        repair: {
+          attempted: false,
+          healthy: false,
+        },
       });
       expect(execSyncMock).not.toHaveBeenCalledWith("aimgr repair --format json", expect.anything());
       expect(mockClient.tui.showToast).not.toHaveBeenCalled();
@@ -318,10 +323,15 @@ describe("AimgrService", () => {
       const result = await aimgrService.verifyAndAutoRepairResources();
 
       expect(result).toEqual({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: true,
-        repairSucceeded: true,
+        verify: {
+          available: true,
+          healthy: true,
+          hasIssues: false,
+        },
+        repair: {
+          attempted: true,
+          healthy: true,
+        },
       });
       expect(mockClient.tui.showToast).toHaveBeenCalledWith({
         title: "aimgr",
@@ -348,10 +358,15 @@ describe("AimgrService", () => {
       const result = await aimgrService.verifyAndAutoRepairResources();
 
       expect(result).toEqual({
-        verifyResult: { status: "degraded", issues: [{ id: "issue-2" }] },
-        resourcesHealthy: false,
-        repairAttempted: true,
-        repairSucceeded: false,
+        verify: {
+          available: true,
+          healthy: false,
+          hasIssues: true,
+        },
+        repair: {
+          attempted: true,
+          healthy: false,
+        },
       });
       expect(mockClient.tui.showToast).toHaveBeenCalledWith({
         title: "aimgr",

@@ -38,7 +38,8 @@ Prefer the canonical docs above for default task guidance. Brainstorming notes, 
 ### Issue Tracking (beads)
 
 - Use `bd` for all project issue tracking.
-- Load the **opencode-coder** skill for issue-tracking, planning, setup, and beads workflow guidance.
+- Load the **coder-beads** skill for issue-tracking, planning, setup, and beads workflow guidance.
+- Load **coder-core** only when the work also touches plugin runtime/bootstrap/status/doctor concerns.
 - Keep issue descriptions, dependencies, and status aligned with the current plan.
 
 ### Docs Lifecycle Work

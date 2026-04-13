@@ -1,41 +1,14 @@
 import { afterEach, describe, expect, it, spyOn } from "bun:test";
 import * as childProcess from "child_process";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { ProjectDetectorService } from "../../../src/service/project-detector-service";
-import type { ProjectContext } from "../../../src/service/project-detector-service";
+import type { ProjectDetectionFacts } from "../../../src/service/project-detector-service";
 import { createMockLogger } from "../../helpers/mock-logger";
 
 function createService(workdir: string) {
   return new ProjectDetectorService({ logger: createMockLogger(), workdir });
-}
-
-function createProjectContextFixture(overrides?: Partial<ProjectContext>): ProjectContext {
-  return {
-    mode: "team",
-    coreAvailable: true,
-    bootstrapRequired: false,
-    beadsReady: true,
-    git: { initialized: true },
-    beads: {
-      initialized: true,
-      stealthMode: false,
-      bdCliInstalled: true,
-      coderBeadsSkillAvailable: true,
-      orchestratorAgentAvailable: true,
-    },
-    aimgr: { installed: true, packageYaml: true, resourcesHealthy: true },
-    pluginVersion: "1.0.0",
-    runtimePhase: {
-      phase: "normal",
-      coreAvailable: true,
-      bootstrapRequired: false,
-      missingRequiredSurfaces: [],
-      shouldExposeBootstrapInit: false,
-    },
-    ...overrides,
-  };
 }
 
 const tempDirs: string[] = [];
@@ -57,68 +30,6 @@ afterEach(() => {
 
 describe("ProjectDetectorService", () => {
   describe("real filesystem coverage", () => {
-    it("writeProjectContext() creates .coder files and writes expected yaml", () => {
-      const workdir = createTempWorkdir("project-detector-write-context-");
-      const service = createService(workdir);
-
-      const context = createProjectContextFixture({
-        mode: "stealth",
-        coreAvailable: false,
-        bootstrapRequired: true,
-        beadsReady: false,
-        pluginVersion: "2.3.4",
-        beads: {
-          initialized: true,
-          stealthMode: true,
-          bdCliInstalled: false,
-          coderBeadsSkillAvailable: false,
-          orchestratorAgentAvailable: false,
-        },
-        runtimePhase: {
-          phase: "bootstrap",
-          coreAvailable: false,
-          bootstrapRequired: true,
-          missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
-          shouldExposeBootstrapInit: true,
-        },
-      });
-
-      service.writeProjectContext(context);
-
-      const coderDir = join(workdir, ".coder");
-      const gitignorePath = join(coderDir, ".gitignore");
-      const projectYamlPath = join(coderDir, "project.yaml");
-
-      expect(existsSync(coderDir)).toBe(true);
-      expect(readFileSync(gitignorePath, "utf-8")).toBe("*\n");
-
-      const yaml = readFileSync(projectYamlPath, "utf-8");
-      expect(yaml).toContain("mode: stealth");
-      expect(yaml).toContain("coreAvailable: false");
-      expect(yaml).toContain("bootstrapRequired: true");
-      expect(yaml).toContain("beadsReady: false");
-      expect(yaml).toContain("stealthMode: true");
-      expect(yaml).toContain("bdCliInstalled: false");
-      expect(yaml).toContain("pluginVersion: 2.3.4");
-      expect(yaml).toContain("phase: bootstrap");
-      expect(yaml).toContain("missingRequiredSurfaces:");
-      expect(yaml).toContain("- command/opencode-coder/init");
-      expect(yaml).toContain("- skill/coder-core");
-    });
-
-    it("writeProjectContext() does not overwrite existing .coder/.gitignore", () => {
-      const workdir = createTempWorkdir("project-detector-write-gitignore-");
-      const service = createService(workdir);
-      const coderDir = join(workdir, ".coder");
-      mkdirSync(coderDir, { recursive: true });
-      const gitignorePath = join(coderDir, ".gitignore");
-      writeFileSync(gitignorePath, "# keep me\n", "utf-8");
-
-      service.writeProjectContext(createProjectContextFixture());
-
-      expect(readFileSync(gitignorePath, "utf-8")).toBe("# keep me\n");
-    });
-
     it("detectGitInitialized() checks real .git directory", () => {
       const workdir = createTempWorkdir("project-detector-git-");
       const service = createService(workdir);
@@ -242,6 +153,27 @@ describe("ProjectDetectorService", () => {
   describe("detectAndWrite", () => {
     const versionInfo = { name: "@dynatrace-oss/opencode-coder", version: "1.2.3" };
 
+    it("requires explicit startupMode from caller", () => {
+      const workdir = createTempWorkdir("project-detector-mode-derived-");
+      mkdirSync(join(workdir, ".git", "info"), { recursive: true });
+      mkdirSync(join(workdir, ".beads"), { recursive: true });
+      writeFileSync(join(workdir, ".git", "info", "exclude"), "# opencode-coder stealth mode\n.coder/\n", "utf-8");
+
+      const service = createService(workdir);
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
+        if (cmd === "command -v aimgr") {
+          const err = Object.assign(new Error("aimgr not found"), { code: "ENOENT" });
+          throw err;
+        }
+        return "" as any;
+      });
+
+      expect(() => service.detectAndWrite(versionInfo as any, undefined as any)).toThrow();
+
+      execSyncSpy.mockRestore();
+    });
+
     it("uses startupMode override and resourcesHealthyOverride in final context", () => {
       const workdir = createTempWorkdir("project-detector-detect-and-write-");
       mkdirSync(join(workdir, ".git"), { recursive: true });
@@ -285,6 +217,143 @@ describe("ProjectDetectorService", () => {
       expect(yaml).toContain("pluginVersion: 1.2.3");
 
       execSyncSpy.mockRestore();
+    });
+
+    it("assembleContext() builds project context from explicit facts and startup mode", () => {
+      const workdir = createTempWorkdir("project-detector-assemble-context-");
+      const service = createService(workdir);
+      const facts: ProjectDetectionFacts = {
+        gitInitialized: true,
+        beadsInitialized: true,
+        stealthMode: false,
+        bdCliInstalled: true,
+        aimgrInstalled: true,
+        packageYaml: true,
+        resourcesHealthy: true,
+        runtimePhase: {
+          phase: "normal",
+          coreAvailable: true,
+          bootstrapRequired: false,
+          missingRequiredSurfaces: [],
+          shouldExposeBootstrapInit: false,
+        },
+        coderBeadsSkillAvailable: true,
+        orchestratorAgentAvailable: true,
+        beadsReady: true,
+      };
+
+      const context = service.assembleContext({
+        startupMode: "team",
+        versionInfo: versionInfo as any,
+        facts,
+      });
+
+      expect(context.mode).toBe("team");
+      expect(context.beadsReady).toBe(true);
+      expect(context.runtimePhase.phase).toBe("normal");
+      expect(context.aimgr.resourcesHealthy).toBe(true);
+    });
+
+    it("collectFacts() keeps readiness/resource checks local and honors resourcesHealthyOverride", () => {
+      const workdir = createTempWorkdir("project-detector-collect-facts-");
+      mkdirSync(join(workdir, ".git"), { recursive: true });
+      mkdirSync(join(workdir, ".beads"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "commands", "opencode-coder"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "skills", "coder-core"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "skills", "coder-beads"), { recursive: true });
+      mkdirSync(join(workdir, ".opencode", "agents"), { recursive: true });
+      writeFileSync(join(workdir, ".opencode", "commands", "opencode-coder", "init.md"), "# init\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "skills", "coder-core", "SKILL.md"), "# skill\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "skills", "coder-beads", "SKILL.md"), "# skill\n", "utf-8");
+      writeFileSync(join(workdir, ".opencode", "agents", "orchestrator.md"), "# orchestrator\n", "utf-8");
+
+      const service = createService(workdir);
+      const detectResourcesHealthySpy = spyOn(service, "detectResourcesHealthy").mockImplementation(() => {
+        throw new Error("detectResourcesHealthy should not run when override is provided");
+      });
+      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((cmd: string) => {
+        if (cmd === "command -v bd") return "/usr/local/bin/bd" as any;
+        if (cmd === "command -v aimgr") return "/usr/local/bin/aimgr" as any;
+        return "" as any;
+      });
+
+      const facts = service.collectFacts({ resourcesHealthyOverride: true });
+
+      expect(facts.runtimePhase.phase).toBe("normal");
+      expect(facts.beadsReady).toBe(true);
+      expect(facts.resourcesHealthy).toBe(true);
+
+      execSyncSpy.mockRestore();
+      detectResourcesHealthySpy.mockRestore();
+    });
+
+    it("collectFacts() marks beadsReady=false when any readiness requirement is missing", () => {
+      const workdir = createTempWorkdir("project-detector-collect-facts-partial-");
+      const service = createService(workdir);
+
+      const detectGitInitializedSpy = spyOn(service, "detectGitInitialized").mockReturnValue(true);
+      const detectBeadsInitializedSpy = spyOn(service, "detectBeadsInitialized").mockReturnValue(true);
+      const detectStealthModeSpy = spyOn(service, "detectStealthMode").mockReturnValue(false);
+      const detectBdCliInstalledSpy = spyOn(service, "detectBdCliInstalled").mockReturnValue(false);
+      const detectAimgrInstalledSpy = spyOn(service, "detectAimgrInstalled").mockReturnValue(true);
+      const detectPackageYamlSpy = spyOn(service, "detectPackageYaml").mockReturnValue(true);
+      const detectResourcesHealthySpy = spyOn(service, "detectResourcesHealthy").mockReturnValue(true);
+      const classifyRuntimePhaseSpy = spyOn(service, "classifyRuntimePhase").mockReturnValue({
+        phase: "normal",
+        coreAvailable: true,
+        bootstrapRequired: false,
+        missingRequiredSurfaces: [],
+        shouldExposeBootstrapInit: false,
+      });
+
+      const facts = service.collectFacts();
+
+      expect(facts.resourcesHealthy).toBe(true);
+      expect(facts.beadsReady).toBe(false);
+      expect(facts.bdCliInstalled).toBe(false);
+
+      detectGitInitializedSpy.mockRestore();
+      detectBeadsInitializedSpy.mockRestore();
+      detectStealthModeSpy.mockRestore();
+      detectBdCliInstalledSpy.mockRestore();
+      detectAimgrInstalledSpy.mockRestore();
+      detectPackageYamlSpy.mockRestore();
+      detectResourcesHealthySpy.mockRestore();
+      classifyRuntimePhaseSpy.mockRestore();
+    });
+
+    it("assembleContext() keeps startup mode as authoritative over detected stealth marker", () => {
+      const workdir = createTempWorkdir("project-detector-assemble-mode-authority-");
+      const service = createService(workdir);
+      const facts: ProjectDetectionFacts = {
+        gitInitialized: true,
+        beadsInitialized: true,
+        stealthMode: true,
+        bdCliInstalled: true,
+        aimgrInstalled: true,
+        packageYaml: true,
+        resourcesHealthy: true,
+        runtimePhase: {
+          phase: "normal",
+          coreAvailable: true,
+          bootstrapRequired: false,
+          missingRequiredSurfaces: [],
+          shouldExposeBootstrapInit: false,
+        },
+        coderBeadsSkillAvailable: true,
+        orchestratorAgentAvailable: true,
+        beadsReady: true,
+      };
+
+      const context = service.assembleContext({
+        startupMode: "team",
+        versionInfo: versionInfo as any,
+        facts,
+      });
+
+      expect(context.mode).toBe("team");
+      expect(context.beads.stealthMode).toBe(true);
+      expect(context.beadsReady).toBe(true);
     });
   });
 });

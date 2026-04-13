@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import { stringify } from "yaml";
 import {
   detectAimgrAvailable,
   detectBdCliAvailable,
@@ -12,6 +11,7 @@ import {
   verifyAimgrResources,
 } from "../core";
 import { hasResourceIssues } from "./aimgr-service";
+import { ProjectContextWriter } from "./project-context-writer";
 import type { SavedPluginMode } from "./plugin-mode-service";
 
 /**
@@ -33,9 +33,23 @@ export interface ProjectDetectionOptions {
 
   /**
    * Resolved active startup mode chosen by the plugin entry point.
-   * When provided, this mode overrides detector-derived mode inference.
+   * Must be explicitly provided by the caller.
    */
-  startupMode?: Exclude<SavedPluginMode, "disabled">;
+  startupMode: Exclude<SavedPluginMode, "disabled">;
+}
+
+export interface ProjectDetectionFacts {
+  gitInitialized: boolean;
+  beadsInitialized: boolean;
+  stealthMode: boolean;
+  bdCliInstalled: boolean;
+  aimgrInstalled: boolean;
+  packageYaml: boolean;
+  resourcesHealthy: boolean;
+  runtimePhase: RuntimePhaseClassification;
+  coderBeadsSkillAvailable: boolean;
+  orchestratorAgentAvailable: boolean;
+  beadsReady: boolean;
 }
 
 export type RuntimePhase = "bootstrap" | "normal";
@@ -121,10 +135,15 @@ export interface ProjectContext {
 export class ProjectDetectorService {
   private readonly logger: Logger;
   private readonly workdir: string;
+  private readonly projectContextWriter: ProjectContextWriter;
 
   constructor(options: ProjectDetectorServiceOptions) {
     this.logger = options.logger;
     this.workdir = options.workdir ?? process.cwd();
+    this.projectContextWriter = new ProjectContextWriter({
+      logger: this.logger,
+      workdir: this.workdir,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -276,30 +295,76 @@ export class ProjectDetectorService {
     return classification;
   }
 
-  // ---------------------------------------------------------------------------
-  // YAML writing
-  // ---------------------------------------------------------------------------
+  collectFacts(options?: { resourcesHealthyOverride?: boolean }): ProjectDetectionFacts {
+    const gitInitialized = this.detectGitInitialized();
+    const beadsInitialized = this.detectBeadsInitialized();
+    const stealthMode = this.detectStealthMode();
+    const bdCliInstalled = this.detectBdCliInstalled();
 
-  /**
-   * Ensure `.coder/` exists and write `context` as YAML to `.coder/project.yaml`.
-   *
-   * Also creates `.coder/.gitignore` (containing `*`) if it does not already exist,
-   * so that the entire `.coder/` directory is excluded from git in team mode.
-   * This is the same pattern used by `.beads/.gitignore`.
-   */
+    const aimgrInstalled = this.detectAimgrInstalled();
+    const packageYaml = this.detectPackageYaml();
+    const resourcesHealthy =
+      options?.resourcesHealthyOverride !== undefined
+        ? options.resourcesHealthyOverride
+        : aimgrInstalled
+          ? this.detectResourcesHealthy(aimgrInstalled)
+          : false;
+
+    const runtimePhase = this.classifyRuntimePhase();
+
+    const coderBeadsSkillAvailable = this.detectResourcePath(path.join(".opencode", "skills", "coder-beads", "SKILL.md"));
+    const orchestratorAgentAvailable = this.detectResourcePath(path.join(".opencode", "agents", "orchestrator.md"));
+    const beadsReady = coderBeadsSkillAvailable && orchestratorAgentAvailable && bdCliInstalled && beadsInitialized;
+
+    return {
+      gitInitialized,
+      beadsInitialized,
+      stealthMode,
+      bdCliInstalled,
+      aimgrInstalled,
+      packageYaml,
+      resourcesHealthy,
+      runtimePhase,
+      coderBeadsSkillAvailable,
+      orchestratorAgentAvailable,
+      beadsReady,
+    };
+  }
+
+  assembleContext(args: {
+    startupMode: Exclude<SavedPluginMode, "disabled">;
+    versionInfo: VersionInfo;
+    facts: ProjectDetectionFacts;
+  }): ProjectContext {
+    const { startupMode, versionInfo, facts } = args;
+
+    return {
+      mode: startupMode,
+      coreAvailable: facts.runtimePhase.coreAvailable,
+      bootstrapRequired: facts.runtimePhase.bootstrapRequired,
+      beadsReady: facts.beadsReady,
+      git: {
+        initialized: facts.gitInitialized,
+      },
+      beads: {
+        initialized: facts.beadsInitialized,
+        stealthMode: facts.stealthMode,
+        bdCliInstalled: facts.bdCliInstalled,
+        coderBeadsSkillAvailable: facts.coderBeadsSkillAvailable,
+        orchestratorAgentAvailable: facts.orchestratorAgentAvailable,
+      },
+      aimgr: {
+        installed: facts.aimgrInstalled,
+        packageYaml: facts.packageYaml,
+        resourcesHealthy: facts.resourcesHealthy,
+      },
+      pluginVersion: versionInfo.version,
+      runtimePhase: facts.runtimePhase,
+    };
+  }
+
   writeProjectContext(context: ProjectContext): void {
-    const coderDir = path.join(this.workdir, ".coder");
-    fs.mkdirSync(coderDir, { recursive: true });
-
-    const gitignorePath = path.join(coderDir, ".gitignore");
-    if (!fs.existsSync(gitignorePath)) {
-      fs.writeFileSync(gitignorePath, "*\n");
-    }
-
-    const outputPath = path.join(coderDir, "project.yaml");
-    const yamlContent = stringify(context);
-    fs.writeFileSync(outputPath, yamlContent, "utf-8");
-    this.logger.debug("Project context written", { path: outputPath });
+    this.projectContextWriter.write(context);
   }
 
   // ---------------------------------------------------------------------------
@@ -311,66 +376,30 @@ export class ProjectDetectorService {
    * to `.coder/project.yaml`.
    *
    * This method is designed to be called from plugin startup. All errors
-   * during individual detections are caught internally; the method itself
-   * never throws.
+   * during individual detections are caught internally; startup mode must
+   * be provided explicitly by the caller.
    *
    * @returns The detected project context.
    */
-  detectAndWrite(versionInfo: VersionInfo, options?: ProjectDetectionOptions): ProjectContext {
+  detectAndWrite(versionInfo: VersionInfo, options: ProjectDetectionOptions): ProjectContext {
+    if (!options || !options.startupMode) {
+      throw new Error("ProjectDetectorService.detectAndWrite requires an explicit startupMode");
+    }
+
     const start = Date.now();
     this.logger.debug("Starting project detection", { workdir: this.workdir });
 
-    // Git
-    const gitInitialized = this.detectGitInitialized();
-    // Beads
-    const beadsInitialized = this.detectBeadsInitialized();
-    const stealthMode = this.detectStealthMode();
+    const facts = this.collectFacts(
+      options.resourcesHealthyOverride !== undefined
+        ? { resourcesHealthyOverride: options.resourcesHealthyOverride }
+        : undefined
+    );
 
-    // Beads CLI
-    const bdCliInstalled = this.detectBdCliInstalled();
-
-    // aimgr
-    const aimgrInstalled = this.detectAimgrInstalled();
-    const packageYaml = this.detectPackageYaml();
-    // Only check health when aimgr is installed (avoids double detection call)
-    const resourcesHealthy =
-      options?.resourcesHealthyOverride !== undefined
-        ? options.resourcesHealthyOverride
-        : aimgrInstalled
-          ? this.detectResourcesHealthy(aimgrInstalled)
-          : false;
-
-    const runtimePhase = this.classifyRuntimePhase();
-    const coderBeadsSkillAvailable = this.detectResourcePath(path.join(".opencode", "skills", "coder-beads", "SKILL.md"));
-    const orchestratorAgentAvailable = this.detectResourcePath(path.join(".opencode", "agents", "orchestrator.md"));
-    const beadsReady = coderBeadsSkillAvailable && orchestratorAgentAvailable && bdCliInstalled && beadsInitialized;
-
-    // Derived
-    const mode = options?.startupMode ?? (stealthMode ? "stealth" : beadsInitialized ? "team" : "uninitialized");
-
-    const context: ProjectContext = {
-      mode,
-      coreAvailable: runtimePhase.coreAvailable,
-      bootstrapRequired: runtimePhase.bootstrapRequired,
-      beadsReady,
-      git: {
-        initialized: gitInitialized,
-      },
-      beads: {
-        initialized: beadsInitialized,
-        stealthMode,
-        bdCliInstalled,
-        coderBeadsSkillAvailable,
-        orchestratorAgentAvailable,
-      },
-      aimgr: {
-        installed: aimgrInstalled,
-        packageYaml,
-        resourcesHealthy,
-      },
-      pluginVersion: versionInfo.version,
-      runtimePhase,
-    };
+    const context = this.assembleContext({
+      startupMode: options.startupMode,
+      versionInfo,
+      facts,
+    });
 
     this.writeProjectContext(context);
 
@@ -387,7 +416,7 @@ export class ProjectDetectorService {
 
     this.logger.debug("Project detection completed", {
       durationMs: Date.now() - start,
-      mode,
+      mode: context.mode,
       coreAvailable: context.coreAvailable,
       bootstrapRequired: context.bootstrapRequired,
       beadsReady: context.beadsReady,

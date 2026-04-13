@@ -41,6 +41,11 @@ Runtime ownership is capability-split:
 - `coder-docs` is standalone and owns docs lifecycle/project-doc references
 - `code-simplify` is standalone and owns `/simplify` workflow guidance
 
+Startup decisions are centralized in a single startup-state model (`src/core/startup-state.ts`).
+That model is the shared source-of-truth for resolved mode (active/inactive), runtime capability
+(resource-surface based), bootstrap `/opencode-coder/init` exposure, degraded/timeout handling,
+and default-agent eligibility.
+
 For implementation details, conventions, and architecture rules, see the focused coding guide instead of this overview.
 
 ## Common change areas

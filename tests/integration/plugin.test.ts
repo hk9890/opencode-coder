@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
-import * as childProcess from "child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -80,40 +79,6 @@ function createPhase2CommandFixture() {
   } as Record<string, { description: string; template: string }>;
 }
 
-function createActiveTeamWorktree(prefix: string, options?: { withGit?: boolean; withBeads?: boolean; withPackageYaml?: boolean }) {
-  const worktree = mkdtempSync(join(tmpdir(), prefix));
-  mkdirSync(join(worktree, ".coder"), { recursive: true });
-  writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: team\n", "utf-8");
-
-  if (options?.withGit !== false) {
-    mkdirSync(join(worktree, ".git"), { recursive: true });
-  }
-
-  if (options?.withBeads) {
-    mkdirSync(join(worktree, ".beads"), { recursive: true });
-  }
-
-  if (options?.withPackageYaml) {
-    writeFileSync(join(worktree, "ai.package.yaml"), "name: test\nversion: 1\n", "utf-8");
-  }
-
-  return worktree;
-}
-
-function readProjectContextFromWorktree(worktree: string): ProjectContext {
-  const contextPath = join(worktree, ".coder", "project.yaml");
-  const raw = readFileSync(contextPath, "utf-8");
-  return parseYaml(raw) as ProjectContext;
-}
-
-function createExecTimeoutError(message: string): Error & { code: string; killed: boolean; signal: string } {
-  return Object.assign(new Error(message), {
-    code: "ETIMEDOUT",
-    killed: true,
-    signal: "SIGTERM",
-  });
-}
-
 describe("OpencodeCoder Plugin Integration", () => {
   beforeEach(() => {
     spyOn(BeadsService.prototype, "checkBeadsAvailability").mockResolvedValue(undefined);
@@ -182,10 +147,8 @@ describe("OpencodeCoder Plugin Integration", () => {
       try {
         const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
         const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-          verifyResult: { status: "ok", issues: [] },
-          resourcesHealthy: true,
-          repairAttempted: false,
-          repairSucceeded: false,
+          verify: { available: true, healthy: true, hasIssues: false },
+          repair: { attempted: false, healthy: false },
         });
         const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
           createProjectContext()
@@ -235,16 +198,14 @@ describe("OpencodeCoder Plugin Integration", () => {
       }
     });
 
-    it("registers /opencode-coder/init for a fresh inactive project and skips active startup management", async () => {
+    it("canonical startup: inactive/init-only mode exposes bootstrap init and skips active startup flow", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
         savedModeResolution("not-enabled", "fresh")
       );
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: { available: true, healthy: true, hasIssues: false },
+        repair: { attempted: false, healthy: false },
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
@@ -275,35 +236,46 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("keeps /opencode-coder/init available but suppresses active behavior for saved disabled mode", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(
-        savedModeResolution("disabled")
-      );
+    it("canonical startup: active bootstrap mode preserves docs commands and keeps interactive bootstrap init", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: { available: true, healthy: false, hasIssues: true },
+        repair: { attempted: false, healthy: false },
       });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({
+          beadsReady: false,
+          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
+          runtimePhase: {
+            ...createProjectContext().runtimePhase,
+            phase: "bootstrap",
+            shouldExposeBootstrapInit: true,
+            coreAvailable: false,
+            bootstrapRequired: true,
+            missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
+          },
+        })
+      );
 
       const mockInput = createMockPluginInput();
       const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+      const cfg: Record<string, any> = { command: createPhase2CommandFixture() };
       await hooks.config?.(cfg as any);
 
       expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
+      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("question()");
+      expect(cfg.command?.["opencode-coder/init"]?.template).toContain("Manual equivalent path");
       for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
         expect(cfg.command?.[commandName]).toBeDefined();
       }
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
       expect(cfg.default_agent).toBeUndefined();
-      expect(hooks.tool?.coder).toBeUndefined();
-      expect(autoInitializeSpy).not.toHaveBeenCalled();
-      expect(healthSpy).not.toHaveBeenCalled();
-      expect(detectSpy).not.toHaveBeenCalled();
-      expect(mockInput.client.tui.toasts).toHaveLength(0);
+      expect(hooks.tool?.coder).toBeDefined();
+      expect(autoInitializeSpy).toHaveBeenCalled();
+      expect(healthSpy).toHaveBeenCalled();
+      expect(detectSpy).toHaveBeenCalled();
+      expect(mockInput.client.tui.toasts).toHaveLength(1);
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -311,14 +283,12 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("keeps docs lifecycle commands for active team mode when runtime resources are healthy", async () => {
+    it("canonical startup: active normal mode with beads ready enables default orchestrator", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: { available: true, healthy: true, hasIssues: false },
+        repair: { attempted: false, healthy: false },
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
@@ -328,6 +298,8 @@ describe("OpencodeCoder Plugin Integration", () => {
       const cfg: Record<string, any> = { command: seededCommands };
       await hooks.config?.(cfg as any);
 
+      expect(hooks.tool?.coder).toBeDefined();
+      expect(cfg.default_agent).toBe("orchestrator");
       expect(cfg.command?.["opencode-coder/init"]).toMatchObject({
         description: "resource-backed init",
         template: "resource init template",
@@ -347,136 +319,83 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
-    it("keeps improve-doc in output config when runtime phase is normal and init-or-update-docs is absent", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({
-          runtimePhase: {
-            ...createProjectContext().runtimePhase,
-            phase: "normal",
-            shouldExposeBootstrapInit: false,
-            missingRequiredSurfaces: [],
-          },
-        })
-      );
+    it("preserves stealth .coder/AGENTS.md instruction injection", async () => {
+      const worktree = mkdtempSync(join(tmpdir(), "opencode-coder-stealth-agents-injection-"));
 
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = {
-        command: {
-          "opencode-coder/init": {
-            description: "resource-backed init",
-            template: "resource init template",
-          },
-          "opencode-coder/improve-doc": {
-            description: "incident improvement",
-            template: "improve template",
-          },
-          [LEGACY_DOCS_COMMAND]: {
-            description: "legacy docs command",
-            template: "legacy template",
-          },
-        },
-      };
+      try {
+        mkdirSync(join(worktree, ".coder"), { recursive: true });
+        writeFileSync(join(worktree, ".coder", "opencode-coder.yaml"), "mode: stealth\n", "utf-8");
+        writeFileSync(join(worktree, ".coder", "AGENTS.md"), "# stealth instructions\n", "utf-8");
 
-      await hooks.config?.(cfg as any);
+        const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+          createProjectContext({ mode: "stealth" })
+        );
 
-      expect(cfg.command?.["opencode-coder/improve-doc"]).toBeDefined();
-      expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe("incident improvement");
-      expect(cfg.command?.["opencode-coder/init-or-update-docs"]).toBeUndefined();
-      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
+        const mockInput = createMockPluginInput({ worktree, directory: worktree });
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, unknown> = { instructions: [] };
+        await hooks.config?.(cfg as any);
 
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
+        expect(Array.isArray(cfg.instructions)).toBe(true);
+        expect((cfg.instructions as string[]).includes(".coder/AGENTS.md")).toBe(true);
+
+        detectSpy.mockRestore();
+      } finally {
+        rmSync(worktree, { recursive: true, force: true });
+      }
     });
 
-    it("keeps docs lifecycle commands for active stealth mode when runtime resources are healthy", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ mode: "stealth" })
-      );
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const seededCommands = createPhase2CommandFixture();
-      const cfg: Record<string, any> = { command: seededCommands };
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.command?.["opencode-coder/init"]).toMatchObject({
-        description: "resource-backed init",
-        template: "resource init template",
-      });
-      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeDefined();
-      }
-      expect(cfg.command?.["opencode-coder/init-or-update-docs"]?.description).toBe("docs lifecycle");
-      expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe("incident improvement");
-      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("keeps docs lifecycle commands for active team mode even when runtime phase is bootstrap", async () => {
+    it("canonical startup: degraded timeout keeps plugin config responsive with bootstrap fallback", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [{ id: "missing-docs-lifecycle-resource" }] },
-        resourcesHealthy: false,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({
-          beadsReady: false,
-          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: false },
-          runtimePhase: {
-            ...createProjectContext().runtimePhase,
-            phase: "bootstrap",
-            shouldExposeBootstrapInit: true,
-            coreAvailable: false,
-            bootstrapRequired: true,
-            missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
-          },
-        })
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockImplementation(
+        () => new Promise<void>(() => {})
       );
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verify: { available: true, healthy: true, hasIssues: false },
+        repair: { attempted: false, healthy: false },
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
 
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-      await hooks.config?.(cfg as any);
+      const originalSetTimeout = globalThis.setTimeout;
+      const originalClearTimeout = globalThis.clearTimeout;
+      globalThis.setTimeout = ((cb: (...args: any[]) => void) => {
+        cb();
+        return 1 as any;
+      }) as typeof setTimeout;
+      globalThis.clearTimeout = (() => undefined) as typeof clearTimeout;
 
-      expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
-      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeDefined();
+      try {
+        const mockInput = createMockPluginInput();
+        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
+        await hooks.config?.(cfg as any);
+
+        expect(cfg.default_agent).toBeUndefined();
+        expect(cfg.command).toBeDefined();
+        expect((cfg.command as Record<string, unknown>)["opencode-coder/init"]).toBeDefined();
+        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
+          expect((cfg.command as Record<string, unknown>)[commandName]).toBeDefined();
+        }
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) => entry.level === "warn" && entry.message === "Project context startup timed out; continuing in degraded mode"
+          )
+        ).toBe(true);
+        expect(
+          mockInput.client.app.logs.some(
+            (entry) =>
+              entry.message === "Runtime diagnostic signal" &&
+              entry.extra?.["signal"] === "runtime.project_context.timeout" &&
+              entry.extra?.["degradedMode"] === true
+          )
+        ).toBe(true);
+      } finally {
+        globalThis.setTimeout = originalSetTimeout;
+        globalThis.clearTimeout = originalClearTimeout;
       }
-      expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
-      expect(
-        mockInput.client.app.logs.some(
-          (entry) =>
-            entry.message === "Runtime diagnostic signal" &&
-            entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
-            entry.extra?.["action"] === "not-gated"
-        )
-      ).toBe(true);
+
+      expect(healthSpy).not.toHaveBeenCalled();
+      expect(detectSpy).not.toHaveBeenCalled();
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -488,10 +407,8 @@ describe("OpencodeCoder Plugin Integration", () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [{ id: "missing-skill" }] },
-        resourcesHealthy: false,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: { available: true, healthy: false, hasIssues: true },
+        repair: { attempted: false, healthy: false },
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
@@ -527,10 +444,8 @@ describe("OpencodeCoder Plugin Integration", () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
       const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [{ id: "missing-docs-lifecycle-resource" }] },
-        resourcesHealthy: false,
-        repairAttempted: false,
-        repairSucceeded: false,
+        verify: { available: true, healthy: false, hasIssues: true },
+        repair: { attempted: false, healthy: false },
       });
       const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
         createProjectContext({
@@ -596,10 +511,8 @@ describe("OpencodeCoder Plugin Integration", () => {
 
         const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
         const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-          verifyResult: { status: "ok", issues: [] },
-          resourcesHealthy: true,
-          repairAttempted: false,
-          repairSucceeded: false,
+          verify: { available: true, healthy: true, hasIssues: false },
+          repair: { attempted: false, healthy: false },
         });
         const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
           createProjectContext()
@@ -624,541 +537,6 @@ describe("OpencodeCoder Plugin Integration", () => {
       } finally {
         rmSync(worktree, { recursive: true, force: true });
       }
-    });
-
-    it("sets default_agent to orchestrator when beads runtime is ready and no default exists", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = {};
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.default_agent).toBe("orchestrator");
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("does not show readiness toast when default_agent assignment is skipped because default already exists", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = { default_agent: "some-other-agent" };
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.default_agent).toBe("some-other-agent");
-      expect(
-        mockInput.client.app.logs.some((entry) => entry.message === "default_agent already configured, not overriding")
-      ).toBe(true);
-      expect(mockInput.client.tui.toasts).toHaveLength(0);
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("does not show readiness toast when default_agent assignment is skipped because project context is unavailable", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(() => {
-        throw new Error("detector failed");
-      });
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = {};
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.default_agent).toBeUndefined();
-      expect(
-        mockInput.client.app.logs.some((entry) => entry.message === "Project context unavailable, not setting default_agent")
-      ).toBe(true);
-      expect(mockInput.client.tui.toasts).toHaveLength(0);
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("shows readiness toast when default_agent assignment is skipped because beads runtime is not ready", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ beadsReady: false })
-      );
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = {};
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.default_agent).toBeUndefined();
-      expect(
-        mockInput.client.app.logs.some(
-            (entry) => entry.message === "beadsReady=false, not setting default_agent to orchestrator"
-          )
-        ).toBe(true);
-      expect(mockInput.client.tui.toasts).toHaveLength(1);
-      expect(mockInput.client.tui.toasts[0]).toMatchObject({
-        title: "Orchestrator not enabled",
-        variant: "warning",
-      });
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("does not block config when readiness toast never resolves", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({ beadsReady: false })
-      );
-
-      const mockInput = createMockPluginInput();
-      const showToastSpy = spyOn(mockInput.client.tui, "showToast").mockImplementation(
-        () => new Promise<void>(() => {})
-      );
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = {};
-
-      await hooks.config?.(cfg as any);
-
-      expect(cfg.default_agent).toBeUndefined();
-      expect(showToastSpy).toHaveBeenCalledTimes(1);
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("evaluates readiness after autoInitialize so config uses final state", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const order: string[] = [];
-      let repaired = false;
-
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockImplementation(async () => {
-        order.push("autoInitialize");
-        repaired = true;
-      });
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockImplementation(async () => {
-        order.push("verifyAndAutoRepairResources");
-        return {
-          verifyResult: { status: "ok", issues: [] },
-          resourcesHealthy: repaired,
-          repairAttempted: false,
-          repairSucceeded: false,
-        };
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockImplementation(() => {
-        order.push("detectAndWrite");
-        return createProjectContext({
-          beadsReady: repaired,
-          aimgr: { ...createProjectContext().aimgr, resourcesHealthy: repaired },
-        });
-      });
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, unknown> = {};
-      await hooks.config?.(cfg as any);
-
-      expect(order).toEqual(["autoInitialize", "verifyAndAutoRepairResources", "detectAndWrite"]);
-      expect(cfg.default_agent).toBe("orchestrator");
-      expect(mockInput.client.tui.toasts).toHaveLength(0);
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("degrades safely when aimgr is missing on PATH (partial tools: bd available)", async () => {
-      const worktree = createActiveTeamWorktree("opencode-coder-aimgr-missing-", {
-        withGit: true,
-        withBeads: true,
-      });
-
-      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
-      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
-        if (command === "command -v bd") {
-          return Buffer.from("/usr/bin/bd") as any;
-        }
-
-        if (command === "command -v aimgr") {
-          const err = Object.assign(new Error("aimgr not found"), { code: "ENOENT" });
-          throw err;
-        }
-
-        throw new Error(`Unexpected command in aimgr-missing integration test: ${command}`);
-      });
-
-      try {
-        const mockInput = createMockPluginInput({ worktree, directory: worktree });
-        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-        await hooks.config?.(cfg as any);
-
-        expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
-        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-          expect(cfg.command?.[commandName]).toBeDefined();
-        }
-        expect(cfg.default_agent).toBeUndefined();
-
-        const context = readProjectContextFromWorktree(worktree);
-        expect(context.aimgr.installed).toBe(false);
-        expect(context.aimgr.resourcesHealthy).toBe(false);
-        expect(context.beads.bdCliInstalled).toBe(true);
-        expect(context.beadsReady).toBe(false);
-
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) =>
-              entry.message === "Runtime diagnostic signal" &&
-              entry.extra?.["signal"] === "runtime.project_context.available" &&
-              entry.extra?.["resourcesHealthy"] === false
-          )
-        ).toBe(true);
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) =>
-              entry.message === "Runtime diagnostic signal" &&
-              entry.extra?.["signal"] === "runtime.command_registration.docs_lifecycle" &&
-              entry.extra?.["action"] === "not-gated"
-          )
-        ).toBe(true);
-      } finally {
-        execSyncSpy.mockRestore();
-        rmSync(worktree, { recursive: true, force: true });
-      }
-    });
-
-    it("handles execSync timeout on tool discovery without crashing startup", async () => {
-      const worktree = createActiveTeamWorktree("opencode-coder-aimgr-timeout-", {
-        withGit: true,
-        withBeads: true,
-      });
-
-      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
-      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
-        if (command === "command -v bd") {
-          return Buffer.from("/usr/bin/bd") as any;
-        }
-
-        if (command === "command -v aimgr") {
-          throw createExecTimeoutError("aimgr discovery timed out");
-        }
-
-        throw new Error(`Unexpected command in timeout integration test: ${command}`);
-      });
-
-      try {
-        const mockInput = createMockPluginInput({ worktree, directory: worktree });
-        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-        await hooks.config?.(cfg as any);
-
-        expect(cfg.command?.["opencode-coder/init"]).toBeDefined();
-        expect(cfg.default_agent).toBeUndefined();
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) => entry.level === "warn" && entry.message === "aimgr availability check timed out"
-          )
-        ).toBe(true);
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) =>
-              entry.message === "Runtime diagnostic signal" &&
-              entry.extra?.["signal"] === "runtime.project_context.available"
-          )
-        ).toBe(true);
-      } finally {
-        execSyncSpy.mockRestore();
-        rmSync(worktree, { recursive: true, force: true });
-      }
-    });
-
-    it("7rn regression: uses post-repair readiness before detection/config hook consumption", async () => {
-      const worktree = createActiveTeamWorktree("opencode-coder-7rn-sequencing-", {
-        withGit: true,
-        withBeads: true,
-      });
-
-      const callOrder: string[] = [];
-      let verifyCount = 0;
-
-      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
-      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
-        callOrder.push(command);
-
-        if (command === "command -v aimgr" || command === "command -v bd") {
-          return Buffer.from("/usr/bin/tool") as any;
-        }
-
-        if (command === "aimgr init") {
-          return Buffer.from("initialized") as any;
-        }
-
-        if (command === "aimgr repo list --format=json") {
-          return JSON.stringify({ packages: [{ name: "coder-core" }] }) as any;
-        }
-
-        if (command === "aimgr install package/coder-core") {
-          return Buffer.from("installed") as any;
-        }
-
-        if (command === "aimgr verify --format json") {
-          verifyCount += 1;
-          if (verifyCount === 1) {
-            return JSON.stringify({ status: "ok", issues: [{ id: "missing-resource" }] }) as any;
-          }
-          return JSON.stringify({ status: "ok", issues: [] }) as any;
-        }
-
-        if (command === "aimgr repair --format json") {
-          return JSON.stringify({ status: "ok", fixed: ["missing-resource"] }) as any;
-        }
-
-        throw new Error(`Unexpected command in 7rn sequencing integration test: ${command}`);
-      });
-
-      try {
-        const mockInput = createMockPluginInput({ worktree, directory: worktree });
-        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-        await hooks.config?.(cfg as any);
-
-        expect(verifyCount).toBe(2);
-        const firstVerifyIndex = callOrder.indexOf("aimgr verify --format json");
-        const repairIndex = callOrder.indexOf("aimgr repair --format json");
-        const secondVerifyIndex = callOrder.findIndex((command, index) => command === "aimgr verify --format json" && index > firstVerifyIndex);
-        expect(firstVerifyIndex).toBeGreaterThan(-1);
-        expect(repairIndex).toBeGreaterThan(firstVerifyIndex);
-        expect(secondVerifyIndex).toBeGreaterThan(repairIndex);
-
-        const context = readProjectContextFromWorktree(worktree);
-        expect(context.aimgr.resourcesHealthy).toBe(true);
-        expect(cfg.default_agent).toBeUndefined();
-
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) => entry.message === "aimgr verify found resource issues, attempting automatic repair"
-          )
-        ).toBe(true);
-        expect(mockInput.client.tui.toasts.some((toast) => toast.message.includes("auto-repair fixed resource issues"))).toBe(true);
-      } finally {
-        execSyncSpy.mockRestore();
-        rmSync(worktree, { recursive: true, force: true });
-      }
-    });
-
-    it("detects partial availability when aimgr is present but bd is missing", async () => {
-      const worktree = createActiveTeamWorktree("opencode-coder-partial-bd-missing-", {
-        withGit: true,
-        withBeads: true,
-        withPackageYaml: true,
-      });
-
-      // Mock boundary: external command execution is mocked; filesystem interactions use a real temp worktree.
-      const execSyncSpy = spyOn(childProcess, "execSync").mockImplementation((command: string) => {
-        if (command === "command -v aimgr") {
-          return Buffer.from("/usr/bin/aimgr") as any;
-        }
-
-        if (command === "command -v bd") {
-          const err = Object.assign(new Error("bd not found"), { code: "ENOENT" });
-          throw err;
-        }
-
-        if (command === "aimgr verify --format json") {
-          return JSON.stringify({ status: "ok", issues: [] }) as any;
-        }
-
-        throw new Error(`Unexpected command in partial-availability integration test: ${command}`);
-      });
-
-      try {
-        const mockInput = createMockPluginInput({ worktree, directory: worktree });
-        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-        await hooks.config?.(cfg as any);
-
-        const context = readProjectContextFromWorktree(worktree);
-        expect(context.aimgr.installed).toBe(true);
-        expect(context.beads.bdCliInstalled).toBe(false);
-        expect(context.beadsReady).toBe(false);
-        expect(cfg.default_agent).toBeUndefined();
-
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) =>
-              entry.message === "Runtime diagnostic signal" &&
-              entry.extra?.["signal"] === "runtime.project_context.available" &&
-              entry.extra?.["beadsReady"] === false &&
-              entry.extra?.["resourcesHealthy"] === true
-          )
-        ).toBe(true);
-      } finally {
-        execSyncSpy.mockRestore();
-        rmSync(worktree, { recursive: true, force: true });
-      }
-    });
-
-    it("skips runtime bootstrap when manual Phase 2 surfaces exist without ai.package.yaml", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const classifySpy = spyOn(ProjectDetectorService.prototype, "classifyRuntimePhase").mockReturnValue({
-        phase: "normal",
-        coreAvailable: true,
-        bootstrapRequired: false,
-        missingRequiredSurfaces: [],
-        shouldExposeBootstrapInit: false,
-      });
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
-        createProjectContext({
-          beadsReady: false,
-          aimgr: {
-            installed: true,
-            packageYaml: false,
-            resourcesHealthy: false,
-          },
-        })
-      );
-
-      const mockInput = createMockPluginInput();
-      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-      const cfg: Record<string, any> = { command: createPhase2CommandFixture() };
-      await hooks.config?.(cfg as any);
-
-      expect(autoInitializeSpy).not.toHaveBeenCalled();
-      expect(healthSpy).not.toHaveBeenCalled();
-      for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-        expect(cfg.command?.[commandName]).toBeDefined();
-      }
-      expect(cfg.command?.["opencode-coder/init"]).toMatchObject({
-        description: "resource-backed init",
-        template: "resource init template",
-      });
-      expect(
-        mockInput.client.app.logs.some(
-          (entry) => entry.message === "Runtime phase already normal from required resource surfaces; skipping startup bootstrap"
-        )
-      ).toBe(true);
-
-      resolveModeSpy.mockRestore();
-      classifySpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
-    });
-
-    it("degrades safely when config hook times out waiting on startup context", async () => {
-      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
-      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockImplementation(
-        () => new Promise<void>(() => {})
-      );
-      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
-        verifyResult: { status: "ok", issues: [] },
-        resourcesHealthy: true,
-        repairAttempted: false,
-        repairSucceeded: false,
-      });
-      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(createProjectContext());
-
-      const originalSetTimeout = globalThis.setTimeout;
-      const originalClearTimeout = globalThis.clearTimeout;
-      globalThis.setTimeout = ((cb: (...args: any[]) => void) => {
-        cb();
-        return 1 as any;
-      }) as typeof setTimeout;
-      globalThis.clearTimeout = (() => undefined) as typeof clearTimeout;
-
-      try {
-        const mockInput = createMockPluginInput();
-        const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
-        const cfg: Record<string, any> = { command: createLifecycleCommandFixture() };
-        await hooks.config?.(cfg as any);
-
-        expect(cfg.default_agent).toBeUndefined();
-        expect(cfg.command).toBeDefined();
-        expect((cfg.command as Record<string, unknown>)["opencode-coder/init"]).toBeDefined();
-        for (const commandName of DOCS_LIFECYCLE_COMMANDS) {
-          expect((cfg.command as Record<string, unknown>)[commandName]).toBeDefined();
-        }
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) => entry.level === "warn" && entry.message === "Project context startup timed out; continuing in degraded mode"
-          )
-        ).toBe(true);
-        expect(
-          mockInput.client.app.logs.some(
-            (entry) =>
-              entry.message === "Runtime diagnostic signal" &&
-              entry.extra?.["signal"] === "runtime.project_context.timeout" &&
-              entry.extra?.["degradedMode"] === true
-          )
-        ).toBe(true);
-      } finally {
-        globalThis.setTimeout = originalSetTimeout;
-        globalThis.clearTimeout = originalClearTimeout;
-      }
-
-      expect(healthSpy).not.toHaveBeenCalled();
-      expect(detectSpy).not.toHaveBeenCalled();
-
-      resolveModeSpy.mockRestore();
-      autoInitializeSpy.mockRestore();
-      healthSpy.mockRestore();
-      detectSpy.mockRestore();
     });
   });
 });

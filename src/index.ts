@@ -1,5 +1,6 @@
 import { type Plugin } from "@opencode-ai/plugin";
 import {
+  createStartupState,
   createConfigHook,
   createLogger,
   getVersionInfo,
@@ -29,21 +30,26 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
     return {};
   }
 
-  const activeMode = startupMode.mode === "stealth" || startupMode.mode === "team" ? startupMode.mode : null;
-  if (activeMode) {
+  const projectDetector = new ProjectDetectorService({ logger: log, workdir: worktree });
+  const startupState = createStartupState({
+    startupMode,
+    runtimeCapability: projectDetector.classifyRuntimePhase(),
+  });
+
+  if (startupState.isActive) {
     log.enableFileLogging();
     log.info("Runtime diagnostic signal", {
       signal: "runtime.log_sink.project_local_enabled",
-      startupMode: activeMode,
+      startupMode: startupState.activeMode,
       projectLogDir: ".coder/logs",
       openCodeLogSink: true,
       projectLocalLogSink: true,
     });
-    log.info("Resolved active opencode-coder startup mode", { mode: activeMode, source: startupMode.source });
+    log.info("Resolved active opencode-coder startup mode", { mode: startupState.activeMode, source: startupMode.source });
     log.info("Runtime diagnostic signal", {
       signal: "runtime.startup_mode.resolved",
       active: true,
-      startupMode: activeMode,
+      startupMode: startupState.activeMode,
       source: startupMode.source,
     });
   } else {
@@ -58,18 +64,17 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
     });
   }
 
-  const projectDetector = new ProjectDetectorService({ logger: log, workdir: worktree });
   const beadsService = new BeadsService({ logger: log, client, workdir: worktree });
   const aimgrService = new AimgrService({ logger: log, client, workdir: worktree });
   const versionInfo = await getVersionInfo();
   const sessionExportService = new SessionExportService({ logger: log, client });
   const coderTool = createCoderTool({ sessionExportService, versionInfo });
 
-  const projectContextPromise: Promise<ProjectContext | null> = activeMode
-    ? runProjectStartupFlow({ logger: log, activeMode, versionInfo, projectDetector, aimgrService })
+  const projectContextPromise: Promise<ProjectContext | null> = startupState.shouldRunProjectStartupFlow
+    ? runProjectStartupFlow({ logger: log, startupState, versionInfo, projectDetector, aimgrService })
     : Promise.resolve(null);
 
-  if (!activeMode) {
+  if (!startupState.isActive) {
     log.info("Project not explicitly enabled for active startup; exposing init entry point only", {
       mode: startupMode.mode,
       source: startupMode.source,
@@ -86,7 +91,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
   });
 
   return {
-    ...(activeMode ? { tool: { coder: coderTool } } : {}),
+    ...(startupState.shouldEnableCoderTool ? { tool: { coder: coderTool } } : {}),
     "command.execute.before": async (
       input: { command: string; sessionID: string; arguments: string },
       output: { parts: Array<any> }
@@ -101,8 +106,7 @@ export const OpencodeCoder: Plugin = async ({ client, worktree }) => {
       logger: log,
       client,
       worktree,
-      startupMode,
-      activeMode,
+      startupState,
       projectContextPromise,
       projectContextTimeoutMs: PROJECT_CONTEXT_TIMEOUT_MS,
     }),
