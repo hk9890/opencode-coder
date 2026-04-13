@@ -33,6 +33,13 @@ jobs:
           command -v bd
           bd --version
 
+      - name: Install aimgr CLI
+        run: |
+          set -euo pipefail
+          npm install -g @dynatrace-oss/ai-config-manager
+          command -v aimgr
+          aimgr --version
+
       - name: Type check
         run: bun run typecheck
 

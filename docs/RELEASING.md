@@ -34,12 +34,15 @@ The workflow:
 - publishes `@dynatrace-oss/opencode-coder` to GitHub Packages
 - creates the GitHub release
 
+The workflow also installs both `bd` and `aimgr` before running release quality gates, because integration/manual-launcher coverage depends on both CLIs being available.
+
 ## Local Prerequisites
 
 - `bun install`
 - `gh auth status`
 - clean working tree
 - permission to publish GitHub Packages
+- `aimgr` available on `PATH` for launcher/integration coverage
 
 ## Required Checks Before Dispatch
 
