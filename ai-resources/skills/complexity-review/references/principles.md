@@ -92,7 +92,7 @@ Backward compatibility has a high burden of proof.
 
 Ask:
 - Does this break existing users, interfaces, workflows, or assumptions?
-- If yes, why is the break unavoidable?
+- Is the logic clear and focused on the problem it should solve?
 - Is there a migration path or compatibility layer?
 
 Flag:
