@@ -1167,7 +1167,7 @@ export async function prepareCoderFixtureResources(options: {
   }
 
   const packagesToInstall = fixtureName === "beads-initialized" ? STAGE3_BEADS_PACKAGES : STAGE2_CODER_PACKAGES;
-  const installResult = await $`aimgr install ${packagesToInstall}`
+  const installResult = await $`aimgr install --target opencode ${packagesToInstall}`
     .cwd(options.workdir)
     .env(env)
     .quiet();

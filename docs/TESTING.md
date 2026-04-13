@@ -433,16 +433,17 @@ Resources are not seeded automatically. Use `aimgr` to install them in the isola
     # coder-skill-installed already includes ai.package.yaml, so do not run `aimgr init` here
     aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
     # Option A (full split surface):
-    aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads
+    aimgr install --target opencode package/coder-core package/coder-docs package/code-simplify package/coder-beads
 
     # Option B (targeted ownership check for standalone simplify):
-    aimgr install package/code-simplify
+    aimgr install --target opencode package/code-simplify
     ```
 
 3. Start OpenCode from the same shell and run `/simplify ...` for semantic validation.
 
 Notes:
 - Split-package install requires a repository source first; `aimgr repo add local:.../ai-resources` seeds that source in isolated runs.
+- In hermetic launcher/test environments, pass `--target opencode` so aimgr installs into `.opencode/` even when no default aimgr target is configured.
 - Use `package/code-simplify` when you explicitly want isolated validation of the standalone simplify owner without pulling core/docs/beads packages.
 - If `aimgr` or required package access is unavailable in your environment, `/simplify` semantic validation cannot be completed in `installed-configured` mode.
 
