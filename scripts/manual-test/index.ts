@@ -10,7 +10,6 @@ import {
   checkOpencodeAvailability,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
-  createIsolatedOpenCodePathsWithPluginSource,
   createProjectPathWorkspace,
   isFixtureName,
   type PluginSource,
@@ -183,7 +182,7 @@ Modes:
 
 Options:
   --fixture=<name>  Fixture to copy
-  --project-path    External project directory to run directly in place (no copy)
+  --project-path    External project directory to run against in place (no copy)
   --plugin-source=<mode> Plugin source: local-build (default) | installed-configured
   --auth=<path>     Explicit auth.json path seed (copied to isolated XDG data)
   --require-auth    Fail if no auth seed source is available
@@ -196,11 +195,11 @@ ${formatFixtureHelpLines()}
 Notes:
   Run bun run test:launcher:preflight before release work for env-stripped launcher/setup validation.
   --fixture selects a committed fixture baseline, then prepares a runtime workspace for the chosen mode/plugin source.
-  --project-path runs directly in the provided project and may mutate it.
-  Use a clean branch, worktree, or disposable project when testing in place.
+  --project-path runs against the provided project without copying it.
+  Launcher-owned plugin/resources are prepared in isolated OPENCODE_CONFIG_DIR state, not written into the target project.
   Shell and TUI runs prepare the same runtime workspace state; shell stops before launching OpenCode.
   installed-configured requires explicit GitHub Packages auth (NODE_AUTH_TOKEN) and configured host plugin entry.
-  Local-build prepared runs may add runtime state such as .git and plugin wiring.
+  Existing project-local OpenCode config/resources may still be read according to normal OpenCode precedence.
   Resource/bootstrap depth depends on fixture stage (for example empty-project and coder-mode-configured stay minimally prepared).
   Beads fixtures may also receive best-effort runtime .beads init.
   Runtime-generated .coder/project.yaml is authoritative whenever startup rewrites project state.
@@ -722,6 +721,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const openCodeBootstrapRequired = requiresOpenCodeBootstrap(args.mode);
     let selectedPluginSource = args.pluginSource;
 
+    const isolatedPaths = openCodeBootstrapRequired
+      ? await createIsolatedOpenCodePaths(workspace.tempRoot, {
+          prewarmOpenCodeData: true,
+        })
+      : await createIsolatedOpenCodePaths(workspace.tempRoot, {
+          prewarmOpenCodeData: true,
+        });
+
     if (openCodeBootstrapRequired) {
       const hostEnvForPluginPrep: NodeJS.ProcessEnv = {
         ...process.env,
@@ -749,7 +756,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
       const preparedPluginSource = await prepareWorkspacePluginSource({
         projectRoot: PROJECT_ROOT,
-        workdir: workspace.workdir,
+        opencodeConfigDir: isolatedPaths.opencodeConfigDir,
         pluginSource: args.pluginSource,
         hostEnv: hostEnvForPluginPrep,
       });
@@ -764,19 +771,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
     }
 
-    const isolatedPaths = openCodeBootstrapRequired
-      ? await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
-          pluginSource: selectedPluginSource,
-          prewarmOpenCodeData: true,
-        })
-      : await createIsolatedOpenCodePaths(workspace.tempRoot, {
-          prewarmOpenCodeData: true,
-        });
-
     if (openCodeBootstrapRequired) {
       const preparedCoderResources = await prepareCoderFixtureResources({
         projectRoot: PROJECT_ROOT,
         workdir: workspace.workdir,
+        opencodeConfigDir: isolatedPaths.opencodeConfigDir,
         fixtureName: workspace.fixtureName,
         pluginSource: selectedPluginSource,
         env: {
@@ -800,7 +799,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     printSection("Plugin source", args.pluginSource);
     printSection(
       "Execution model",
-      workspace.workspaceSource.kind === "fixture" ? "fixture copy (disposable workspace)" : "direct project path (in place)"
+      workspace.workspaceSource.kind === "fixture"
+        ? "fixture copy (disposable workspace)"
+        : "direct project path (target project left in place)"
     );
     if (workspace.workspaceSource.kind === "fixture") {
       printSection("Fixture", workspace.workspaceSource.fixtureName);
@@ -844,11 +845,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       "Cleanup plan",
       workspace.workspaceSource.kind === "fixture"
         ? "preserve copied workspace and isolated environment"
-        : "preserve isolated environment only; target project remains in place"
+        : "preserve isolated environment only; target project remains in place and launcher-owned config stays isolated"
     );
-    if (workspace.workspaceSource.kind === "project-path") {
-      printSection("Project mutation risk", "yes (project-path runs execute in place)");
-    }
     if (args.keep) {
       printSection("--keep", "accepted (backward-compatible no-op)");
     }

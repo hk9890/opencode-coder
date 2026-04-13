@@ -161,10 +161,11 @@ What it does **not** prove:
   - prepares a disposable workspace using the selected fixture runtime contract
   - safest default for reproducible launcher testing
 - `--project-path <path>`
-  - runs directly in the provided project path
+  - runs directly against the provided project path
   - does **not** copy the project
   - still uses isolated HOME/XDG/OpenCode state under `.manual-test-runs/`
-  - may mutate the target project, so use a clean branch, worktree, or disposable project when needed
+  - launcher-owned plugin/resources are prepared in the isolated `OPENCODE_CONFIG_DIR`, not written into the target project
+  - the target project's own `opencode.json` / `.opencode/` may still be read by OpenCode according to normal precedence
 
 Manual launcher isolated OpenCode runtime data is prewarmed from an empty post-migration baseline (generated automatically in code) when `opencode` is available, so fresh launcher invocations avoid paying the one-time DB migration cost repeatedly.
 
@@ -219,6 +220,7 @@ Decision table (current behavior):
 | `installWorkspacePluginDependencies()` | S | S | S | S | S | S | S | S |
 | AI/OpenCode resource preparation | R | S | S | S | S | S | S | S |
 | Isolated HOME/XDG/OpenCode config creation | R | R | R | R | R | R | R | R |
+| Isolated `OPENCODE_CONFIG_DIR` plugin wiring | R | R | R | R | R | R | R | R |
 | Auth seeding (`--auth` or default local auth path) | O | O | O | O | O | O | O | O |
 | `bd init` bootstrap | S | S | S | S | O | S | S | S |
 
@@ -265,7 +267,7 @@ Dominant costs (implementation baseline before optimization):
 1. Start with deterministic checks if relevant.
 2. Choose the manual scenario that matches the question you are asking.
 3. Prefer fixtures for reproducible launcher/debug work.
-4. Use `--project-path` when you need to validate against a real project.
+4. Use `--project-path` when you need to validate against a real project without copying it.
 5. Judge the outcome semantically, not by string fragments.
 
 ### Example commands
@@ -349,7 +351,7 @@ Recommended command:
 bun run test:manual -- --mode=shell --fixture=coder-mode-configured
 ```
 
-### Scenario E — Real project reproduction in place
+### Scenario E — Real project reproduction without project mutation from launcher-owned wiring
 
 Use when:
 - you need to validate against an actual local project

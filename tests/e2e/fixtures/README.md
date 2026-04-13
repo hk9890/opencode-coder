@@ -12,7 +12,7 @@ For launcher execution flow and scenario matrix details, see [`docs/TESTING.md`]
 The launcher uses one of these preparation strategies per fixture:
 
 - `none` — do not preinstall project-local OpenCode resources.
-- `seeded` — copy resource surfaces directly into project `.opencode/` (legacy helper strategy, intentionally not the canonical staged-fixture strategy).
+- `seeded` — prepare launcher-owned resource surfaces in isolated OpenCode config state instead of mutating the project tree.
 - `aimgr-installed` — initialize isolated aimgr state and install packages so `.opencode/` surfaces are created by package install behavior.
 
 ## Fixture contract by runtime stage
@@ -100,4 +100,4 @@ Runtime contract precedence:
 
 Manual launcher runs also create isolated runtime state **outside** the project workspace under the run directory (HOME/XDG/OpenCode config emulation).
 
-That external isolated state is part of launcher hermeticity, but it is not part of the per-fixture project tree contract described above.
+That external isolated state is part of launcher hermeticity, but it is not part of the per-fixture project tree contract described above. Local-build plugin wiring for the manual launcher now lives in that isolated OpenCode config state, not under the prepared project tree.

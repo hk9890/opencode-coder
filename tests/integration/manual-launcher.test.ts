@@ -112,9 +112,13 @@ async function getLauncherPreparedEnv(stdout: string): Promise<Record<string, st
     XDG_CONFIG_HOME: join(isolatedRoot, "xdg-config"),
     XDG_DATA_HOME: join(isolatedRoot, "xdg-data"),
     XDG_CACHE_HOME: join(isolatedRoot, "xdg-cache"),
-    OPENCODE_CONFIG_DIR: join(isolatedRoot, "opencode-config"),
+    OPENCODE_CONFIG_DIR: join(isolatedRoot, "xdg-config", "opencode"),
     OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
   };
+}
+
+function getPreservedConfigDir(preservedRoot: string): string {
+  return join(preservedRoot, "isolated-opencode", "xdg-config", "opencode");
 }
 
 async function proveLauncherStartupViability(workdir: string, launcherEnv: Record<string, string>) {
@@ -529,7 +533,7 @@ describe("manual launcher preflight", () => {
 
       preservedRoot = getPreservedRoot(result.stdout);
 
-      const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
+      const pluginLink = Bun.file(join(getPreservedConfigDir(preservedRoot!), "plugins", "opencode-coder.js"));
       const packageJson = Bun.file(join(preservedRoot!, "project", ".opencode", "package.json"));
       const seededCommandFile = Bun.file(
         join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md")
@@ -776,36 +780,38 @@ describe("manual launcher preflight", () => {
   });
 
   it.skipIf(!privateTestsEnabled)("prepares pinned Dynatrace package deterministically for isolated local-build startup", async () => {
-    const workspace = await createFixtureWorkspace("empty-project");
+      const workspace = await createFixtureWorkspace("empty-project");
+      const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
     try {
-      await prepareWorkspacePluginSource({
-        projectRoot: PROJECT_ROOT,
-        workdir: workspace.workdir,
-        pluginSource: "local-build",
-      });
+        await prepareWorkspacePluginSource({
+          projectRoot: PROJECT_ROOT,
+          opencodeConfigDir: isolatedPaths.opencodeConfigDir,
+          pluginSource: "local-build",
+        });
 
-      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
-      expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
+        const opencodePackageJsonPath = join(isolatedPaths.opencodeConfigDir, "package.json");
+        expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });
     }
   }, 120000);
 
   it("skips private Dynatrace package prep when OPENCODE_CODER_PRIVATE_TESTS is unset/false", async () => {
-    const workspace = await createFixtureWorkspace("empty-project");
+      const workspace = await createFixtureWorkspace("empty-project");
+      const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
 
     try {
-      await withEnvironment({ OPENCODE_CODER_PRIVATE_TESTS: "false" }, async () => {
-        await prepareWorkspacePluginSource({
-          projectRoot: PROJECT_ROOT,
-          workdir: workspace.workdir,
-          pluginSource: "local-build",
+        await withEnvironment({ OPENCODE_CODER_PRIVATE_TESTS: "false" }, async () => {
+          await prepareWorkspacePluginSource({
+            projectRoot: PROJECT_ROOT,
+            opencodeConfigDir: isolatedPaths.opencodeConfigDir,
+            pluginSource: "local-build",
+          });
         });
-      });
 
-      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
-      expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
+        const opencodePackageJsonPath = join(isolatedPaths.opencodeConfigDir, "package.json");
+        expect(await Bun.file(opencodePackageJsonPath).exists()).toBe(false);
     } finally {
       await rm(workspace.tempRoot, { recursive: true, force: true });
     }
@@ -813,6 +819,7 @@ describe("manual launcher preflight", () => {
 
   it("prepares workspace dependencies for installed-configured source", async () => {
     const workspace = await createFixtureWorkspace("empty-project");
+    const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
     const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-installed-prepare-"));
 
     try {
@@ -830,7 +837,7 @@ describe("manual launcher preflight", () => {
 
       await prepareWorkspacePluginSource({
         projectRoot: PROJECT_ROOT,
-        workdir: workspace.workdir,
+        opencodeConfigDir: isolatedPaths.opencodeConfigDir,
         pluginSource: "installed-configured",
         hostEnv: {
           ...buildLauncherTestEnv(),
@@ -839,11 +846,10 @@ describe("manual launcher preflight", () => {
         },
       });
 
-      const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
-      const npmrcPath = join(workspace.workdir, ".opencode", ".npmrc");
+      const opencodePackageJsonPath = join(isolatedPaths.opencodeConfigDir, "package.json");
+      const npmrcPath = join(isolatedPaths.opencodeConfigDir, ".npmrc");
       const installedPluginPath = join(
-        workspace.workdir,
-        ".opencode",
+        isolatedPaths.opencodeConfigDir,
         "node_modules",
         "@dynatrace-oss",
         "opencode-coder",
@@ -863,6 +869,7 @@ describe("manual launcher preflight", () => {
 
   it("fails clearly when installed-configured auth token is not seeded", async () => {
     const workspace = await createFixtureWorkspace("empty-project");
+    const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot);
     const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-installed-auth-missing-"));
 
     try {
@@ -881,7 +888,7 @@ describe("manual launcher preflight", () => {
       await expect(
         prepareWorkspacePluginSource({
           projectRoot: PROJECT_ROOT,
-          workdir: workspace.workdir,
+          opencodeConfigDir: isolatedPaths.opencodeConfigDir,
           pluginSource: "installed-configured",
           hostEnv: {
             ...buildLauncherTestEnv(),
@@ -952,7 +959,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(Boolean(preservedRoot)).toBe(true);
       expect(preservedRoot).toContain(`${join(".manual-test-runs", "run-")}`);
 
-      const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
+      const pluginLink = Bun.file(join(getPreservedConfigDir(preservedRoot!), "plugins", "opencode-coder.js"));
       const dynatracePackageJsonPath = join(
         preservedRoot!,
         "project",
@@ -985,7 +992,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
     }
   }, 120000);
 
-  it("runs one-shot command with external --project-path directly in place", async () => {
+  it("runs one-shot command with external --project-path without mutating launcher-owned project resources", async () => {
     const sourceRoot = await mkdtemp(join(tmpdir(), "opencode-coder-manual-project-source-"));
     const sourceAuthDir = await mkdtemp(join(tmpdir(), "opencode-coder-manual-auth-"));
     const authPath = join(sourceAuthDir, "auth.json");
@@ -1029,13 +1036,12 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Mode: command");
       expect(result.stdout).toContain("Plugin source: local-build");
-      expect(result.stdout).toContain("Execution model: direct project path (in place)");
+      expect(result.stdout).toContain("Execution model: direct project path (target project left in place)");
       expect(result.stdout).toContain(`Project path: ${sourceRoot}`);
       expect(result.stdout).toContain(`Project source: ${sourceRoot}`);
       expect(result.stdout).toContain(`Workdir: ${sourceRoot}`);
       expect(result.stdout).toContain("Auth seeded: yes (explicit-path)");
-      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
-      expect(result.stdout).toContain("Project mutation risk: yes (project-path runs execute in place)");
+      expect(result.stdout).toContain("AI resources prepared: no");
 
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
       expect(preservedMatch).not.toBeNull();
@@ -1046,6 +1052,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       const preservedProjectDir = Bun.file(join(preservedRoot!, "project"));
       const isolatedConfig = Bun.file(join(preservedRoot!, "isolated-opencode", "xdg-config", "opencode", "opencode.json"));
       const isolatedAuth = Bun.file(join(preservedRoot!, "isolated-opencode", "xdg-data", "opencode", "auth.json"));
+      const isolatedPluginLink = Bun.file(join(getPreservedConfigDir(preservedRoot!), "plugins", "opencode-coder.js"));
       const sourceReadme = Bun.file(join(sourceRoot, "README.md"));
       const sourceGitSentinel = Bun.file(join(sourceRoot, ".git", "SENTINEL"));
       const sourceBeadsPid = Bun.file(join(sourceRoot, ".beads", "daemon.pid"));
@@ -1059,6 +1066,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(await preservedProjectDir.exists()).toBe(false);
       expect(await isolatedConfig.exists()).toBe(true);
       expect(await isolatedAuth.exists()).toBe(true);
+      expect(await isolatedPluginLink.exists()).toBe(true);
       expect(await sourceReadme.exists()).toBe(true);
       expect(await sourceGitSentinel.exists()).toBe(true);
       expect(await sourceBeadsPid.exists()).toBe(true);
@@ -1071,7 +1079,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(await sourceCoderModeState.text()).toContain("mode: team");
       expect(await sourceOpencodeLocalCommand.exists()).toBe(true);
       expect(await sourceOpencodeBrokenLink.exists()).toBe(false);
-      expect(await sourcePluginLink.exists()).toBe(true);
+      expect(await sourcePluginLink.exists()).toBe(false);
     } finally {
       await new Promise<void>((resolve, reject) => {
         sourceSocketServer.close((error) => {
@@ -1140,7 +1148,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(Boolean(preservedRoot)).toBe(true);
       expect(preservedRoot).toContain(`${join(".manual-test-runs", "run-")}`);
 
-      const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
+      const pluginLink = Bun.file(join(getPreservedConfigDir(preservedRoot!), "plugins", "opencode-coder.js"));
       expect(await pluginLink.exists()).toBe(true);
 
       const isolatedConfig = await readFile(

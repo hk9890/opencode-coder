@@ -403,7 +403,7 @@ function parseExactVersionFromPluginSpec(spec: string): string | null {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate) ? candidate : null;
 }
 
-function buildIsolatedPackageManagerEnv(workdir: string, sourceEnv: NodeJS.ProcessEnv = process.env): Record<string, string> {
+function buildIsolatedPackageManagerEnv(rootDir: string, sourceEnv: NodeJS.ProcessEnv = process.env): Record<string, string> {
   const env: Record<string, string> = {};
 
   const path = sourceEnv.PATH?.trim();
@@ -432,11 +432,10 @@ function buildIsolatedPackageManagerEnv(workdir: string, sourceEnv: NodeJS.Proce
     }
   }
 
-  const opencodeDir = join(workdir, ".opencode");
-  env.HOME = join(opencodeDir, ".harness-home");
-  env.XDG_CONFIG_HOME = join(opencodeDir, ".harness-xdg-config");
-  env.XDG_DATA_HOME = join(opencodeDir, ".harness-xdg-data");
-  env.XDG_CACHE_HOME = join(opencodeDir, ".harness-xdg-cache");
+  env.HOME = join(rootDir, ".harness-home");
+  env.XDG_CONFIG_HOME = join(rootDir, ".harness-xdg-config");
+  env.XDG_DATA_HOME = join(rootDir, ".harness-xdg-data");
+  env.XDG_CACHE_HOME = join(rootDir, ".harness-xdg-cache");
 
   const nodeAuthToken = sourceEnv.NODE_AUTH_TOKEN?.trim();
   if (nodeAuthToken) {
@@ -451,13 +450,12 @@ function requiresDynatraceOssRegistry(pluginSpecsToPrepare: string[]): boolean {
 }
 
 async function installWorkspacePluginDependencies(
-  workdir: string,
+  rootDir: string,
   pluginSpecsToPrepare: string[],
   sourceEnv: NodeJS.ProcessEnv = process.env
 ): Promise<void> {
-  const opencodeDir = join(workdir, ".opencode");
   const scaffoldDependencies = await readHarnessScaffoldDependenciesFromManifest();
-  const packageManagerEnv = buildIsolatedPackageManagerEnv(workdir, sourceEnv);
+  const packageManagerEnv = buildIsolatedPackageManagerEnv(rootDir, sourceEnv);
 
   await mkdir(packageManagerEnv.HOME, { recursive: true });
   await mkdir(packageManagerEnv.XDG_CONFIG_HOME, { recursive: true });
@@ -472,7 +470,7 @@ async function installWorkspacePluginDependencies(
   }
 
   await writeFile(
-    join(opencodeDir, ".npmrc"),
+    join(rootDir, ".npmrc"),
     [
       "@dynatrace-oss:registry=https://npm.pkg.github.com",
       "always-auth=true",
@@ -482,7 +480,7 @@ async function installWorkspacePluginDependencies(
   );
 
   await writeFile(
-    join(opencodeDir, "package.json"),
+    join(rootDir, "package.json"),
     JSON.stringify(
       {
         private: true,
@@ -495,22 +493,21 @@ async function installWorkspacePluginDependencies(
 
   const normalizedPluginSpecs = pluginSpecsToPrepare.map((spec) => spec.trim()).filter((spec) => spec.length > 0);
   if (normalizedPluginSpecs.length > 0) {
-    const addResult = await $`bun add --exact ${normalizedPluginSpecs}`.cwd(opencodeDir).env(packageManagerEnv).quiet();
+    const addResult = await $`bun add --exact ${normalizedPluginSpecs}`.cwd(rootDir).env(packageManagerEnv).quiet();
     if (addResult.exitCode !== 0) {
       throw new Error(`Failed to prepare configured plugin package(s):\n${addResult.stderr.toString()}`);
     }
     return;
   }
 
-  const installBaseResult = await $`bun install`.cwd(opencodeDir).env(packageManagerEnv).quiet();
+  const installBaseResult = await $`bun install`.cwd(rootDir).env(packageManagerEnv).quiet();
   if (installBaseResult.exitCode !== 0) {
-    throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
+    throw new Error(`Failed to install isolated OpenCode config dependencies:\n${installBaseResult.stderr.toString()}`);
   }
 }
 
-async function installHermeticLocalCoderPackage(workdir: string, version: string = "0.34.2"): Promise<void> {
-  const opencodeDir = join(workdir, ".opencode");
-  const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
+async function installHermeticLocalCoderPackage(rootDir: string, version: string = "0.34.2"): Promise<void> {
+  const packageDir = join(rootDir, "node_modules", "@dynatrace-oss", "opencode-coder");
 
   await mkdir(packageDir, { recursive: true });
   const builtPluginPath = await ensurePluginBuilt(join(fileURLToPath(new URL("../../..", import.meta.url))));
@@ -532,7 +529,7 @@ async function installHermeticLocalCoderPackage(workdir: string, version: string
 }
 
 async function wireInstalledConfiguredPluginArtifact(
-  workdir: string,
+  opencodeConfigDir: string,
   packageSpec: string,
   hostEnv: NodeJS.ProcessEnv = process.env
 ): Promise<{
@@ -544,10 +541,9 @@ async function wireInstalledConfiguredPluginArtifact(
     throw new Error("Cannot prepare installed-configured plugin source: package spec is empty");
   }
 
-  const opencodeDir = join(workdir, ".opencode");
-  const pluginDir = join(opencodeDir, "plugins");
+  const pluginDir = join(opencodeConfigDir, "plugins");
   const pluginSymlink = join(pluginDir, "opencode-coder.js");
-  const packageDir = join(opencodeDir, "node_modules", "@dynatrace-oss", "opencode-coder");
+  const packageDir = join(opencodeConfigDir, "node_modules", "@dynatrace-oss", "opencode-coder");
   const pluginEntrypoint = join(packageDir, "dist", "opencode-coder.js");
   const packageJsonPath = join(packageDir, "package.json");
   const dynatraceSpec = await getOptionalPinnedDynatracePluginSpec();
@@ -555,10 +551,10 @@ async function wireInstalledConfiguredPluginArtifact(
 
   await mkdir(pluginDir, { recursive: true });
   if (hostEnv.CI === "true") {
-    await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : [], hostEnv);
-    await installHermeticLocalCoderPackage(workdir, requestedVersionFromSpec ?? "0.34.2");
+    await installWorkspacePluginDependencies(opencodeConfigDir, dynatraceSpec ? [dynatraceSpec] : [], hostEnv);
+    await installHermeticLocalCoderPackage(opencodeConfigDir, requestedVersionFromSpec ?? "0.34.2");
   } else {
-    await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec], hostEnv);
+    await installWorkspacePluginDependencies(opencodeConfigDir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec], hostEnv);
   }
 
   let installedPackageJsonRaw: string;
@@ -1069,24 +1065,38 @@ export async function wireBuiltPluginArtifact(projectRoot: string, workdir: stri
   return pluginSymlink;
 }
 
-export async function seedAiResources(projectRoot: string, workdir: string): Promise<void> {
+/**
+ * Injects this repository's built plugin into an isolated OpenCode config directory.
+ */
+export async function wireBuiltPluginArtifactToConfigDir(projectRoot: string, opencodeConfigDir: string): Promise<string> {
+  const pluginPath = await ensurePluginBuilt(projectRoot);
+  const pluginDir = join(opencodeConfigDir, "plugins");
+  const pluginSymlink = join(pluginDir, "opencode-coder.js");
+
+  await mkdir(pluginDir, { recursive: true });
+  await rm(pluginSymlink, { force: true });
+  await symlink(pluginPath, pluginSymlink);
+
+  return pluginSymlink;
+}
+
+async function seedAiResourcesToDirectory(projectRoot: string, targetDir: string): Promise<void> {
   const aiResourcesDir = join(projectRoot, "ai-resources");
-  const opencodeDir = join(workdir, ".opencode");
 
   // Agents
   const agentsSource = join(aiResourcesDir, "agents");
-  const agentsDest = join(opencodeDir, "agents");
+  const agentsDest = join(targetDir, "agents");
   await cp(agentsSource, agentsDest, { recursive: true });
 
   // Commands
   const commandsSource = join(aiResourcesDir, "commands");
-  const commandsDest = join(opencodeDir, "commands");
+  const commandsDest = join(targetDir, "commands");
   await cp(commandsSource, commandsDest, { recursive: true });
 
   // Skills (seed split ownership surfaces only)
   for (const skill of ["coder-core", "coder-docs", "code-simplify", "coder-beads"]) {
     const skillSource = join(aiResourcesDir, "skills", skill);
-    const skillDest = join(opencodeDir, "skills", skill);
+    const skillDest = join(targetDir, "skills", skill);
     // Check source exists before copying (some skills may not exist in all setups)
     try {
       await access(skillSource);
@@ -1097,9 +1107,18 @@ export async function seedAiResources(projectRoot: string, workdir: string): Pro
   }
 }
 
+export async function seedAiResources(projectRoot: string, workdir: string): Promise<void> {
+  await seedAiResourcesToDirectory(projectRoot, join(workdir, ".opencode"));
+}
+
+export async function seedAiResourcesToConfigDir(projectRoot: string, opencodeConfigDir: string): Promise<void> {
+  await seedAiResourcesToDirectory(projectRoot, opencodeConfigDir);
+}
+
 export async function prepareCoderFixtureResources(options: {
   projectRoot: string;
   workdir: string;
+  opencodeConfigDir: string;
   fixtureName?: FixtureName;
   pluginSource?: PluginSource;
   env?: Record<string, string>;
@@ -1113,7 +1132,7 @@ export async function prepareCoderFixtureResources(options: {
 
   if (!fixtureName) {
     if (pluginSource === "local-build") {
-      await seedAiResources(options.projectRoot, options.workdir);
+      await seedAiResourcesToConfigDir(options.projectRoot, options.opencodeConfigDir);
       return { prepared: true, strategy: "seeded" };
     }
 
@@ -1163,7 +1182,7 @@ export async function prepareCoderFixtureResources(options: {
 
 export async function prepareWorkspacePluginSource(options: {
   projectRoot: string;
-  workdir: string;
+  opencodeConfigDir: string;
   pluginSource?: PluginSource;
   hostEnv?: NodeJS.ProcessEnv;
   hostHomeDir?: string;
@@ -1171,7 +1190,7 @@ export async function prepareWorkspacePluginSource(options: {
   const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
 
   if (pluginSource === "local-build") {
-    const localPluginSymlink = await wireBuiltPluginArtifact(options.projectRoot, options.workdir);
+    const localPluginSymlink = await wireBuiltPluginArtifactToConfigDir(options.projectRoot, options.opencodeConfigDir);
     return {
       pluginSource,
       workspaceDependenciesPrepared: false,
@@ -1179,12 +1198,12 @@ export async function prepareWorkspacePluginSource(options: {
     };
   }
 
-  const localPluginSymlink = join(options.workdir, ".opencode", "plugins", "opencode-coder.js");
+  const localPluginSymlink = join(options.opencodeConfigDir, "plugins", "opencode-coder.js");
   await rm(localPluginSymlink, { force: true });
 
   const resolved = await resolveInstalledConfiguredPluginFromHostConfig(options.hostEnv, options.hostHomeDir);
   const wiredInstalledArtifact = await wireInstalledConfiguredPluginArtifact(
-    options.workdir,
+    options.opencodeConfigDir,
     resolved.packageSpec,
     options.hostEnv
   );
