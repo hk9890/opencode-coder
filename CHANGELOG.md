@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Split package baseline alignment**: Replaced the legacy monolithic `opencode-coder` package surface with focused package manifests (including `opencode-coder` baseline and `essential-abstractions`) so runtime package resolution follows the current split-capability architecture.
+- **Startup-state architecture cleanup**: Centralized startup state derivation and project-context writing paths so plugin startup/mode decisions are driven by shared startup-state primitives instead of duplicated branching.
+- **Manual launcher fixture isolation**: Refactored manual launcher and fixture harness behavior to isolate plugin wiring and improve reproducibility across local-build vs installed-configured paths.
+
+### Fixed
+
+- **CI/release aimgr availability**: Updated CI and release workflows to install `aimgr` via the installer flow so integration and launcher checks run with the required CLI present.
+- **Installed-configured fixture targeting**: Fixed launcher fixture setup to install resources with explicit `--target opencode`, preventing install-path mismatches in isolated runs.
+
+### Docs
+
+- **Canonical docs/user-guide sync**: Synced project-doc user-guide copies with canonical references and updated release/testing docs to match the current launcher and workflow behavior.
+- **Release confidence note**: This release carries the accepted gap from `docs/RELEASING.md` where private-package-dependent coverage is not fully enforced in GitHub Actions.
+
 ## [0.37.0] - 2026-04-12
 
 ### Changed
