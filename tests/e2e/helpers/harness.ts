@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { constants, existsSync } from "fs";
-import { access, chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "fs/promises";
+import { access, chmod, cp, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "fs/promises";
 import { createServer } from "net";
 import { homedir, tmpdir } from "os";
 import { dirname, join } from "path";
@@ -81,8 +81,13 @@ export interface PreparedCoderResourcesResult {
   strategy: "none" | "seeded" | "aimgr-installed";
 }
 
+const STAGE2_CODER_PACKAGES = ["package/coder-core", "package/coder-docs", "package/code-simplify"] as const;
+const STAGE3_BEADS_PACKAGES = [...STAGE2_CODER_PACKAGES, "package/coder-beads"] as const;
+
 export interface IsolatedOpenCodePathOptions {
   pluginSource?: PluginSource;
+  prewarmOpenCodeData?: boolean;
+  prewarmCacheRoot?: string;
 }
 
 interface IsolatedTestManifest {
@@ -96,7 +101,16 @@ export interface IsolatedOpenCodePaths {
   xdgDataHome: string;
   xdgCacheHome: string;
   opencodeConfigDir: string;
+  prewarmedOpenCodeData: "disabled" | "applied" | "skipped";
+  prewarmedOpenCodeDataReason?: string;
+  prewarmedOpenCodeBaselineDir?: string;
   env: Record<string, string>;
+}
+
+interface PrewarmedOpenCodeDataResult {
+  status: "applied" | "skipped";
+  reason?: string;
+  baselineDir?: string;
 }
 
 export interface BinaryAvailabilityCheckResult {
@@ -123,6 +137,11 @@ export interface ResolvedAuthSeedPath {
 export const DEFAULT_LOCAL_OPENCODE_AUTH_JSON_PATH = join(homedir(), ".local", "share", "opencode", "auth.json");
 
 const DEFAULT_PLUGIN_SOURCE: PluginSource = "local-build";
+const DEFAULT_PREWARMED_OPENCODE_DATA_CACHE_ROOT = join(
+  tmpdir(),
+  "opencode-coder",
+  "prewarmed-opencode-data"
+);
 let isolatedTestManifestCache: IsolatedTestManifest | null = null;
 const builtProjectRoots = new Set<string>();
 
@@ -384,14 +403,80 @@ function parseExactVersionFromPluginSpec(spec: string): string | null {
   return /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(candidate) ? candidate : null;
 }
 
-async function installWorkspacePluginDependencies(workdir: string, pluginSpecsToPrepare: string[]): Promise<void> {
+function buildIsolatedPackageManagerEnv(workdir: string, sourceEnv: NodeJS.ProcessEnv = process.env): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  const path = sourceEnv.PATH?.trim();
+  if (path) {
+    env.PATH = path;
+  }
+
+  const user = sourceEnv.USER?.trim();
+  if (user) {
+    env.USER = user;
+  }
+
+  const logname = sourceEnv.LOGNAME?.trim();
+  if (logname) {
+    env.LOGNAME = logname;
+  }
+
+  const lang = sourceEnv.LANG?.trim();
+  if (lang) {
+    env.LANG = lang;
+  }
+
+  for (const [key, value] of Object.entries(sourceEnv)) {
+    if (key.startsWith("LC_") && typeof value === "string" && value.trim().length > 0) {
+      env[key] = value;
+    }
+  }
+
+  const opencodeDir = join(workdir, ".opencode");
+  env.HOME = join(opencodeDir, ".harness-home");
+  env.XDG_CONFIG_HOME = join(opencodeDir, ".harness-xdg-config");
+  env.XDG_DATA_HOME = join(opencodeDir, ".harness-xdg-data");
+  env.XDG_CACHE_HOME = join(opencodeDir, ".harness-xdg-cache");
+
+  const nodeAuthToken = sourceEnv.NODE_AUTH_TOKEN?.trim();
+  if (nodeAuthToken) {
+    env.NODE_AUTH_TOKEN = nodeAuthToken;
+  }
+
+  return env;
+}
+
+function requiresDynatraceOssRegistry(pluginSpecsToPrepare: string[]): boolean {
+  return pluginSpecsToPrepare.some((spec) => parsePackageNameFromPluginSpec(spec) === OPENCODE_CODER_PACKAGE_NAME);
+}
+
+async function installWorkspacePluginDependencies(
+  workdir: string,
+  pluginSpecsToPrepare: string[],
+  sourceEnv: NodeJS.ProcessEnv = process.env
+): Promise<void> {
   const opencodeDir = join(workdir, ".opencode");
   const scaffoldDependencies = await readHarnessScaffoldDependenciesFromManifest();
+  const packageManagerEnv = buildIsolatedPackageManagerEnv(workdir, sourceEnv);
+
+  await mkdir(packageManagerEnv.HOME, { recursive: true });
+  await mkdir(packageManagerEnv.XDG_CONFIG_HOME, { recursive: true });
+  await mkdir(packageManagerEnv.XDG_DATA_HOME, { recursive: true });
+  await mkdir(packageManagerEnv.XDG_CACHE_HOME, { recursive: true });
+
+  const needsDynatraceRegistry = requiresDynatraceOssRegistry(pluginSpecsToPrepare);
+  if (needsDynatraceRegistry && !packageManagerEnv.NODE_AUTH_TOKEN) {
+    throw new Error(
+      "Missing GitHub Packages auth token for installed-configured plugin preparation. Set NODE_AUTH_TOKEN explicitly before running installed-configured launcher coverage."
+    );
+  }
 
   await writeFile(
     join(opencodeDir, ".npmrc"),
     [
       "@dynatrace-oss:registry=https://npm.pkg.github.com",
+      "always-auth=true",
+      "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}",
       "",
     ].join("\n")
   );
@@ -410,27 +495,17 @@ async function installWorkspacePluginDependencies(workdir: string, pluginSpecsTo
 
   const normalizedPluginSpecs = pluginSpecsToPrepare.map((spec) => spec.trim()).filter((spec) => spec.length > 0);
   if (normalizedPluginSpecs.length > 0) {
-    const addResult = await $`bun add --exact ${normalizedPluginSpecs}`.cwd(opencodeDir).quiet();
+    const addResult = await $`bun add --exact ${normalizedPluginSpecs}`.cwd(opencodeDir).env(packageManagerEnv).quiet();
     if (addResult.exitCode !== 0) {
       throw new Error(`Failed to prepare configured plugin package(s):\n${addResult.stderr.toString()}`);
     }
     return;
   }
 
-  const installBaseResult = await $`bun install`.cwd(opencodeDir).quiet();
+  const installBaseResult = await $`bun install`.cwd(opencodeDir).env(packageManagerEnv).quiet();
   if (installBaseResult.exitCode !== 0) {
     throw new Error(`Failed to install .opencode base dependencies:\n${installBaseResult.stderr.toString()}`);
   }
-}
-
-function isGithubPackagesAuthFailure(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const stderr =
-    error && typeof error === "object" && "stderr" in error
-      ? String((error as { stderr?: unknown }).stderr ?? "")
-      : "";
-  const normalized = `${message}\n${stderr}`.toLowerCase();
-  return normalized.includes("npm.pkg.github.com") && (normalized.includes("401") || normalized.includes("unauthorized"));
 }
 
 async function installHermeticLocalCoderPackage(workdir: string, version: string = "0.34.2"): Promise<void> {
@@ -456,7 +531,11 @@ async function installHermeticLocalCoderPackage(workdir: string, version: string
   );
 }
 
-async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpec: string): Promise<{
+async function wireInstalledConfiguredPluginArtifact(
+  workdir: string,
+  packageSpec: string,
+  hostEnv: NodeJS.ProcessEnv = process.env
+): Promise<{
   pluginSymlink: string;
   installedVersion: string;
 }> {
@@ -475,20 +554,11 @@ async function wireInstalledConfiguredPluginArtifact(workdir: string, packageSpe
   const requestedVersionFromSpec = parseExactVersionFromPluginSpec(normalizedSpec);
 
   await mkdir(pluginDir, { recursive: true });
-  if (process.env.CI === "true") {
-    await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
+  if (hostEnv.CI === "true") {
+    await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : [], hostEnv);
     await installHermeticLocalCoderPackage(workdir, requestedVersionFromSpec ?? "0.34.2");
   } else {
-    try {
-      await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec]);
-    } catch (error) {
-      if (!isGithubPackagesAuthFailure(error)) {
-        throw error;
-      }
-
-      await installWorkspacePluginDependencies(workdir, dynatraceSpec ? [dynatraceSpec] : []);
-      await installHermeticLocalCoderPackage(workdir, requestedVersionFromSpec ?? "0.34.2");
-    }
+    await installWorkspacePluginDependencies(workdir, [...(dynatraceSpec ? [dynatraceSpec] : []), normalizedSpec], hostEnv);
   }
 
   let installedPackageJsonRaw: string;
@@ -678,6 +748,127 @@ export async function checkOpencodeAvailability(): Promise<BinaryAvailabilityChe
   return { available: false, diagnostics: diagnostics.join("\n") };
 }
 
+async function resolveOpencodeExecutablePath(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  const opencodePath = await findExecutableOnPath("opencode", env);
+  if (opencodePath) {
+    return opencodePath;
+  }
+
+  const homeDir = env.HOME?.trim() || homedir();
+  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "opencode", "latest", "opencode");
+  try {
+    await access(miseLatestCandidate, constants.X_OK);
+    return miseLatestCandidate;
+  } catch {
+    // continue to full scan
+  }
+
+  const installs = await findMiseInstalledExecutable("opencode", env);
+  if (installs.length > 0) {
+    return installs[installs.length - 1];
+  }
+
+  return null;
+}
+
+async function ensurePrewarmedOpenCodeDataBaseline(cacheRoot: string): Promise<PrewarmedOpenCodeDataResult> {
+  const executablePath = await resolveOpencodeExecutablePath();
+  if (!executablePath) {
+    return {
+      status: "skipped",
+      reason: "opencode binary unavailable while preparing prewarmed OpenCode data baseline",
+    };
+  }
+
+  const executableStat = await stat(executablePath);
+  const signature = Buffer.from(`${executablePath}:${executableStat.mtimeMs.toFixed(0)}`).toString("hex");
+  const baselineRoot = join(cacheRoot, signature);
+  const baselineDataDir = join(baselineRoot, "opencode");
+  const baselineMarker = join(baselineDataDir, ".opencode-coder-prewarmed.json");
+
+  if (!(await Bun.file(baselineMarker).exists())) {
+    await mkdir(cacheRoot, { recursive: true });
+
+    const buildRoot = await mkdtemp(join(cacheRoot, "build-"));
+    const homeDir = join(buildRoot, "home");
+    const xdgConfigHome = join(buildRoot, "xdg-config");
+    const xdgDataHome = join(buildRoot, "xdg-data");
+    const xdgCacheHome = join(buildRoot, "xdg-cache");
+    const opencodeConfigDir = join(xdgConfigHome, "opencode");
+
+    try {
+      await mkdir(homeDir, { recursive: true });
+      await mkdir(xdgConfigHome, { recursive: true });
+      await mkdir(xdgDataHome, { recursive: true });
+      await mkdir(xdgCacheHome, { recursive: true });
+      await mkdir(opencodeConfigDir, { recursive: true });
+
+      await writeFile(join(opencodeConfigDir, "opencode.json"), "{}\n", "utf8");
+
+      const prewarmProc = Bun.spawn({
+        cmd: [executablePath, "--help"],
+        cwd: buildRoot,
+        env: {
+          ...process.env,
+          PATH: [dirname(executablePath), process.env.PATH ?? ""].filter((entry) => entry && entry.length > 0).join(":"),
+          HOME: homeDir,
+          XDG_CONFIG_HOME: xdgConfigHome,
+          XDG_DATA_HOME: xdgDataHome,
+          XDG_CACHE_HOME: xdgCacheHome,
+          OPENCODE_CONFIG_DIR: opencodeConfigDir,
+          OPENCODE_DISABLE_DEFAULT_PLUGINS: "true",
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(prewarmProc.stdout).text(),
+        new Response(prewarmProc.stderr).text(),
+        prewarmProc.exited,
+      ]);
+
+      if (exitCode !== 0) {
+        throw new Error(`opencode --help failed while generating prewarmed baseline (exit ${exitCode.toString()}).\n${stderr || stdout}`);
+      }
+
+      const generatedDataDir = join(xdgDataHome, "opencode");
+      if (!(await Bun.file(join(generatedDataDir, "opencode.db")).exists())) {
+        throw new Error("Prewarmed OpenCode baseline generation did not create opencode.db");
+      }
+
+      await writeFile(
+        join(generatedDataDir, ".opencode-coder-prewarmed.json"),
+        JSON.stringify(
+          {
+            generatedAt: new Date().toISOString(),
+            executablePath,
+            executableMtimeMs: executableStat.mtimeMs,
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      const stagingDir = join(cacheRoot, `${signature}.staging`);
+      await rm(stagingDir, { recursive: true, force: true });
+      await mkdir(stagingDir, { recursive: true });
+      await cp(generatedDataDir, join(stagingDir, "opencode"), { recursive: true, force: true });
+
+      await rm(baselineRoot, { recursive: true, force: true });
+      await rename(stagingDir, baselineRoot);
+    } finally {
+      await rm(buildRoot, { recursive: true, force: true });
+    }
+  }
+
+  return {
+    status: "applied",
+    baselineDir: baselineDataDir,
+  };
+}
+
 /**
  * Checks whether the `aimgr` binary is available in PATH.
  */
@@ -815,6 +1006,19 @@ async function createWorkspaceFromSource(
 
   await cp(workspaceSource.sourceDir, workdir, { recursive: true });
 
+  if (workspaceSource.kind === "fixture") {
+    const runtimeForbiddenScaffoldingPaths = [
+      join(workdir, "README.md"),
+      join(workdir, ".gitkeep"),
+      join(workdir, ".opencode", ".gitkeep"),
+      join(workdir, ".beads", ".gitkeep"),
+    ];
+
+    for (const filePath of runtimeForbiddenScaffoldingPaths) {
+      await rm(filePath, { force: true });
+    }
+  }
+
   await $`git init --quiet`.cwd(workdir).quiet();
   await $`git config user.name "opencode-coder-test"`.cwd(workdir).quiet();
   await $`git config user.email "test@opencode-coder.local"`.cwd(workdir).quiet();
@@ -903,12 +1107,20 @@ export async function prepareCoderFixtureResources(options: {
   const fixtureName = options.fixtureName;
   const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
 
-  if (!fixtureName || (fixtureName !== "coder-skill-installed" && fixtureName !== "beads-initialized")) {
+  if (fixtureName === "empty-project" || fixtureName === "coder-mode-configured") {
+    return { prepared: false, strategy: "none" };
+  }
+
+  if (!fixtureName) {
     if (pluginSource === "local-build") {
       await seedAiResources(options.projectRoot, options.workdir);
       return { prepared: true, strategy: "seeded" };
     }
 
+    return { prepared: false, strategy: "none" };
+  }
+
+  if (fixtureName !== "coder-skill-installed" && fixtureName !== "beads-initialized") {
     return { prepared: false, strategy: "none" };
   }
 
@@ -935,7 +1147,8 @@ export async function prepareCoderFixtureResources(options: {
     throw new Error(`Failed to add local ai-resources repo:\n${repoAddResult.stderr.toString()}`);
   }
 
-  const installResult = await $`aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads`
+  const packagesToInstall = fixtureName === "beads-initialized" ? STAGE3_BEADS_PACKAGES : STAGE2_CODER_PACKAGES;
+  const installResult = await $`aimgr install ${packagesToInstall}`
     .cwd(options.workdir)
     .env(env)
     .quiet();
@@ -970,7 +1183,11 @@ export async function prepareWorkspacePluginSource(options: {
   await rm(localPluginSymlink, { force: true });
 
   const resolved = await resolveInstalledConfiguredPluginFromHostConfig(options.hostEnv, options.hostHomeDir);
-  const wiredInstalledArtifact = await wireInstalledConfiguredPluginArtifact(options.workdir, resolved.packageSpec);
+  const wiredInstalledArtifact = await wireInstalledConfiguredPluginArtifact(
+    options.workdir,
+    resolved.packageSpec,
+    options.hostEnv
+  );
   const pinnedVersionFromSpec = parseExactVersionFromPluginSpec(resolved.packageSpec);
 
   if (pinnedVersionFromSpec && pinnedVersionFromSpec !== wiredInstalledArtifact.installedVersion) {
@@ -992,7 +1209,10 @@ export async function prepareWorkspacePluginSource(options: {
 /**
  * Creates isolated HOME/XDG/OpenCode path roots to prevent global plugin discovery.
  */
-export async function createIsolatedOpenCodePaths(baseDir: string): Promise<IsolatedOpenCodePaths> {
+export async function createIsolatedOpenCodePaths(
+  baseDir: string,
+  options?: Pick<IsolatedOpenCodePathOptions, "prewarmOpenCodeData" | "prewarmCacheRoot">
+): Promise<IsolatedOpenCodePaths> {
   const root = join(baseDir, "isolated-opencode");
   const homeDir = join(root, "home");
   const xdgConfigHome = join(root, "xdg-config");
@@ -1011,6 +1231,26 @@ export async function createIsolatedOpenCodePaths(baseDir: string): Promise<Isol
   parsed.plugin = await buildSharedConfiguredPluginSpecs();
   await writeFile(join(opencodeConfigDir, "opencode.json"), JSON.stringify(parsed, null, 2) + "\n", "utf8");
 
+  let prewarmedOpenCodeData: IsolatedOpenCodePaths["prewarmedOpenCodeData"] = "disabled";
+  let prewarmedOpenCodeDataReason: string | undefined;
+  let prewarmedOpenCodeBaselineDir: string | undefined;
+
+  if (options?.prewarmOpenCodeData) {
+    const prewarmResult = await ensurePrewarmedOpenCodeDataBaseline(
+      options.prewarmCacheRoot ?? DEFAULT_PREWARMED_OPENCODE_DATA_CACHE_ROOT
+    );
+    if (prewarmResult.status === "applied") {
+      const opencodeDataDir = join(xdgDataHome, "opencode");
+      await rm(opencodeDataDir, { recursive: true, force: true });
+      await cp(prewarmResult.baselineDir as string, opencodeDataDir, { recursive: true, force: true });
+      prewarmedOpenCodeData = "applied";
+      prewarmedOpenCodeBaselineDir = prewarmResult.baselineDir;
+    } else {
+      prewarmedOpenCodeData = "skipped";
+      prewarmedOpenCodeDataReason = prewarmResult.reason;
+    }
+  }
+
   return {
     root,
     homeDir,
@@ -1018,6 +1258,9 @@ export async function createIsolatedOpenCodePaths(baseDir: string): Promise<Isol
     xdgDataHome,
     xdgCacheHome,
     opencodeConfigDir,
+    prewarmedOpenCodeData,
+    prewarmedOpenCodeDataReason,
+    prewarmedOpenCodeBaselineDir,
     env: {
       HOME: homeDir,
       XDG_CONFIG_HOME: xdgConfigHome,
@@ -1037,7 +1280,10 @@ export async function createIsolatedOpenCodePathsWithPluginSource(
   baseDir: string,
   options: IsolatedOpenCodePathOptions
 ): Promise<IsolatedOpenCodePaths> {
-  const paths = await createIsolatedOpenCodePaths(baseDir);
+  const paths = await createIsolatedOpenCodePaths(baseDir, {
+    prewarmOpenCodeData: options.prewarmOpenCodeData,
+    prewarmCacheRoot: options.prewarmCacheRoot,
+  });
   const pluginSource = options.pluginSource ?? DEFAULT_PLUGIN_SOURCE;
 
   if (pluginSource === "local-build") {

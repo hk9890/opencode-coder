@@ -28,7 +28,7 @@ For implementation architecture and build guidance, see [`CODING.md`](CODING.md)
 |---|---|
 | Verify pure logic or edge cases in source modules | Unit tests |
 | Verify plugin component interactions without the real CLI | Integration tests |
-| Verify real CLI startup/plugin wiring on committed fixtures | E2E tests |
+| Verify real CLI startup/plugin wiring on canonical runtime fixtures | E2E tests |
 | Validate slash commands, agents, or skills semantically | Manual testing |
 | Reproduce an issue from a real local project | Manual testing with `--project-path` |
 | Compare installed published plugin vs current local implementation | Manual testing with `--plugin-source=installed-configured` then `local-build` |
@@ -137,10 +137,28 @@ Entry point:
 bun run test:manual -- --help
 ```
 
+Release-critical launcher preflight (run before release work):
+
+```bash
+bun run test:launcher:preflight
+```
+
+What it proves:
+
+- launcher/setup coverage runs under a stripped local environment (no inherited HOME/XDG/OpenCode/npm/bun/auth state by default)
+- installed-configured setup must use explicit workspace-local GitHub Packages registry wiring
+- missing GitHub Packages auth for `@dynatrace-oss` installed-configured resolution fails clearly
+
+What it does **not** prove:
+
+- full containerized CI runner parity
+- semantic command/skill quality (manual-only)
+- private-package integration paths gated by `OPENCODE_CODER_PRIVATE_TESTS=true`
+
 ### Execution models
 
 - `--fixture=<name>`
-  - copies a committed fixture into a disposable workspace
+  - prepares a disposable workspace using the selected fixture runtime contract
   - safest default for reproducible launcher testing
 - `--project-path <path>`
   - runs directly in the provided project path
@@ -148,12 +166,22 @@ bun run test:manual -- --help
   - still uses isolated HOME/XDG/OpenCode state under `.manual-test-runs/`
   - may mutate the target project, so use a clean branch, worktree, or disposable project when needed
 
+Manual launcher isolated OpenCode runtime data is prewarmed from an empty post-migration baseline (generated automatically in code) when `opencode` is available, so fresh launcher invocations avoid paying the one-time DB migration cost repeatedly.
+
 ### Key options
 
 - `--mode=tui|shell|command` — choose interactive vs one-shot execution
 - `--plugin-source=local-build` — test the current local implementation
 - `--plugin-source=installed-configured` — compare against the installed configured plugin
 - `--auth <path>` — seed auth into isolated OpenCode data when model-backed behavior is needed
+
+### Fixture runtime contract (canonical)
+
+For fixture semantics, use [`tests/e2e/fixtures/README.md`](../tests/e2e/fixtures/README.md) as the source of truth.
+
+- Fixture meaning is defined by **runtime workspace state after launcher preparation**.
+- Committed fixture scaffolding (`README.md`, `.gitkeep`, placeholder markers) is repository-maintenance support and is not the primary contract.
+- The contract documents per-fixture preparation strategy (`none`, `seeded`, `aimgr-installed`) and expected `.coder` YAML/runtime surfaces.
 
 ### Manual launcher bootstrap contract (implementation baseline)
 
@@ -264,7 +292,7 @@ bun run test:manual -- --mode=command --project-path "$HOME/dev/some-project" --
 
 Use these scenario labels consistently when discussing or documenting manual checks.
 
-Scenario labels are not fixture directory names. They describe test intent, while fixture identity is the committed on-disk state (`empty-project`, `coder-mode-configured`, `coder-skill-installed`).
+Scenario labels are not fixture directory names. They describe test intent, while fixture identity maps to the runtime state contract for (`empty-project`, `coder-mode-configured`, `coder-skill-installed`, `beads-initialized`).
 
 ### Legacy fixture name mapping
 

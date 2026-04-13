@@ -103,28 +103,81 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
     expect(commandNames).not.toContain(LEGACY_DOCS_COMMAND);
   };
 
+  const assertNoRuntimeScaffolding = async (workspaceDir: string) => {
+    expect(await Bun.file(join(workspaceDir, "README.md")).exists()).toBe(false);
+    expect(await Bun.file(join(workspaceDir, ".gitkeep")).exists()).toBe(false);
+    expect(await Bun.file(join(workspaceDir, ".opencode", ".gitkeep")).exists()).toBe(false);
+    expect(await Bun.file(join(workspaceDir, ".beads", ".gitkeep")).exists()).toBe(false);
+  };
+
   const assertFixtureStageBaseline = async (workspaceDir: string, stage: FixtureName) => {
     const coderModeConfigPath = join(workspaceDir, ".coder", "opencode-coder.yaml");
     const projectStatePath = join(workspaceDir, ".coder", "project.yaml");
     const manifestPath = join(workspaceDir, "ai.package.yaml");
+    const opencodeCommandsPath = join(workspaceDir, ".opencode", "commands");
+    const opencodeSkillsPath = join(workspaceDir, ".opencode", "skills");
+    const opencodeAgentsPath = join(workspaceDir, ".opencode", "agents");
+    const beadsMetadataPath = join(workspaceDir, ".beads", "metadata.json");
+
+    await assertNoRuntimeScaffolding(workspaceDir);
 
     if (stage === "empty-project") {
       expect(await Bun.file(coderModeConfigPath).exists()).toBe(false);
       expect(await Bun.file(projectStatePath).exists()).toBe(false);
       expect(await Bun.file(manifestPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeCommandsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeSkillsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeAgentsPath).exists()).toBe(false);
+      expect(await Bun.file(beadsMetadataPath).exists()).toBe(false);
       return;
     }
 
     if (stage === "coder-mode-configured") {
       expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
+      const modeConfig = await readFile(coderModeConfigPath, "utf8");
+      expect(modeConfig).toContain("mode: stealth");
       expect(await Bun.file(projectStatePath).exists()).toBe(false);
       expect(await Bun.file(manifestPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeCommandsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeSkillsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeAgentsPath).exists()).toBe(false);
+      expect(await Bun.file(beadsMetadataPath).exists()).toBe(false);
       return;
     }
 
-    expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
-    expect(await Bun.file(projectStatePath).exists()).toBe(true);
-    expect(await Bun.file(manifestPath).exists()).toBe(true);
+    if (stage === "coder-skill-installed") {
+      expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
+      expect(await readFile(coderModeConfigPath, "utf8")).toContain("mode: team");
+      expect(await Bun.file(projectStatePath).exists()).toBe(true);
+      const projectState = await readFile(projectStatePath, "utf8");
+      expect(projectState).toContain("mode: team");
+      expect(projectState).toContain("beadsReady: false");
+      expect(projectState).toContain("pluginVersion: fixture");
+      expect(await Bun.file(manifestPath).exists()).toBe(true);
+      expect(await Bun.file(opencodeCommandsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeSkillsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeAgentsPath).exists()).toBe(false);
+      expect(await Bun.file(beadsMetadataPath).exists()).toBe(false);
+      return;
+    }
+
+    if (stage === "beads-initialized") {
+      expect(await Bun.file(coderModeConfigPath).exists()).toBe(true);
+      expect(await readFile(coderModeConfigPath, "utf8")).toContain("mode: team");
+      expect(await Bun.file(projectStatePath).exists()).toBe(true);
+      const projectState = await readFile(projectStatePath, "utf8");
+      expect(projectState).toContain("mode: team");
+      expect(projectState).toContain("beadsReady: false");
+      expect(projectState).toContain("pluginVersion: fixture");
+      expect(await Bun.file(manifestPath).exists()).toBe(true);
+      expect(await Bun.file(opencodeCommandsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeSkillsPath).exists()).toBe(false);
+      expect(await Bun.file(opencodeAgentsPath).exists()).toBe(false);
+      expect(await Bun.file(beadsMetadataPath).exists()).toBe(true);
+      return;
+    }
+
+    throw new Error(`Unhandled fixture stage assertion: ${stage}`);
   };
 
   const getPluginSignalsViaRealServer = async (workspaceDir: string, isolatedEnv: Record<string, string>) => {
@@ -228,6 +281,24 @@ describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
   };
 
   describe("real startup scenario coverage", () => {
+    it("fixture-workspace contract: createFixtureWorkspace enforces runtime-visible baseline for all fixtures", async () => {
+      const fixtures: FixtureName[] = [
+        "empty-project",
+        "coder-mode-configured",
+        "coder-skill-installed",
+        "beads-initialized",
+      ];
+
+      for (const fixtureName of fixtures) {
+        const workspace = await createFixtureWorkspace(fixtureName);
+        try {
+          await assertFixtureStageBaseline(workspace.workdir, fixtureName);
+        } finally {
+          await cleanupFixtureWorkspace(workspace);
+        }
+      }
+    }, 120000);
+
     it("scenario 1: should load once from coder-skill-installed active baseline", async () => {
       await withScenarioLogging("scenario 1", async () => {
         const workspace = await createFixtureWorkspace("coder-skill-installed");

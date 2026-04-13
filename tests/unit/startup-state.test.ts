@@ -116,6 +116,38 @@ describe("startup-state", () => {
     expect(notReady.shouldSetDefaultAgent).toBe(false);
   });
 
+  it("resolveStartupState() fixture-representative decision path keeps stage-2 non-default and stage-3 default-on-startup", () => {
+    const startup = createStartupState({ startupMode: startupMode("team"), runtimeCapability: runtimePhase() });
+
+    const stage2Context = projectContext({
+      beadsReady: false,
+      beads: {
+        initialized: false,
+        stealthMode: false,
+        bdCliInstalled: true,
+        coderBeadsSkillAvailable: false,
+        orchestratorAgentAvailable: false,
+      },
+    });
+    const stage2Decision = resolveStartupState({ startup, projectContext: stage2Context, timedOut: false });
+    expect(stage2Decision.defaultAgentDecision).toBe("beads-not-ready");
+    expect(stage2Decision.shouldSetDefaultAgent).toBe(false);
+
+    const stage3Context = projectContext({
+      beadsReady: true,
+      beads: {
+        initialized: true,
+        stealthMode: false,
+        bdCliInstalled: true,
+        coderBeadsSkillAvailable: true,
+        orchestratorAgentAvailable: true,
+      },
+    });
+    const stage3Decision = resolveStartupState({ startup, projectContext: stage3Context, timedOut: false });
+    expect(stage3Decision.defaultAgentDecision).toBe("set-orchestrator");
+    expect(stage3Decision.shouldSetDefaultAgent).toBe(true);
+  });
+
   it("resolveStartupState() degrades safely when project context is unavailable/timeout", () => {
     const startup = createStartupState({ startupMode: startupMode("team"), runtimeCapability: runtimePhase() });
 

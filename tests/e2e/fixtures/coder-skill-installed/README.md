@@ -1,13 +1,16 @@
 # Coder Skill Installed Fixture
 
-Canonical fixture for a project with coder mode state and committed skill-install baseline files.
+Runtime contract source: [`../README.md`](../README.md).
 
-Committed contents include:
+Use this fixture to validate non-beads runtime capability where coder resources are installed but orchestrator and beads are not.
 
-- `.coder/opencode-coder.yaml`
-- `.coder/project.yaml`
-- `ai.package.yaml`
-- `.gitkeep`
-- `.opencode/.gitkeep`
+Runtime expectations after launcher preparation:
 
-Runtime dependency artifacts under `.opencode/` are intentionally not committed; the harness regenerates them in isolated workspaces.
+- Preparation strategy: `aimgr-installed`
+- `.coder/opencode-coder.yaml` exists with `mode: team`
+- `.coder/project.yaml` exists with pre-beads semantics (runtime-generated file is authoritative)
+- `.opencode/skills` and `.opencode/commands` are present
+- `.opencode/agents` is absent (orchestrator not installed)
+- `.beads/` is absent
+
+Committed files (including `ai.package.yaml` and placeholder markers) support reproducible setup. The committed `.coder/project.yaml` is a placeholder seed; runtime startup rewrites it and that runtime-generated state defines fixture behavior.

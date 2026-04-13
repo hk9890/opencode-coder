@@ -1,9 +1,15 @@
 # Coder Mode Configured Fixture
 
-Canonical fixture for a project with coder mode configured but no committed skill install state.
+Runtime contract source: [`../README.md`](../README.md).
 
-Committed contents include:
+Use this fixture to validate configured mode behavior before runtime resources or beads are installed.
 
-- `.coder/opencode-coder.yaml`
-- `.gitkeep`
-- `.opencode/.gitkeep`
+Runtime expectations after launcher preparation:
+
+- Preparation strategy: `none`
+- `.coder/opencode-coder.yaml` exists with `mode: stealth`
+- `.coder/project.yaml` is absent
+- `.opencode/skills`, `.opencode/agents`, `.opencode/commands` are absent
+- `.beads/` is absent
+
+Committed placeholders are repository-maintenance scaffolding, not fixture identity.

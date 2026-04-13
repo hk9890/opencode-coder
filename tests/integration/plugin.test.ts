@@ -275,7 +275,64 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(autoInitializeSpy).toHaveBeenCalled();
       expect(healthSpy).toHaveBeenCalled();
       expect(detectSpy).toHaveBeenCalled();
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) =>
+            entry.message === "beadsReady=false, not setting default_agent to orchestrator" &&
+            entry.extra?.["beadsInitialized"] === true &&
+            entry.extra?.["bdCliInstalled"] === true &&
+            entry.extra?.["coderBeadsSkillAvailable"] === true &&
+            entry.extra?.["orchestratorAgentAvailable"] === true &&
+            Array.isArray(entry.extra?.["missingBeadsReadinessRequirements"])
+        )
+      ).toBe(true);
       expect(mockInput.client.tui.toasts).toHaveLength(1);
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
+    it("logs missing readiness requirements when orchestrator is not made default", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verify: { available: true, healthy: true, hasIssues: false },
+        repair: { attempted: false, healthy: false },
+      });
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite").mockReturnValue(
+        createProjectContext({
+          beadsReady: false,
+          beads: {
+            initialized: false,
+            stealthMode: false,
+            bdCliInstalled: false,
+            coderBeadsSkillAvailable: true,
+            orchestratorAgentAvailable: false,
+          },
+        })
+      );
+
+      const mockInput = createMockPluginInput();
+      const hooks = await OpencodeCoder(asMockPluginInput(mockInput));
+      const cfg: Record<string, any> = { command: createPhase2CommandFixture() };
+      await hooks.config?.(cfg as any);
+
+      const readinessLog = mockInput.client.app.logs.find(
+        (entry) => entry.message === "beadsReady=false, not setting default_agent to orchestrator"
+      );
+
+      expect(readinessLog).toBeDefined();
+      expect(readinessLog?.extra).toEqual({
+        beadsReady: false,
+        beadsInitialized: false,
+        bdCliInstalled: false,
+        coderBeadsSkillAvailable: true,
+        orchestratorAgentAvailable: false,
+        missingBeadsReadinessRequirements: ["agent/orchestrator", "bd-cli", ".beads"],
+      });
+      expect(cfg.default_agent).toBeUndefined();
 
       resolveModeSpy.mockRestore();
       autoInitializeSpy.mockRestore();
@@ -300,6 +357,19 @@ describe("OpencodeCoder Plugin Integration", () => {
 
       expect(hooks.tool?.coder).toBeDefined();
       expect(cfg.default_agent).toBe("orchestrator");
+      expect(
+        mockInput.client.app.logs.some(
+          (entry) =>
+            entry.message === "Set default_agent to orchestrator (beads ready)" &&
+            entry.extra?.["beadsReady"] === true &&
+            entry.extra?.["beadsInitialized"] === true &&
+            entry.extra?.["bdCliInstalled"] === true &&
+            entry.extra?.["coderBeadsSkillAvailable"] === true &&
+            entry.extra?.["orchestratorAgentAvailable"] === true &&
+            Array.isArray(entry.extra?.["missingBeadsReadinessRequirements"]) &&
+            (entry.extra?.["missingBeadsReadinessRequirements"] as unknown[]).length === 0
+        )
+      ).toBe(true);
       expect(cfg.command?.["opencode-coder/init"]).toMatchObject({
         description: "resource-backed init",
         template: "resource init template",

@@ -1,120 +1,103 @@
-# E2E Fixture Projects
+# Fixture Runtime Contract (Manual + E2E)
 
-These fixtures are **committed, read-only baselines** used by the e2e harness.
+This document is the canonical contract for what each manual-test fixture means **at runtime** after launcher preparation.
 
-Test helpers copy a fixture into a temp workspace before execution so tests can mutate files without touching committed inputs.
+- Source-of-truth: the prepared runtime workspace.
+- Not source-of-truth: committed placeholder scaffolding (`README.md`, `.gitkeep`, etc.).
 
-The manual launcher also supports `--project-path <dir>` for reproducing behavior from a real local project. That mode now runs **directly in the provided project path** while keeping HOME/XDG/OpenCode state isolated under the launcher run directory. Use a clean branch, worktree, or disposable project when testing this way.
+For launcher execution flow and scenario matrix details, see [`docs/TESTING.md`](../../../docs/TESTING.md).
 
-## Manual launcher guaranteed bootstrap state (by path)
+## Runtime preparation strategies
 
-This fixture doc intentionally states only what the launcher currently guarantees.
+The launcher uses one of these preparation strategies per fixture:
 
-- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare a workspace `.opencode/plugins/opencode-coder.js` symlink to the local built artifact.
-- OpenCode-ready `local-build` paths (TUI, shell, and command) prepare workspace resources. Non-coder fixtures use direct seeding; `coder-skill-installed` and `beads-initialized` bootstrap isolated aimgr state and install split packages (`package/coder-core`, `package/coder-docs`, `package/code-simplify`, `package/coder-beads`).
-- Shell mode prepares the same workspace/runtime state as TUI, but stops before launching OpenCode.
-- `installed-configured` paths do **not** seed AI resources automatically.
-- `--project-path` paths run in place and skip fixture copy plus fixture-only git bootstrap.
-- `bd init` is only attempted for copied fixtures that contain `.beads/` (currently `beads-initialized`), and failure is non-fatal.
+- `none` — do not preinstall project-local OpenCode resources.
+- `seeded` — copy resource surfaces directly into project `.opencode/` (legacy helper strategy, intentionally not the canonical staged-fixture strategy).
+- `aimgr-installed` — initialize isolated aimgr state and install packages so `.opencode/` surfaces are created by package install behavior.
 
-For the full required/optional/skip scenario matrix and timing baseline, see [`docs/TESTING.md#manual-launcher-bootstrap-contract-implementation-baseline`](../../../docs/TESTING.md#manual-launcher-bootstrap-contract-implementation-baseline).
+## Fixture contract by runtime stage
 
-## Fixture directories
+### `empty-project`
 
-- `empty-project/` — Stage 0 baseline with no committed `.coder/` state
-- `coder-mode-configured/` — Stage 1 baseline with committed coder mode config only
-- `coder-skill-installed/` — Stage 2 baseline with committed coder mode and skill-install files
+Use case: start OpenCode with the plugin in an empty directory and confirm startup/init behavior before any project-local coder state exists.
 
-Each fixture intentionally keeps content minimal. Scenario-specific files can be added later with the same disposable fixture-copy model.
+- Preparation strategy: `none`
+- Expected runtime workspace after launcher preparation:
+  - `.coder/` absent
+  - `.opencode/skills`, `.opencode/agents`, `.opencode/commands` absent
+  - `.beads/` absent
+- `.coder` YAML expectations:
+  - `.coder/opencode-coder.yaml` absent
+  - `.coder/project.yaml` absent
+- `.coder/project.yaml` status: absent (not generated yet, no placeholder expected)
+- Orchestrator availability: unavailable
 
-## Canonical stage model (committed state)
+### `coder-mode-configured`
 
-| Stage | Fixture directory | What is committed |
-|---|---|---|
-| Stage 0 | `empty-project` | `.gitkeep`, `.opencode/.gitkeep` |
-| Stage 1 | `coder-mode-configured` | Stage 0 + `.coder/opencode-coder.yaml` |
-| Stage 2 | `coder-skill-installed` | Stage 1 + `.coder/project.yaml`, `ai.package.yaml` |
-| Stage 3 | `beads-initialized` | Stage 2 + `.beads/.gitkeep` |
+Use case: validate startup when coder mode is configured, but runtime resources and beads have not been installed yet.
 
-## Scenarios vs fixture identity
+- Preparation strategy: `none`
+- Expected runtime workspace after launcher preparation:
+  - `.coder/opencode-coder.yaml` present
+  - `.coder/project.yaml` absent
+  - `.opencode/skills`, `.opencode/agents`, `.opencode/commands` absent
+  - `.beads/` absent
+- `.coder` YAML expectations:
+  - `.coder/opencode-coder.yaml` exists with `mode: stealth`
+    - Rationale: this fixture pins configured mode-only behavior without implying team/beads readiness.
+  - `.coder/project.yaml` absent at this stage
+- `.coder/project.yaml` status: absent (runtime not initialized enough to generate stable project state)
+- Orchestrator availability: unavailable
 
-- Fixture identity is the committed on-disk state in these directories.
-- Scenario labels (for example smoke, parity, team, stealth) describe **how** a test is run, not fixture directory names.
+### `coder-skill-installed`
 
-## Legacy fixture name mapping
+Use case: validate non-beads coder runtime capability in a prepared project where core/docs/simplify surfaces exist, but beads and orchestrator are intentionally not installed.
 
-| Legacy fixture name | Canonical fixture |
-|---|---|
-| `cli-smoke-project` | `empty-project` |
-| `fresh-inactive-project` | `empty-project` |
-| `local-startup-parity-project` | `coder-mode-configured` |
-| `existing-active-project` | `coder-skill-installed` |
+- Preparation strategy: `aimgr-installed`
+- Expected runtime workspace after launcher preparation:
+  - `.coder/opencode-coder.yaml` present
+  - `.coder/project.yaml` present
+  - `.opencode/skills` present
+  - `.opencode/commands` present
+  - `.opencode/agents` absent (orchestrator not installed at this stage)
+  - `.beads/` absent
+- `.coder` YAML expectations:
+  - `.coder/opencode-coder.yaml` exists with `mode: team`
+    - Rationale: stage-2 represents an active team-style coder setup, but still below beads/orchestrator readiness.
+  - `.coder/project.yaml` exists and describes a pre-beads runtime phase (`beadsReady: false` semantics)
+- `.coder/project.yaml` status: runtime-generated project-state file is authoritative; committed fixture copy is only a placeholder seed
+- Orchestrator availability: unavailable
 
-### `/simplify` validation note for `coder-skill-installed`
+### `beads-initialized`
 
-`coder-skill-installed` does not guarantee the minimal normal-mode threshold (`opencode-coder/init` command + `coder-core` runtime skill). In isolated runs, `/simplify` may be unavailable until split packages are installed through the normal path (or seeded by the local-build launcher path).
+Use case: validate fully initialized team workflow with beads state present and orchestrator available to become default on startup.
 
-**`local-build` runs** (default for development): shell, TUI, and command paths prepare resources automatically. Shell mode stops after preparation so you can inspect the workspace or launch `opencode` manually.
+- Preparation strategy: `aimgr-installed`
+- Expected runtime workspace after launcher preparation:
+  - `.coder/opencode-coder.yaml` present
+  - `.coder/project.yaml` present
+  - `.opencode/skills` present (including `coder-beads`)
+  - `.opencode/commands` present
+  - `.opencode/agents` present (including orchestrator)
+  - `.beads/` present and initialized for runtime use
+- `.coder` YAML expectations:
+  - `.coder/opencode-coder.yaml` exists with `mode: team`
+    - Rationale: this fixture models the team-mode/beads-ready runtime where orchestrator routing can be defaulted.
+  - `.coder/project.yaml` exists and reflects beads-ready semantics for the initialized workspace
+- `.coder/project.yaml` status: runtime-generated state is authoritative; committed fixture copy is only a placeholder seed
+- Orchestrator availability: available and expected to become the default agent on startup
 
-```bash
-bun run test:manual -- --mode=tui --fixture=coder-skill-installed --plugin-source=local-build
-# OpenCode launches with fixture resources prepared automatically
-```
+## Committed scaffolding vs runtime contract
 
-Shell mode is the inspect-first parity path for `local-build`: it prepares the same workspace/runtime state as TUI, then stops before launching OpenCode.
+Fixture directories in git may include scaffolding files (`README.md`, `.gitkeep`, and similar markers) so directories stay tracked and documented.
 
-**`installed-configured` runs**: Resources are not seeded automatically. Use `aimgr` to install them in the isolated shell:
+Runtime contract precedence:
 
-1. `bun run test:manual -- --mode=shell --fixture=coder-skill-installed --plugin-source=installed-configured`
-2. inside shell:
-   - `aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources`
-   - `aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads`
-   - do not run `aimgr init` for this fixture (`ai.package.yaml` is already committed)
-3. run OpenCode and validate `/simplify`
+- If a fixture contract says a path is absent at runtime, committed scaffolding for that path must not appear in the prepared workspace.
+- Committed scaffolding is implementation support for repository maintenance, not a user-visible runtime guarantee.
 
-## Beads-stage fixture strategy
+## Isolated state outside project workspace
 
-### Two-tier approach
+Manual launcher runs also create isolated runtime state **outside** the project workspace under the run directory (HOME/XDG/OpenCode config emulation).
 
-1. **Committed marker**: `.beads/.gitkeep` is the only beads content committed in fixtures. This is sufficient for plugin detection tests (`detectBeadsDirectory()` only checks directory existence).
-
-2. **Runtime generation**: The harness auto-detects `.beads/` in copied fixture workspaces and runs `bd init --non-interactive --skip-hooks --skip-agents --quiet` to create a functional beads workspace. This keeps committed state minimal while providing real beads for manual and integration testing.
-
-For broader testing guidance and test-level expectations, see [`docs/TESTING.md#beads-testing`](../../../docs/TESTING.md#beads-testing).
-
-### Committed fixture boundary (do not expand)
-
-- Keep committed beads fixture content at **`.beads/.gitkeep` only**.
-- Do **not** commit runtime beads state (dolt database files, daemon/lock artifacts, runtime metadata).
-- Why: runtime beads state is environment-specific and intentionally gitignored; committing it makes fixtures non-portable and can cause lock/runtime corruption across machines.
-
-### Resource preparation
-
-The manual launcher prepares OpenCode resources on `local-build` shell, TUI, and command paths. Shell mode stops after preparation so you can inspect files or launch `opencode` manually from the same prepared workspace.
-
-- `empty-project` and `coder-mode-configured` use direct `.opencode/` seeding.
-- `coder-skill-installed` and `beads-initialized` use isolated `aimgr repo init` + `aimgr repo add local:.../ai-resources` + split package install (`package/coder-core package/coder-docs package/code-simplify package/coder-beads`) so runtime readiness matches fixture intent.
-
-### Single-writer constraint
-
-The embedded-dolt beads backend is single-writer. Concurrent `bd create` / `bd update` calls against the same `.beads/` workspace will fail with exclusive-lock errors. Tests and evals that issue `bd` write commands must serialize them. See `opencode-coder-eupg` for details.
-
-### Maintenance notes for bd upgrades
-
-When bumping `bd` versions, verify beads fixture assumptions still hold:
-
-1. Re-run beads-related test coverage (unit/integration/manual-launcher paths).
-2. Confirm runtime workspace bootstrap still succeeds with:
-   - `bd init --non-interactive --skip-hooks --skip-agents --quiet`
-3. Check that `.beads/` internal runtime structure changes (if any) remain compatible with marker-only committed fixtures and runtime generation in copied workspaces.
-
-## Shared support fixtures
-
-- `_shared/opencode-config/opencode.json` — committed snapshot of the OpenCode config seeded into each isolated `OPENCODE_CONFIG_DIR` during manual and e2e runs. Update this file intentionally when the test baseline should change; tests do not read your live `~/.config/opencode/opencode.json`.
-  - Keeps `plugin` empty so isolated startup does not attempt unavailable external plugin installs.
-  - Does **not** pin `@dynatrace-oss/opencode-coder`; the coder plugin under test comes from the locally wired build artifact at `.opencode/plugins/opencode-coder.js`.
-
-For manual installed-vs-local comparison flows:
-
-- `--plugin-source=local-build` wires this repository's built artifact into `.opencode/plugins/opencode-coder.js` and disables configured default plugin loading.
-- `--plugin-source=installed-configured` resolves one configured `@dynatrace-oss/opencode-coder@...` package from host `opencode.json`, then writes that package spec into isolated temp config.
+That external isolated state is part of launcher hermeticity, but it is not part of the per-fixture project tree contract described above.

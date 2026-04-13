@@ -117,6 +117,7 @@ export function createConfigHook({
         existingDefaultAgent: String(cfg["default_agent"]),
       });
     } else {
+      const beadsReadinessDetails = getBeadsReadinessDetails(resolvedState.projectContext);
       switch (resolvedState.defaultAgentDecision) {
         case "inactive-mode":
           logger.info("Plugin startup mode is inactive, not setting default_agent", {
@@ -129,6 +130,7 @@ export function createConfigHook({
         case "beads-not-ready":
           logger.info("beadsReady=false, not setting default_agent to orchestrator", {
             beadsReady: resolvedState.projectContext?.beadsReady ?? false,
+            ...beadsReadinessDetails,
           });
           void showToast(
             client,
@@ -145,9 +147,37 @@ export function createConfigHook({
           break;
         case "set-orchestrator":
           cfg["default_agent"] = "orchestrator";
-          logger.info("Set default_agent to orchestrator (beads ready)");
+          logger.info("Set default_agent to orchestrator (beads ready)", {
+            beadsReady: resolvedState.projectContext?.beadsReady ?? false,
+            ...beadsReadinessDetails,
+          });
           break;
       }
     }
+  };
+}
+
+function getBeadsReadinessDetails(projectContext: ProjectContext | null): Record<string, unknown> {
+  const beads = projectContext?.beads;
+
+  if (!beads) {
+    return {
+      missingBeadsReadinessRequirements: ["project-context-unavailable"],
+    };
+  }
+
+  const missingBeadsReadinessRequirements = [
+    beads.coderBeadsSkillAvailable ? null : "skill/coder-beads",
+    beads.orchestratorAgentAvailable ? null : "agent/orchestrator",
+    beads.bdCliInstalled ? null : "bd-cli",
+    beads.initialized ? null : ".beads",
+  ].filter((value): value is string => value !== null);
+
+  return {
+    beadsInitialized: beads.initialized,
+    bdCliInstalled: beads.bdCliInstalled,
+    coderBeadsSkillAvailable: beads.coderBeadsSkillAvailable,
+    orchestratorAgentAvailable: beads.orchestratorAgentAvailable,
+    missingBeadsReadinessRequirements,
   };
 }

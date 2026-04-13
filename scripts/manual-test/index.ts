@@ -141,20 +141,20 @@ interface WizardSelection {
 
 const FIXTURE_DESCRIPTIONS: Record<FixtureName, { label: string; help: string }> = {
   "empty-project": {
-    label: "empty-project — no committed .coder state; runtime may add .git/.opencode bootstrap",
-    help: "empty-project — committed baseline: .gitkeep + .opencode/.gitkeep; local-build shell/TUI/command runs also prepare .git + seeded .opencode runtime state",
+    label: "empty-project — runtime workspace is intentionally empty",
+    help: "empty-project — runtime baseline: no README/.gitkeep scaffolding, no .coder state, and no seeded project-local .opencode resources",
   },
   "coder-mode-configured": {
-    label: "coder-mode-configured — committed .coder/opencode-coder.yaml baseline",
-    help: "coder-mode-configured — committed baseline: empty-project + .coder/opencode-coder.yaml; local-build shell/TUI/command runs may also prepare .git + seeded .opencode runtime state",
+    label: "coder-mode-configured — only first-stage .coder mode state",
+    help: "coder-mode-configured — runtime baseline: .coder/opencode-coder.yaml only; no README/.gitkeep scaffolding and no seeded project-local .opencode resources",
   },
   "coder-skill-installed": {
-    label: "coder-skill-installed — committed coder mode + project/ai.package baseline",
-    help: "coder-skill-installed — committed baseline: coder-mode-configured + .coder/project.yaml + ai.package.yaml; local-build shell/TUI/command runs may also prepare .git + prepared .opencode runtime state",
+    label: "coder-skill-installed — stage-2 coder runtime (non-beads)",
+    help: "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-docs/code-simplify only; no coder-beads, no orchestrator agent, no .beads",
   },
   "beads-initialized": {
-    label: "beads-initialized — committed beads marker baseline; runtime may auto-init .beads",
-    help: "beads-initialized — committed baseline: coder-skill-installed + .beads/.gitkeep; copied workspaces may also get .git and runtime .beads init when that launcher path executes it",
+    label: "beads-initialized — stage-3 beads/orchestrator ready",
+    help: "beads-initialized — runtime stage 3: stage-2 coder packages + coder-beads, agents/orchestrator available, and initialized .beads state",
   },
 };
 
@@ -194,11 +194,17 @@ Available fixtures:
 ${formatFixtureHelpLines()}
 
 Notes:
+  Run bun run test:launcher:preflight before release work for env-stripped launcher/setup validation.
   --fixture selects a committed fixture baseline, then prepares a runtime workspace for the chosen mode/plugin source.
   --project-path runs directly in the provided project and may mutate it.
   Use a clean branch, worktree, or disposable project when testing in place.
-   Shell and TUI runs prepare the same runtime workspace state; shell stops before launching OpenCode.
-   Local-build prepared runs may add runtime state such as .git, prepared OpenCode resources, plugin wiring, and for beads fixtures a best-effort .beads init.
+  Shell and TUI runs prepare the same runtime workspace state; shell stops before launching OpenCode.
+  installed-configured requires explicit GitHub Packages auth (NODE_AUTH_TOKEN) and configured host plugin entry.
+  Local-build prepared runs may add runtime state such as .git and plugin wiring.
+  Resource/bootstrap depth depends on fixture stage (for example empty-project and coder-mode-configured stay minimally prepared).
+  Beads fixtures may also receive best-effort runtime .beads init.
+  Runtime-generated .coder/project.yaml is authoritative whenever startup rewrites project state.
+  Isolated OpenCode runtime data is prewarmed from an empty baseline when available to avoid repeated first-run DB migration cost.
   Automated launcher guardrails cover environment preparation + startup viability only.
   Auth/model-backed prompts (for example: "say hi") are exploratory manual checks.
   "env" remains useful for launcher-environment debugging only.
@@ -717,10 +723,35 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     let selectedPluginSource = args.pluginSource;
 
     if (openCodeBootstrapRequired) {
+      const hostEnvForPluginPrep: NodeJS.ProcessEnv = {
+        ...process.env,
+      };
+
+      for (const key of Object.keys(hostEnvForPluginPrep)) {
+        if (
+          key === "HOME" ||
+          key === "XDG_CONFIG_HOME" ||
+          key === "XDG_DATA_HOME" ||
+          key === "XDG_CACHE_HOME" ||
+          key === "BUN_INSTALL" ||
+          key === "NODE_AUTH_TOKEN" ||
+          key.startsWith("OPENCODE_") ||
+          key.startsWith("NPM_CONFIG_") ||
+          key.startsWith("npm_config_")
+        ) {
+          delete hostEnvForPluginPrep[key];
+        }
+      }
+
+      if (process.env.NODE_AUTH_TOKEN?.trim()) {
+        hostEnvForPluginPrep.NODE_AUTH_TOKEN = process.env.NODE_AUTH_TOKEN;
+      }
+
       const preparedPluginSource = await prepareWorkspacePluginSource({
         projectRoot: PROJECT_ROOT,
         workdir: workspace.workdir,
         pluginSource: args.pluginSource,
+        hostEnv: hostEnvForPluginPrep,
       });
 
       selectedPluginSource = preparedPluginSource.pluginSource;
@@ -736,8 +767,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const isolatedPaths = openCodeBootstrapRequired
       ? await createIsolatedOpenCodePathsWithPluginSource(workspace.tempRoot, {
           pluginSource: selectedPluginSource,
+          prewarmOpenCodeData: true,
         })
-      : await createIsolatedOpenCodePaths(workspace.tempRoot);
+      : await createIsolatedOpenCodePaths(workspace.tempRoot, {
+          prewarmOpenCodeData: true,
+        });
 
     if (openCodeBootstrapRequired) {
       const preparedCoderResources = await prepareCoderFixtureResources({
@@ -791,6 +825,14 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     printSection("Isolated XDG_DATA_HOME", isolatedPaths.xdgDataHome);
     printSection("Isolated XDG_CACHE_HOME", isolatedPaths.xdgCacheHome);
     printSection("Isolated OPENCODE_CONFIG_DIR", isolatedPaths.opencodeConfigDir);
+    printSection(
+      "Isolated OpenCode data prewarmed",
+      isolatedPaths.prewarmedOpenCodeData === "applied"
+        ? "yes (empty baseline copied)"
+        : isolatedPaths.prewarmedOpenCodeData === "skipped"
+          ? `no (skipped: ${isolatedPaths.prewarmedOpenCodeDataReason ?? "unknown reason"})`
+          : "no"
+    );
     printSection(
       "Configured plugin loading",
       Object.prototype.hasOwnProperty.call(isolatedPaths.env, "OPENCODE_DISABLE_DEFAULT_PLUGINS")

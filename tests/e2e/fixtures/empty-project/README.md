@@ -1,10 +1,14 @@
 # Empty Project Fixture
 
-Canonical baseline fixture with no committed `.coder/` state.
+Runtime contract source: [`../README.md`](../README.md).
 
-Committed contents are intentionally minimal:
+Use this fixture to validate startup in an empty project before any coder state exists.
 
-- `.gitkeep`
-- `.opencode/.gitkeep`
+Runtime expectations after launcher preparation:
 
-Tests that need mode-specific behavior must apply those mutations at runtime in the copied workspace.
+- Preparation strategy: `none`
+- `.coder/` is absent
+- `.opencode/skills`, `.opencode/agents`, `.opencode/commands` are absent
+- `.beads/` is absent
+
+Committed placeholder files (for example `.gitkeep`) exist only to keep fixture directories tracked in git and are not the runtime contract.

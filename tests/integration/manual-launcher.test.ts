@@ -22,9 +22,36 @@ import {
   resolveInstalledConfiguredPluginFromHostConfig,
   withEnvironment,
 } from "../e2e/helpers/harness";
+import { createStartupState, resolveStartupState } from "../../src/core/startup-state";
+import { ProjectDetectorService } from "../../src/service";
+import { createMockLogger } from "../helpers/mock-logger";
 
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const DYNATRACE_PLUGIN_SPEC = `${OPENCODE_DYNATRACE_PACKAGE_NAME}@0.6.0`;
+
+function buildLauncherTestEnv(extraEnv: Record<string, string> = {}): Record<string, string> {
+  const env: Record<string, string> = {
+    PATH: process.env.PATH ?? "",
+  };
+
+  for (const key of ["USER", "LOGNAME", "LANG"] as const) {
+    const value = process.env[key];
+    if (value && value.length > 0) {
+      env[key] = value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("LC_") && value && value.length > 0) {
+      env[key] = value;
+    }
+  }
+
+  return {
+    ...env,
+    ...extraEnv,
+  };
+}
 
 async function runLauncher(
   args: string[],
@@ -34,11 +61,7 @@ async function runLauncher(
     // Use the current Bun executable explicitly; bare "bun" fails under restricted PATH.
     cmd: [process.execPath, "run", "scripts/manual-test/index.ts", "--", ...args],
     cwd: PROJECT_ROOT,
-    env: {
-      ...process.env,
-      PATH: process.env.PATH ?? "",
-      ...extraEnv,
-    },
+    env: buildLauncherTestEnv(extraEnv),
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -125,6 +148,85 @@ async function proveLauncherStartupViability(workdir: string, launcherEnv: Recor
   }
 }
 
+function getPreservedRoot(stdout: string): string {
+  const preservedMatch = stdout.match(/Environment preserved at: (.+)\n?/);
+  const preservedRoot = preservedMatch?.[1]?.trim();
+  if (!preservedRoot) {
+    throw new Error("Launcher output did not include preserved environment path");
+  }
+  return preservedRoot;
+}
+
+async function expectNoRuntimeScaffolding(workdir: string): Promise<void> {
+  const readme = Bun.file(join(workdir, "README.md"));
+  const rootGitkeep = Bun.file(join(workdir, ".gitkeep"));
+  const opencodeGitkeep = Bun.file(join(workdir, ".opencode", ".gitkeep"));
+  const beadsGitkeep = Bun.file(join(workdir, ".beads", ".gitkeep"));
+
+  expect(await readme.exists()).toBe(false);
+  expect(await rootGitkeep.exists()).toBe(false);
+  expect(await opencodeGitkeep.exists()).toBe(false);
+  expect(await beadsGitkeep.exists()).toBe(false);
+}
+
+async function assertRuntimeReadinessFromWorkspace(
+  workdir: string,
+  stage: "coder-skill-installed" | "beads-initialized"
+): Promise<void> {
+  const logger = createMockLogger();
+  const detector = new ProjectDetectorService({ logger, workdir });
+  const facts = detector.collectFacts();
+  const context = detector.assembleContext({
+    startupMode: "team",
+    versionInfo: {
+      name: "@dynatrace-oss/opencode-coder",
+      version: "integration-test",
+    },
+    facts,
+  });
+  detector.writeProjectContext(context);
+
+  const startup = createStartupState({
+    startupMode: {
+      mode: "team",
+      source: "saved",
+      stateFilePath: join(workdir, ".coder", "opencode-coder.yaml"),
+    },
+    runtimeCapability: context.runtimePhase,
+  });
+  const resolved = resolveStartupState({ startup, projectContext: context, timedOut: false });
+
+  const projectYamlPath = join(workdir, ".coder", "project.yaml");
+  const projectYaml = await readFile(projectYamlPath, "utf8");
+  expect(projectYaml).toContain("mode: team");
+  expect(projectYaml).toContain("pluginVersion: integration-test");
+
+  if (stage === "coder-skill-installed") {
+    expect(facts.runtimePhase.phase).toBe("normal");
+    expect(facts.coderBeadsSkillAvailable).toBe(false);
+    expect(facts.orchestratorAgentAvailable).toBe(false);
+    expect(facts.beadsInitialized).toBe(false);
+    expect(facts.beadsReady).toBe(false);
+    expect(resolved.defaultAgentDecision).toBe("beads-not-ready");
+    expect(resolved.shouldSetDefaultAgent).toBe(false);
+    expect(projectYaml).toContain("beadsReady: false");
+    expect(projectYaml).toContain("coderBeadsSkillAvailable: false");
+    expect(projectYaml).toContain("orchestratorAgentAvailable: false");
+    return;
+  }
+
+  expect(facts.runtimePhase.phase).toBe("normal");
+  expect(facts.coderBeadsSkillAvailable).toBe(true);
+  expect(facts.orchestratorAgentAvailable).toBe(true);
+  expect(facts.beadsInitialized).toBe(true);
+  expect(facts.beadsReady).toBe(true);
+  expect(resolved.defaultAgentDecision).toBe("set-orchestrator");
+  expect(resolved.shouldSetDefaultAgent).toBe(true);
+  expect(projectYaml).toContain("beadsReady: true");
+  expect(projectYaml).toContain("coderBeadsSkillAvailable: true");
+  expect(projectYaml).toContain("orchestratorAgentAvailable: true");
+}
+
 describe("manual launcher preflight", () => {
   it("seeds isolated .zshrc for zsh shell mode in empty HOME", async () => {
     const tempHome = await mkdtemp(join(tmpdir(), "opencode-coder-zsh-home-"));
@@ -203,14 +305,50 @@ describe("manual launcher preflight", () => {
     expect(result.stderr).toContain("Run with --help for usage.");
   });
 
+  it("runs command mode with stripped runtime/npm/auth env unless explicitly seeded", async () => {
+    const result = await runLauncher(["--mode=command", "--fixture=empty-project", "--", "env"], {
+      HOME: "/tmp/opencode-coder-host-home-canary",
+      XDG_CONFIG_HOME: "/tmp/opencode-coder-host-xdg-config-canary",
+      XDG_DATA_HOME: "/tmp/opencode-coder-host-xdg-data-canary",
+      XDG_CACHE_HOME: "/tmp/opencode-coder-host-xdg-cache-canary",
+      OPENCODE_DEFAULT_OPTIONS: "--log-level DEBUG",
+      NPM_CONFIG_USERCONFIG: "/tmp/opencode-coder-host-npmrc-canary",
+      npm_config_registry: "https://registry.example.invalid",
+      NODE_AUTH_TOKEN: "host-token-should-not-leak",
+      BUN_INSTALL: "/tmp/opencode-coder-host-bun-install-canary",
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("HOME=");
+    expect(result.stdout).toContain("XDG_CONFIG_HOME=");
+    expect(result.stdout).toContain("XDG_DATA_HOME=");
+    expect(result.stdout).toContain("XDG_CACHE_HOME=");
+    expect(result.stdout).toContain("OPENCODE_CONFIG_DIR=");
+    expect(result.stdout).not.toContain("HOME=/tmp/opencode-coder-host-home-canary");
+    expect(result.stdout).not.toContain("XDG_CONFIG_HOME=/tmp/opencode-coder-host-xdg-config-canary");
+    expect(result.stdout).not.toContain("XDG_DATA_HOME=/tmp/opencode-coder-host-xdg-data-canary");
+    expect(result.stdout).not.toContain("XDG_CACHE_HOME=/tmp/opencode-coder-host-xdg-cache-canary");
+    expect(result.stdout).not.toContain("OPENCODE_DEFAULT_OPTIONS=");
+    expect(result.stdout).not.toContain("NPM_CONFIG_USERCONFIG=");
+    expect(result.stdout).not.toContain("npm_config_registry=");
+    expect(result.stdout).not.toContain("NODE_AUTH_TOKEN=");
+    expect(result.stdout).not.toContain("BUN_INSTALL=");
+  });
+
   it("prints help with command-mode launcher usage and manual boundary notes", async () => {
     const result = await runLauncher(["--help"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("bun run test:manual -- --mode=command --fixture=empty-project -- env");
     expect(result.stdout).toContain("beads-initialized");
-    expect(result.stdout).toContain("empty-project — committed baseline: .gitkeep + .opencode/.gitkeep");
+    expect(result.stdout).toContain(
+      "empty-project — runtime baseline: no README/.gitkeep scaffolding, no .coder state, and no seeded project-local .opencode resources"
+    );
+    expect(result.stdout).toContain(
+      "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-docs/code-simplify only; no coder-beads, no orchestrator agent, no .beads"
+    );
     expect(result.stdout).toContain("--fixture selects a committed fixture baseline, then prepares a runtime workspace");
+    expect(result.stdout).toContain("Runtime-generated .coder/project.yaml is authoritative whenever startup rewrites project state.");
     expect(result.stdout).toContain("Shell and TUI runs prepare the same runtime workspace state");
     expect(result.stdout).toContain("Automated launcher guardrails cover environment preparation + startup viability only.");
     expect(result.stdout).toContain("Auth/model-backed prompts (for example: \"say hi\") are exploratory manual checks.");
@@ -304,6 +442,34 @@ describe("manual launcher preflight", () => {
     }
   });
 
+  it("prewarms isolated OpenCode data baseline before first launcher command", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=command", "--fixture=empty-project", "--", "true"]);
+
+      expect(result.exitCode).toBe(0);
+      if (opencodeCheck.available) {
+        expect(result.stdout).toContain("Isolated OpenCode data prewarmed: yes (empty baseline copied)");
+      } else {
+        expect(result.stdout).toContain("Isolated OpenCode data prewarmed: no (skipped:");
+      }
+
+      preservedRoot = getPreservedRoot(result.stdout);
+
+      const isolatedDb = Bun.file(join(preservedRoot, "isolated-opencode", "xdg-data", "opencode", "opencode.db"));
+      if (opencodeCheck.available) {
+        expect(await isolatedDb.exists()).toBe(true);
+      } else {
+        expect(await isolatedDb.exists()).toBe(false);
+      }
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  }, 120000);
+
   it("reads isolated test manifest pins used by harness setup", async () => {
     const manifest = await readIsolatedTestManifest();
 
@@ -359,28 +525,127 @@ describe("manual launcher preflight", () => {
       expect(result.stdout).toContain("Plugin bootstrap: prepared (local-build)");
       expect(result.stdout).not.toContain("Plugin path used: <none>");
       expect(result.stdout).toContain("Workspace plugin dependencies prepared: no");
-      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
+      expect(result.stdout).toContain("AI resources prepared: no");
 
-      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
-      expect(preservedMatch).not.toBeNull();
-      preservedRoot = preservedMatch?.[1]?.trim();
-      expect(Boolean(preservedRoot)).toBe(true);
+      preservedRoot = getPreservedRoot(result.stdout);
 
       const pluginLink = Bun.file(join(preservedRoot!, "project", ".opencode", "plugins", "opencode-coder.js"));
       const packageJson = Bun.file(join(preservedRoot!, "project", ".opencode", "package.json"));
       const seededCommandFile = Bun.file(
         join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md")
       );
+      const coderModeConfig = Bun.file(join(preservedRoot!, "project", ".coder", "opencode-coder.yaml"));
+      const coderProjectConfig = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
+      const opencodeCommands = Bun.file(join(preservedRoot!, "project", ".opencode", "commands"));
+      const opencodeAgents = Bun.file(join(preservedRoot!, "project", ".opencode", "agents"));
+      const opencodeSkills = Bun.file(join(preservedRoot!, "project", ".opencode", "skills"));
+      const beadsDir = Bun.file(join(preservedRoot!, "project", ".beads"));
 
       expect(await pluginLink.exists()).toBe(true);
       expect(await packageJson.exists()).toBe(false);
-      expect(await seededCommandFile.exists()).toBe(true);
+      expect(await seededCommandFile.exists()).toBe(false);
+      expect(await coderModeConfig.exists()).toBe(false);
+      expect(await coderProjectConfig.exists()).toBe(false);
+      expect(await opencodeCommands.exists()).toBe(false);
+      expect(await opencodeAgents.exists()).toBe(false);
+      expect(await opencodeSkills.exists()).toBe(false);
+      expect(await beadsDir.exists()).toBe(false);
+      await expectNoRuntimeScaffolding(join(preservedRoot!, "project"));
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });
       }
     }
   });
+
+  it("keeps coder-mode-configured minimally prepared at runtime", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=shell", "--fixture=coder-mode-configured"], {
+        SHELL: "/bin/true",
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Mode: shell");
+      expect(result.stdout).toContain("Plugin bootstrap: prepared (local-build)");
+      expect(result.stdout).toContain("AI resources prepared: no");
+
+      preservedRoot = getPreservedRoot(result.stdout);
+
+      const coderModeConfig = Bun.file(join(preservedRoot!, "project", ".coder", "opencode-coder.yaml"));
+      const coderProjectConfig = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
+      const opencodeCommands = Bun.file(join(preservedRoot!, "project", ".opencode", "commands"));
+      const opencodeAgents = Bun.file(join(preservedRoot!, "project", ".opencode", "agents"));
+      const opencodeSkills = Bun.file(join(preservedRoot!, "project", ".opencode", "skills"));
+      const beadsDir = Bun.file(join(preservedRoot!, "project", ".beads"));
+
+      expect(await coderModeConfig.exists()).toBe(true);
+      const coderModeConfigText = await coderModeConfig.text();
+      expect(coderModeConfigText).toContain("mode: stealth");
+      expect(await coderProjectConfig.exists()).toBe(false);
+      expect(await opencodeCommands.exists()).toBe(false);
+      expect(await opencodeAgents.exists()).toBe(false);
+      expect(await opencodeSkills.exists()).toBe(false);
+      expect(await beadsDir.exists()).toBe(false);
+      await expectNoRuntimeScaffolding(join(preservedRoot!, "project"));
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it("prepares coder-skill-installed as stage-2 non-beads runtime capability", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=command", "--fixture=coder-skill-installed", "--", "env"]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("AI resources prepared: yes (aimgr-installed)");
+
+      preservedRoot = getPreservedRoot(result.stdout);
+
+      const coderModeConfig = Bun.file(join(preservedRoot!, "project", ".coder", "opencode-coder.yaml"));
+      const coderProjectConfig = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
+      const coderCoreSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-core", "SKILL.md"));
+      const coderDocsSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-docs", "SKILL.md"));
+      const simplifySkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "code-simplify", "SKILL.md"));
+      const beadsSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-beads", "SKILL.md"));
+      const initCommand = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md"));
+      const docsCommand = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init-or-update-docs.md")
+      );
+      const improveDocCommand = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "improve-doc.md")
+      );
+      const orchestratorAgent = Bun.file(join(preservedRoot!, "project", ".opencode", "agents", "orchestrator.md"));
+      const opencodeAgentsDir = Bun.file(join(preservedRoot!, "project", ".opencode", "agents"));
+      const beadsDir = Bun.file(join(preservedRoot!, "project", ".beads"));
+      const aiPackage = Bun.file(join(preservedRoot!, "project", "ai.package.yaml"));
+
+      expect(await coderModeConfig.exists()).toBe(true);
+      expect(await coderModeConfig.text()).toContain("mode: team");
+      expect(await coderProjectConfig.exists()).toBe(true);
+      expect(await aiPackage.exists()).toBe(true);
+      expect(await coderCoreSkill.exists()).toBe(true);
+      expect(await coderDocsSkill.exists()).toBe(true);
+      expect(await simplifySkill.exists()).toBe(true);
+      expect(await beadsSkill.exists()).toBe(false);
+      expect(await initCommand.exists()).toBe(true);
+      expect(await docsCommand.exists()).toBe(true);
+      expect(await improveDocCommand.exists()).toBe(true);
+      expect(await orchestratorAgent.exists()).toBe(false);
+      expect(await opencodeAgentsDir.exists()).toBe(false);
+      expect(await beadsDir.exists()).toBe(false);
+      await expectNoRuntimeScaffolding(join(preservedRoot!, "project"));
+      await assertRuntimeReadinessFromWorkspace(join(preservedRoot!, "project"), "coder-skill-installed");
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  }, 120000);
 
   it("fails clearly when --fixture and --project-path are both set", async () => {
     const result = await runLauncher([
@@ -567,7 +832,11 @@ describe("manual launcher preflight", () => {
         projectRoot: PROJECT_ROOT,
         workdir: workspace.workdir,
         pluginSource: "installed-configured",
-        hostEnv: { ...process.env, OPENCODE_CONFIG_DIR: hostConfigRoot },
+        hostEnv: {
+          ...buildLauncherTestEnv(),
+          OPENCODE_CONFIG_DIR: hostConfigRoot,
+          CI: "true",
+        },
       });
 
       const opencodePackageJsonPath = join(workspace.workdir, ".opencode", "package.json");
@@ -591,6 +860,41 @@ describe("manual launcher preflight", () => {
       await rm(hostConfigRoot, { recursive: true, force: true });
     }
   }, 120000);
+
+  it("fails clearly when installed-configured auth token is not seeded", async () => {
+    const workspace = await createFixtureWorkspace("empty-project");
+    const hostConfigRoot = await mkdtemp(join(tmpdir(), "opencode-coder-host-config-installed-auth-missing-"));
+
+    try {
+      await writeFile(
+        join(hostConfigRoot, "opencode.json"),
+        JSON.stringify(
+          {
+            plugin: ["@dynatrace-oss/opencode-coder@0.34.2"],
+          },
+          null,
+          2
+        ) + "\n",
+        "utf8"
+      );
+
+      await expect(
+        prepareWorkspacePluginSource({
+          projectRoot: PROJECT_ROOT,
+          workdir: workspace.workdir,
+          pluginSource: "installed-configured",
+          hostEnv: {
+            ...buildLauncherTestEnv(),
+            OPENCODE_CONFIG_DIR: hostConfigRoot,
+            CI: "false",
+          },
+        })
+      ).rejects.toThrow("Missing GitHub Packages auth token for installed-configured plugin preparation");
+    } finally {
+      await rm(workspace.tempRoot, { recursive: true, force: true });
+      await rm(hostConfigRoot, { recursive: true, force: true });
+    }
+  });
 });
 
 describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launcher non-interactive mode", () => {
@@ -625,7 +929,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.stdout).toContain("Plugin path used:");
       expect(result.stdout).toContain("Resolved installed package: <none>");
       expect(result.stdout).toContain("Resolved host config: <none>");
-      expect(result.stdout).toContain("AI resources prepared: yes (seeded)");
+      expect(result.stdout).toContain("AI resources prepared: no");
       expect(result.stdout).toContain("Configured plugin loading: disabled (OPENCODE_DISABLE_DEFAULT_PLUGINS=true)");
       expect(result.stdout).toContain("Cleanup plan: preserve copied workspace and isolated environment");
       expect(result.stdout).not.toContain("--keep: accepted (backward-compatible no-op)");
@@ -816,6 +1120,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
         ],
         {
           OPENCODE_CONFIG_DIR: hostConfigRoot,
+          CI: "true",
         }
       );
 
@@ -852,7 +1157,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
     }
   }, 120000);
 
-  it("bootstraps coder fixture resources through aimgr for local-build command runs", async () => {
+  it("prepares beads-initialized as stage-3 beads/orchestrator-ready runtime capability", async () => {
     let preservedRoot: string | undefined;
 
     try {
@@ -860,14 +1165,24 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("AI resources prepared: yes (aimgr-installed)");
 
-      const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
-      preservedRoot = preservedMatch?.[1]?.trim();
-      expect(Boolean(preservedRoot)).toBe(true);
+      preservedRoot = getPreservedRoot(result.stdout);
 
-      const projectYaml = await readFile(join(preservedRoot!, "project", ".coder", "project.yaml"), "utf8");
-      expect(projectYaml).toContain("beadsReady: true");
-      expect(projectYaml).toContain("resourcesHealthy: true");
-      expect(projectYaml).toContain("coreAvailable: true");
+      const coderModeConfig = Bun.file(join(preservedRoot!, "project", ".coder", "opencode-coder.yaml"));
+      const coderProjectConfig = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
+      const coderBeadsSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-beads", "SKILL.md"));
+      const coderCoreSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-core", "SKILL.md"));
+      const orchestratorAgent = Bun.file(join(preservedRoot!, "project", ".opencode", "agents", "orchestrator.md"));
+      const beadsMetadata = Bun.file(join(preservedRoot!, "project", ".beads", "metadata.json"));
+
+      expect(await coderModeConfig.exists()).toBe(true);
+      expect(await coderModeConfig.text()).toContain("mode: team");
+      expect(await coderProjectConfig.exists()).toBe(true);
+      expect(await coderBeadsSkill.exists()).toBe(true);
+      expect(await coderCoreSkill.exists()).toBe(true);
+      expect(await orchestratorAgent.exists()).toBe(true);
+      expect(await beadsMetadata.exists()).toBe(true);
+      await expectNoRuntimeScaffolding(join(preservedRoot!, "project"));
+      await assertRuntimeReadinessFromWorkspace(join(preservedRoot!, "project"), "beads-initialized");
     } finally {
       if (preservedRoot) {
         await rm(preservedRoot, { recursive: true, force: true });
@@ -903,6 +1218,26 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
 });
 
 describe.skipIf(!opencodeCheck.available)("manual launcher startup viability contract", () => {
+  it("avoids first-run migration log in fresh manual launcher invocations via prewarmed isolated data", async () => {
+    let preservedRoot: string | undefined;
+
+    try {
+      const result = await runLauncher(["--mode=command", "--fixture=empty-project", "--", "opencode", "--help"]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Isolated OpenCode data prewarmed: yes (empty baseline copied)");
+      expect(result.stdout).not.toContain("Performing one time database migration...");
+      expect(result.stderr).not.toContain("Performing one time database migration...");
+
+      preservedRoot = getPreservedRoot(result.stdout);
+      const isolatedDb = Bun.file(join(preservedRoot, "isolated-opencode", "xdg-data", "opencode", "opencode.db"));
+      expect(await isolatedDb.exists()).toBe(true);
+    } finally {
+      if (preservedRoot) {
+        await rm(preservedRoot, { recursive: true, force: true });
+      }
+    }
+  }, 120000);
+
   it("proves launcher-prepared local-build environment can start server and return structured SDK response", async () => {
     let preservedRoot: string | undefined;
 
@@ -913,6 +1248,11 @@ describe.skipIf(!opencodeCheck.available)("manual launcher startup viability con
       const preservedMatch = result.stdout.match(/Environment preserved at: (.+)\n?/);
       preservedRoot = preservedMatch?.[1]?.trim();
       expect(Boolean(preservedRoot)).toBe(true);
+
+      const seededCommandFile = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md")
+      );
+      expect(await seededCommandFile.exists()).toBe(false);
 
       const launcherEnv = await getLauncherPreparedEnv(result.stdout);
       await proveLauncherStartupViability(join(preservedRoot!, "project"), launcherEnv);
@@ -942,7 +1282,7 @@ describe.skipIf(!opencodeCheck.available)("manual launcher startup viability con
     try {
       const result = await runLauncher(
         ["--mode=command", "--fixture=empty-project", "--plugin-source=installed-configured", "--", "env"],
-        { OPENCODE_CONFIG_DIR: hostConfigRoot }
+        { OPENCODE_CONFIG_DIR: hostConfigRoot, CI: "true" }
       );
       expect(result.exitCode).toBe(0);
 

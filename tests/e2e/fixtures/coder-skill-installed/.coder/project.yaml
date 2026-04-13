@@ -1,3 +1,6 @@
+# Placeholder fixture seed only.
+# Runtime-generated `.coder/project.yaml` is authoritative after launcher/startup detection.
+# Stage intent for this fixture: stage-2 non-beads capability (no coder-beads / no orchestrator / no .beads).
 mode: team
 coreAvailable: false
 bootstrapRequired: true
