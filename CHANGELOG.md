@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Docs
 
 - **Canonical docs/user-guide sync**: Synced project-doc user-guide copies with canonical references and updated release/testing docs to match the current launcher and workflow behavior.
+- **Command guidance clarity**: Clarified opencode-coder command guidance so release notes reflect the latest command-usage expectations from main.
 - **Release confidence note**: This release carries the accepted gap from `docs/RELEASING.md` where private-package-dependent coverage is not fully enforced in GitHub Actions.
 
 ## [0.37.0] - 2026-04-12
