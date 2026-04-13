@@ -56,7 +56,11 @@ jobs:
       - name: Install aimgr CLI
         run: |
           set -euo pipefail
-          npm install -g @dynatrace-oss/ai-config-manager
+          export AIMGR_INSTALL_DIR="$HOME/.local/bin"
+          mkdir -p "$AIMGR_INSTALL_DIR"
+          curl -fsSL https://raw.githubusercontent.com/dynatrace-oss/ai-config-manager/main/scripts/install.sh | sh
+          echo "$AIMGR_INSTALL_DIR" >> "$GITHUB_PATH"
+          export PATH="$AIMGR_INSTALL_DIR:$PATH"
           command -v aimgr
           aimgr --version
 
