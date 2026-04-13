@@ -2,12 +2,11 @@
 
 OpenCode plugin for story-driven development with agents and commands.
 
-## Documentation Map
+## Documentation
 
 Use these docs as the primary navigation path:
 
-- [`docs/README.md`](docs/README.md) — documentation taxonomy and canonical operating docs
-- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context and repository map
+- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context, repository map, and doc routes
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor setup and workflow
 
 Focused guides under `docs/`:
@@ -22,8 +21,8 @@ Focused guides under `docs/`:
 
 - **Beads Integration (Optional)** - Local-first issue tracking with stealth mode (local-only) or team mode (git-synced)
 - **Custom Agents** - Four specialized agents for planning, review, task execution, and verification
-- **Knowledge Base Commands** - Rich command library for issue management (`bd/*`)
-- **Skills as Commands** - Skills from `.opencode/skills/` and other installed locations automatically available as `/skills/*` commands
+- **Beads Workflow Support** - Works with the `bd` CLI for dependency-aware issue tracking when beads is enabled
+- **Installed Skill Integration** - Project-installed skills from `.opencode/skills/` and other installed locations remain available in OpenCode alongside the published plugin commands
 - **Template Support** - Customizable workflows and issue templates
 
 
@@ -217,34 +216,12 @@ Skills extend the agent's capabilities with specialized workflows and domain exp
 
 ### Task Synchronization Skills
 
-Bidirectional sync between beads and external task systems (GitHub, Jira, etc.).
-
 | Skill | Description |
 |-------|-------------|
 | `task-sync` | System-agnostic orchestrator for task synchronization. Provides workflow guidance and delegates to backend-specific skills. |
-| `github-task-sync` | GitHub backend for task sync. Syncs beads with GitHub issues using gh CLI. Supports import, export, and bidirectional workflows. |
+| `github-task-sync` | GitHub backend for task sync. Syncs beads with GitHub issues using gh CLI. |
 
-**Usage Examples:**
-
-```
-Sync with GitHub
-Import GitHub issues to beads
-Export beads to GitHub  
-Sync tasks bidirectionally
-```
-
-**Features:**
-- **Import**: Fetch GitHub issues into beads with automatic priority mapping
-- **Export**: Create GitHub issues from beads (NEW capability)
-- **Bidirectional**: Full two-way sync with conflict detection and resolution
-- **Smart Deduplication**: Never import the same issue twice
-- **Label Tracking**: `source:external` and `github:<number>` labels for sync direction
-
-**Prerequisites:**
-- GitHub CLI (`gh`) authenticated: `gh auth login`
-- Beads initialized: `bd init --skip-agents` (or `bd init --stealth --skip-agents` for local-only mode)
-
-For detailed workflow documentation, see `ai-resources/skills/task-sync/` and `ai-resources/skills/github-task-sync/`.
+For detailed workflow documentation and prerequisites, see `ai-resources/skills/task-sync/` and `ai-resources/skills/github-task-sync/`.
 
 ## Available Agents
 

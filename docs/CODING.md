@@ -16,15 +16,17 @@ Use this guide when changing this repo.
 
 ## Change-Type Matrix
 
-| Change type | Edit here first | Usually update together | Minimum checks |
-|---|---|---|---|
-| Startup or mode behavior | `src/index.ts` | `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`, `docs/OVERVIEW.md` if behavior changes | `bun run typecheck`, unit tests for touched services, `bun test tests/integration/plugin.test.ts` |
-| Service or helper logic | `src/service/`, `src/core/`, `src/config/` | matching unit tests under `tests/unit/` | `bun run typecheck`, targeted `bun test tests/unit/...` |
-| Published commands / skills / agents | `ai-resources/` | matching skill references, command wrappers, and user docs if behavior changed | `bun run typecheck`, `bun test tests/integration/plugin.test.ts`, targeted e2e/manual coverage |
-| Installed runtime resources under `.opencode/` | Do **not** edit `.opencode/` directly; update the owning source in `ai-resources/`, `src/`, or test fixtures instead | only inspect `.opencode/` to verify runtime/install state after updating the real source | targeted tests for the affected workflow |
-| `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests | `bun run typecheck`, targeted unit tests |
-| Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests | targeted unit/integration tests, `bun run validate:isolated-pins` when harness pins change |
-| Docs lifecycle / project setup guidance | `ai-resources/skills/coder-docs/references/` (and `ai-resources/skills/coder-docs/SKILL.md` when the docs-lifecycle entrypoint itself changes) | keep the matching copies under `docs/user-guide/` aligned with the canonical source; do **not** edit `.opencode/` | `bun test tests/unit/docs-lifecycle-contract.test.ts`, relevant integration/manual checks |
+| Change type | Edit here first | Usually update together |
+|---|---|---|
+| Startup or mode behavior | `src/index.ts` | `src/service/plugin-mode-service.ts`, `src/service/project-detector-service.ts`, `docs/OVERVIEW.md` if behavior changes |
+| Service or helper logic | `src/service/`, `src/core/`, `src/config/` | matching unit tests under `tests/unit/` |
+| Published commands / skills / agents | `ai-resources/` | matching skill references, command wrappers, and user docs if behavior changed |
+| Installed runtime resources under `.opencode/` | Do **not** edit `.opencode/` directly; update the owning source in `ai-resources/`, `src/`, or test fixtures instead | only inspect `.opencode/` to verify runtime/install state after updating the real source |
+| `coder` tool or session export | `src/tool/coder-tool.ts` | `src/service/session-export-service.ts`, diagnostics docs/tests |
+| Logs / diagnostics / manual harness | `scripts/`, `src/core/opencode-log-paths.ts` | `docs/MONITORING.md`, `docs/TESTING.md`, matching unit/integration tests |
+| Docs lifecycle / project setup guidance | `ai-resources/skills/coder-docs/references/` (and `ai-resources/skills/coder-docs/SKILL.md` when the docs-lifecycle entrypoint itself changes) | keep the matching copies under `docs/user-guide/` aligned with the canonical source; do **not** edit `.opencode/` |
+
+For required checks, use the change-type matrix in [`TESTING.md`](TESTING.md#change-type-matrix).
 
 ## Repository Structure
 
@@ -250,7 +252,7 @@ Edit here first:
 Also inspect:
 
 - `tests/unit/docs-lifecycle-contract.test.ts`
-- `docs/README.md`
+- `docs/OVERVIEW.md`
 - `AGENTS.md`
 
 Good rule: keep routing docs short, move deep detail into focused docs, and never edit the `.opencode/` installed runtime copies.
@@ -276,6 +278,6 @@ Good rule: keep routing docs short, move deep detail into focused docs, and neve
 - `tests/unit/service/*.test.ts` — service-level unit patterns
 - `docs/user-guide/how-to-write-commands.md` — command-authoring conventions
 - `docs/user-guide/how-to-write-skills.md` — runtime skill-authoring boundaries
-- `docs/README.md` — documentation taxonomy and canonical doc map
+- `docs/OVERVIEW.md` — project overview, repo map, and doc routes
 
 If you change behavior that a maintainer would need to remember later, update the matching canonical doc in the same change.

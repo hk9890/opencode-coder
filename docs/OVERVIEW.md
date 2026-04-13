@@ -57,9 +57,10 @@ For implementation details, conventions, and architecture rules, see the focused
 - **Testing harness and fixtures** — `tests/`, `scripts/manual-test/`, `docs/TESTING.md`
 - **Docs lifecycle and project-doc guidance** — canonical references in `ai-resources/skills/coder-docs/references/`, the published docs-lifecycle skill entrypoint at `ai-resources/skills/coder-docs/SKILL.md`, and copied user-guide entrypoints in `docs/user-guide/`
 
-## Where to go next
+## Doc routes
 
-- [Documentation taxonomy](./README.md)
+Use these docs by task:
+
 - [Agent routing entrypoint](../AGENTS.md)
 - [Contributor workflow](../CONTRIBUTING.md)
 - [Coding guide](./CODING.md)
@@ -69,5 +70,13 @@ For implementation details, conventions, and architecture rules, see the focused
 - [Change workflow](./CHANGE-WORKFLOW.md)
 - [Getting started guide](./user-guide/getting-started.md)
 - [Project doc structure guide](./user-guide/project-setup.md)
+
+Doc roles in this repo stay simple:
+
+- `README.md` is the front door for users and installation
+- `AGENTS.md` is the routing layer for agents
+- `docs/*.md` are focused operating guides by topic
+- `docs/user-guide/` contains focused contributor or user references
+- `docs/testing/` and parts of `docs/design/` are secondary evidence/history, not default operating guidance
 
 For end-user plugin usage and feature highlights, see the [README](../README.md).
