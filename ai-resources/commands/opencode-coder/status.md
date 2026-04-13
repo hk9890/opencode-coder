@@ -4,7 +4,7 @@ description: Show opencode-coder plugin status and information
 
 Load the `coder-core` skill.
 
-Treat this as optional status focus context:
+Treat this as optional context/focus guidance:
 
 $ARGUMENTS
 

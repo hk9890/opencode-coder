@@ -4,6 +4,8 @@ description: Run docs lifecycle initialize/update workflow with optional focus w
 
 Load the `coder-docs` skill.
 
-Treat `$ARGUMENTS` as optional focus/weighting guidance only.
+Treat this as optional context/focus guidance:
 
-Run the canonical docs lifecycle workflow via `/opencode-coder/init-or-update-docs` (same inspect/bootstrap/refresh/audit/slim/verify scope as the prior generic docs command).
+$ARGUMENTS
+
+Run the full docs lifecycle workflow from the `coder-docs` skill. Inspect the repo's current docs, create missing baseline docs if needed, update existing docs, review coverage and correctness, trim redundant content, and verify the final result.
