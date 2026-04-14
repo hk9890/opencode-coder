@@ -44,19 +44,32 @@ The workflow also installs both `bd` and `aimgr` before running release quality 
 - permission to publish GitHub Packages
 - `aimgr` available on `PATH` for launcher/integration coverage
 
-## Required Checks Before Dispatch
+## Release Workflow Gates
 
-Run these locally before triggering the release workflow:
+The release workflow currently enforces these checks before versioning, tagging, and publish:
 
 ```bash
 bun run typecheck
 bun run build
 bun run test:unit
 bun run test:integration
-bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"
 bun run validate:isolated-pins
+```
+
+## Local Pre-Dispatch Checks
+
+Run these locally before triggering the release workflow:
+
+```bash
+bun test tests/integration/plugin.test.ts --test-name-pattern "no-.coder startup regression"
 bun run test:e2e
 ```
+
+Rationale:
+
+- `bun run validate:isolated-pins` is now an enforced release workflow gate because it is a deterministic repo-consistency check for the isolated harness/config contract.
+- `bun run test:e2e` remains a local/manual pre-dispatch confidence check for now because it depends on the real `opencode` CLI being available on `PATH`, and `.github/workflows/release.yml` does not currently provision that runtime.
+- Promoting full e2e coverage into the release workflow would require a larger CI bootstrap change, not just a checklist alignment.
 
 ## Repo-Specific Release Checklist
 
