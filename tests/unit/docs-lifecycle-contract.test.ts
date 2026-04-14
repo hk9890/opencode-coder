@@ -16,8 +16,8 @@ describe("docs lifecycle command contracts", () => {
     expect(packageSpec.resources).not.toContain("command/opencode-coder/update-agent-md");
   });
 
-  it("does not rely on removed combined package manifest", () => {
-    expect(existsSync(LEGACY_PACKAGE_PATH)).toBe(false);
+  it("keeps the legacy combined package manifest for backward compatibility", () => {
+    expect(existsSync(LEGACY_PACKAGE_PATH)).toBe(true);
   });
 
   it("keeps docs lifecycle command files and removes legacy command file", () => {

@@ -20,3 +20,4 @@ resources:
     - package/coder-beads
     - package/coder-docs
     - package/code-simplify
+    - package/opencode-coder

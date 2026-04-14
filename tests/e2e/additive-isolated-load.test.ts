@@ -61,7 +61,7 @@ describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
         expect(rootManifest).toContain("package/coder-beads");
         expect(rootManifest).toContain("package/coder-docs");
         expect(rootManifest).toContain("package/code-simplify");
-        expect(rootManifest).not.toContain("package/opencode-coder");
+        expect(rootManifest).toContain("package/opencode-coder");
       } finally {
         await cleanupFixtureWorkspace(workspace);
       }

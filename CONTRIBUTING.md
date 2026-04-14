@@ -44,11 +44,13 @@ Contributor guidance and tests should follow the split capability model:
 - `coder-beads` is plugin-integrated for defaults/activation only when beads is ready
 - `coder-docs` and `code-simplify` are standalone skill owners
 
-When manually validating split-package behavior in isolated runs, use `aimgr` installs such as:
+When manually validating split-package behavior in isolated runs, prefer canonical split-package installs such as:
 
 ```bash
 aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads
 ```
+
+`package/opencode-coder` is also available as a legacy compatibility bundle, but new validation should target the split packages directly.
 
 ## Contribution Workflow
 

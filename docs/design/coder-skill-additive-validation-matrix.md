@@ -59,7 +59,7 @@ Because root `ai.package.yaml` is frozen, **all packaging/load checks must run i
 ### Maintainer/local isolation flow
 
 1. Create disposable workspace (manual launcher fixture workspace or scratch temp dir).
-2. Ensure workspace-local config excludes legacy combined package/commands for this field test.
+2. Ensure the field test installs only the target split package under test; the legacy combined package may still exist in the repo as a compatibility bundle, but must not be the thing being validated.
 3. Add local resource repo source:
    - `aimgr repo add local:/absolute/path/to/opencode-coder/ai-resources`
 4. Install only the target new package:
@@ -185,7 +185,7 @@ The acceptance-review epic additionally runs full repo regression as needed.
 
 ## 10) Manual isolated field test (final gate)
 
-Manual field tests must run in a disposable workspace where the old combined package/commands are removed from that workspace config, then install **only** the new skill package under test.
+Manual field tests must run in a disposable workspace and install **only** the target split skill package under test. The legacy combined package may still be present for backward compatibility, but it must not be the package used for these additive validation runs.
 
 Required per-skill minimum workflow coverage:
 

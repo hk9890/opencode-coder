@@ -9,6 +9,26 @@ type SplitPackageCase = {
   requiredResources: string[];
 };
 
+const LEGACY_COMBINED_PACKAGE_RESOURCES = [
+  "skill/coder-core",
+  "skill/coder-beads",
+  "skill/coder-docs",
+  "skill/code-simplify",
+  "skill/complexity-review",
+  "command/opencode-coder/init",
+  "command/opencode-coder/status",
+  "command/opencode-coder/doctor",
+  "command/opencode-coder/report-bug",
+  "command/opencode-coder/dump-session",
+  "command/opencode-coder/init-or-update-docs",
+  "command/opencode-coder/improve-doc",
+  "command/simplify",
+  "agent/orchestrator",
+  "agent/reviewer",
+  "agent/tasker",
+  "agent/verifier",
+] as const;
+
 const SPLIT_PACKAGE_CASES: SplitPackageCase[] = [
   {
     packageName: "coder-core",
@@ -59,7 +79,7 @@ describe("split capability package ownership", () => {
     });
   }
 
-  it("root ai.package.yaml uses split packages and no combined package", () => {
+  it("root ai.package.yaml keeps split packages and exposes the legacy combined package", () => {
     const rootPackageYaml = readFileSync(join(PROJECT_ROOT, "ai.package.yaml"), "utf8");
 
     expect(rootPackageYaml).toContain("package/coder-core");
@@ -67,12 +87,20 @@ describe("split capability package ownership", () => {
     expect(rootPackageYaml).toContain("package/coder-docs");
     expect(rootPackageYaml).toContain("package/code-simplify");
 
-    expect(rootPackageYaml).not.toContain("- package/opencode-coder\n");
+    expect(rootPackageYaml).toContain("package/opencode-coder");
     expect(rootPackageYaml).not.toContain("- skill/opencode-coder\n");
   });
 
-  it("does not ship legacy combined package manifest", () => {
+  it("ships a legacy combined package manifest for backward compatibility", () => {
     const combinedManifestPath = join(PROJECT_ROOT, "ai-resources", "packages", "opencode-coder.package.json");
-    expect(existsSync(combinedManifestPath)).toBe(false);
+    expect(existsSync(combinedManifestPath)).toBe(true);
+
+    const manifest = JSON.parse(readFileSync(combinedManifestPath, "utf8")) as {
+      name?: string;
+      resources?: string[];
+    };
+
+    expect(manifest.name).toBe("opencode-coder");
+    expect(manifest.resources).toEqual([...LEGACY_COMBINED_PACKAGE_RESOURCES]);
   });
 });
