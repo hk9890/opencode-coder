@@ -35,14 +35,9 @@ bun run typecheck
 
 Add the targeted unit, integration, e2e, or manual checks required by [`docs/TESTING.md`](docs/TESTING.md#change-type-matrix).
 
-## Split-skill package model (current)
+## Split-package validation
 
-Contributor guidance and tests should follow the split capability model:
-
-- plugin runtime is responsible for bootstrap/core availability and beads readiness detection
-- `coder-core` is plugin-coupled runtime/bootstrap ownership
-- `coder-beads` is plugin-integrated for defaults/activation only when beads is ready
-- `coder-docs` and `code-simplify` are standalone skill owners
+The canonical split-capability explanation lives in [`docs/OVERVIEW.md`](docs/OVERVIEW.md). Link there instead of restating the full ownership model in multiple contributor docs.
 
 When manually validating split-package behavior in isolated runs, prefer canonical split-package installs such as:
 

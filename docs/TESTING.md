@@ -166,33 +166,14 @@ Beads coverage uses a two-tier fixture model so tests stay reproducible without 
 | Runtime `bd init` tests | Verify workspace bootstrap and initialization boundaries | Integration |
 | Fixture workspace tests | Verify copied fixture + launcher/runtime behavior end-to-end | Integration / E2E |
 
-### Fixture strategy
+### Beads testing notes
 
 - Committed fixture state stays minimal: `.beads/.gitkeep` marker only.
 - Test harness/runtime paths create functional beads state in copied workspaces using `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
 - This split keeps fixtures stable in git while still exercising real beads runtime behavior.
-
-### Single-writer constraint
-
-- Beads (embedded dolt backend) is single-writer per workspace.
-- Parallel `bd` writes against the same `.beads/` directory can fail with exclusive-lock errors.
-- Serialize write operations in tests/evals; see `opencode-coder-eupg` documentation references for the underlying constraint.
-
-### Relevant test files
-
-- `tests/unit/beads-service.test.ts`
-- `tests/integration/beads-init-markdown-boundary.test.ts`
-- `tests/integration/manual-launcher.test.ts` (beads fixture/init coverage)
-- `tests/helpers/beads-fixture.ts`
-
-### bd upgrade checklist
-
-When `bd` version changes, validate all of the following:
-
-1. Beads-related unit/integration/e2e coverage still passes.
-2. Runtime bootstrap still works with `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
-3. `.beads/` runtime internal structure changes do not break the marker-only committed fixture contract (`.beads/.gitkeep` only).
-4. Single-writer assumptions remain documented and respected in test/eval paths.
+- Beads (embedded dolt backend) is single-writer per workspace, so serialize `bd` writes in tests and evals for the same `.beads/` directory.
+- When `bd` changes, rerun beads-related coverage and confirm bootstrap still works with `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
+- Useful references: `tests/unit/beads-service.test.ts`, `tests/integration/beads-init-markdown-boundary.test.ts`, `tests/integration/manual-launcher.test.ts`, `tests/helpers/beads-fixture.ts`.
 
 ## Testing Skills, Commands, and Agents
 

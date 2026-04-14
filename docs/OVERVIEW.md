@@ -35,6 +35,8 @@ At a high level, the codebase is organized as a small startup entry point plus f
 
 Runtime ownership is capability-split:
 
+Treat this as the canonical short explanation of that split. Other contributor docs should link here instead of restating the same ownership breakdown.
+
 - plugin runtime is limited to bootstrap/core availability checks and beads readiness detection
 - `coder-core` is plugin-coupled and owns core runtime/bootstrap guidance
 - `coder-beads` is plugin-integrated only for runtime defaults/activation when beads is ready

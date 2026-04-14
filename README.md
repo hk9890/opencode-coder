@@ -2,14 +2,15 @@
 
 OpenCode plugin for story-driven development with agents and commands.
 
-## Documentation
+## Start here
 
-Use these docs as the primary navigation path:
+Use these docs first:
 
 - [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — project context, repository map, and doc routes
+- [`docs/user-guide/getting-started.md`](docs/user-guide/getting-started.md) — install the plugin and enable it for a project
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — contributor setup and workflow
 
-Focused guides under `docs/`:
+Focused contributor guides:
 
 - [`docs/CODING.md`](docs/CODING.md)
 - [`docs/TESTING.md`](docs/TESTING.md)
@@ -17,14 +18,12 @@ Focused guides under `docs/`:
 - [`docs/RELEASING.md`](docs/RELEASING.md)
 - [`docs/MONITORING.md`](docs/MONITORING.md)
 
-## Features
+## What it provides
 
-- **Beads Integration (Optional)** - Local-first issue tracking with stealth mode (local-only) or team mode (git-synced)
-- **Custom Agents** - Four specialized agents for planning, review, task execution, and verification
-- **Beads Workflow Support** - Works with the `bd` CLI for dependency-aware issue tracking when beads is enabled
-- **Installed Skill Integration** - Project-installed skills from `.opencode/skills/` and other installed locations remain available in OpenCode alongside the published plugin commands
-- **Template Support** - Customizable workflows and issue templates
-
+- Explicit project activation with `/opencode-coder/init`
+- Optional beads-backed workflow support through the `bd` CLI
+- Project-installed skill integration alongside the published plugin surface
+- Built-in commands for setup, docs lifecycle, troubleshooting, and session export
 
 ## Prerequisites
 
@@ -52,7 +51,7 @@ Then add the plugin to your OpenCode configuration (`~/.config/opencode/opencode
 }
 ```
 
-### 2. Explicitly enable your project for project-local behavior
+## Enable a project
 
 The plugin starts in an inactive state for fresh projects. It will not create `.coder/` files or activate project-local behavior until you explicitly opt in with `/opencode-coder/init`.
 
@@ -62,7 +61,9 @@ If you want to use the project-local workflow, run `/opencode-coder/init` inside
 - `team` — shared active mode
 - `disabled` — keep project-local startup inactive until you re-enable it later
 
-## Using with Beads
+## Optional integrations
+
+### Beads
 
 Beads integration is optional. You can use the plugin without beads at all.
 
@@ -72,174 +73,36 @@ If you are only setting up beads itself, you can still initialize beads manually
 
 Manual `bd init ... --skip-agents` only creates/updates beads tracker state and hooks. It must not be used to create or refresh project markdown guidance (such as `AGENTS.md`, `README`, or other docs); project-doc lifecycle remains the opencode-coder docs responsibility.
 
-### Stealth Mode (Recommended default)
+### aimgr
 
-- Beads files stay local to your machine (gitignored)
-- Won't affect git history or other team members
-- Perfect for: personal use, OSS contributions, teams not using beads yet
-- `/opencode-coder/init` configures this mode for plugin-managed setup
-- `bd init --stealth --skip-agents` is only the manual beads command underneath that setup
+When a project is active and [aimgr](https://github.com/hk9890/ai-config-manager) is available, the plugin can detect or install the split packages it needs.
 
-### Team Mode
+Current split-package setup centers on:
 
-- Beads files are committed and synced via git
-- Enables multi-device sync and team collaboration
-- Perfect for: teams adopting beads together
-- `/opencode-coder/init` configures this mode for plugin-managed setup
-- `bd init --skip-agents` is only the manual beads command underneath that setup
+- `package/coder-core` as the baseline package
+- optional `package/coder-beads`, `package/coder-docs`, and `package/code-simplify`
+- legacy `package/opencode-coder` only for backward-compatibility setups
 
-
-## aimgr Integration (Optional)
-
-The plugin includes automatic integration with [aimgr](https://github.com/hk9890/ai-config-manager), a CLI tool for discovering and managing AI resources (commands, skills, agents).
-
-### How It Works
-
-When the plugin starts in an active project mode, it can automatically:
-
-1. **Check** if `ai.package.yaml` exists in your project
-2. **Detect** if `aimgr` is installed on your system
-3. **Initialize** aimgr if available (`aimgr init`)
-4. **Install/verify** split packages (`coder-core` baseline, optional `coder-beads`, `coder-docs`, `code-simplify`) from your aimgr repository when needed; `package/opencode-coder` also remains available as a legacy compatibility bundle for older clients
-5. **Notify** you via toast when initialization completes
-
-Fresh or saved-disabled projects skip these startup side effects until explicitly enabled.
-
-### Installing aimgr
-
-To use this feature, install aimgr:
-
-- See the install instructions at <https://github.com/hk9890/ai-config-manager>.
-
-### Disabling or suppressing startup behavior
-
-- **Saved project disabled mode**: use `/opencode-coder/init` and choose the disabled option for this project
-- **Hard-disable plugin completely**: set `OPENCODE_CODER_DISABLED=true`
-
-The env var hard override disables the plugin entirely and hides its commands. Saved disabled mode keeps the plugin installed but inactive for the current project until you re-enable it.
-
-### Benefits
-
-- **Auto-discovery**: Automatically finds relevant AI resources for your project
-- **Zero-config**: Works out-of-the-box if aimgr is installed
-- **Non-intrusive**: Fails gracefully if aimgr is not available
-- **Project-specific**: Each project can have its own AI resource configuration
+Fresh or saved-disabled projects skip those startup side effects until explicitly enabled.
 
 ## Quick Start
 
-### With Beads
+1. Install the plugin and configure package access.
+2. Open a project in OpenCode.
+3. Run `/opencode-coder/init` and choose `stealth`, `team`, or `disabled`.
+4. If you use beads, manage work with `bd`.
+5. Use the focused docs above when you need implementation, testing, release, or monitoring details.
 
-First run `/opencode-coder/init` in OpenCode and choose `stealth` or `team` mode so plugin-managed project setup is explicit and repeatable.
-
-Then track issues with `bd`:
+Example beads flow:
 
 ```bash
-# Create your first issue
 bd create "Setup project structure" --type task --priority 2
-
-# Find available work
 bd ready
-
-# Start working on a task
 bd update <id> --status in_progress
-
-# Close a completed task
 bd close <id>
 ```
 
-## Available Commands
-
-### Published Plugin Commands
-
-These commands are published with `@dynatrace-oss/opencode-coder` and available when the packaged plugin is installed:
-
-| Command | Description |
-|---------|-------------|
-| `/opencode-coder/init` | Explicitly enable, refresh, disable, or reconfigure opencode-coder for a project |
-| `/simplify` | Review and simplify recently changed files using the standalone code-simplify workflow |
-| `/opencode-coder/doctor` | Diagnose plugin health and configuration |
-| `/opencode-coder/status` | Show plugin status |
-| `/opencode-coder/report-bug` | Report a bug with session context |
-| `/opencode-coder/dump-session` | Export current session data |
-| `/opencode-coder/init-or-update-docs` | Run docs lifecycle (inspect, bootstrap, refresh, audit, slim, verify); optional focus context can prioritize areas without changing lifecycle scope |
-| `/opencode-coder/improve-doc` | Turn an incident into targeted doc/routing fixes to prevent recurrence |
- 
-### Repository-local Development Commands
-
-These commands exist in this repository for plugin development workflows:
-
-| Command | Description |
-|---------|-------------|
-| `/opencode-coder-dev/analyze-logs` | Analyze OpenCode logs for errors (dev use) |
-| `/opencode-coder-dev/fix-bugs` | Triage and fix bugs from logs (dev use) |
-| `/opencode-coder-dev/import-tasks` | Import tasks from GitHub issues (dev use) |
-| `/opencode-coder-dev/release` | Canonical repo release entrypoint (dev use) |
-
-### Beads CLI Commands (requires `bd` installed separately)
-
-The following are **not plugin commands** — they are commands from the [beads CLI](https://github.com/hk9890/beads) (`bd`), which must be installed separately. Agents use them as shell commands when beads is initialized in your project.
-
-| Command | Description |
-|---------|-------------|
-| `bd create` | Create a new issue |
-| `bd list` | List issues with filters |
-| `bd ready` | Show issues ready to work |
-| `bd show` | Display issue details |
-| `bd update` | Update issue properties |
-| `bd close` | Close an issue |
-| `bd blocked` | Show blocked issues |
-| `bd stats` | Project statistics |
-| `bd export` | Export issues to JSONL |
-| `bd dep` | Manage dependencies |
-| `bd epic` | Create an epic with tasks |
-
-## Available Skills
-
-Skills extend the agent's capabilities with specialized workflows and domain expertise.
-
-### Split capability skills
-
-| Skill | Description |
-|-------|-------------|
-| `coder-core` | Plugin-coupled runtime/bootstrap owner for setup, mode/runtime guidance, and core troubleshooting. |
-| `coder-beads` | Plugin-integrated beads guidance for tracker workflows and runtime defaults/activation when beads is ready. |
-| `coder-docs` | Standalone docs-lifecycle and project-doc guidance owner. |
-| `code-simplify` | Standalone skill behind `/simplify` for recent-change cleanup with scoped simplification guardrails. |
-
-The split packages above are canonical. `package/opencode-coder` is still published as a backward-compatibility bundle that installs the combined surface for older setups.
-
-### Release and Development Skills
-
-| Skill | Description |
-|-------|-------------|
-| `github-releases` | Release workflow for versioning, quality gates, and GitHub release creation. |
-| `opencode-coder-dev` | Internal development workflow for this repository, including release, log analysis, bug fixing, and task import. |
-| `opencode-coder-skill-creator` | Authoring workflow for creating, adapting, testing, and packaging OpenCode skills. |
-
-### Task Synchronization Skills
-
-| Skill | Description |
-|-------|-------------|
-| `task-sync` | System-agnostic orchestrator for task synchronization. Provides workflow guidance and delegates to backend-specific skills. |
-| `github-task-sync` | GitHub backend for task sync. Syncs beads with GitHub issues using gh CLI. |
-
-For detailed workflow documentation and prerequisites, see `ai-resources/skills/task-sync/` and `ai-resources/skills/github-task-sync/`.
-
-## Available Agents
-
-| Agent | Role |
-|-------|------|
-| `orchestrator` | Planning, structure, orchestration - creates epics and tasks, delegates implementation |
-| `reviewer` | Reviews plans and structure (not code) |
-| `tasker` | Implements tasks and closes them when complete |
-| `verifier` | Verifies outcomes and owns acceptance review tasks |
-
-### Workflow
-
-1. **Orchestrator** creates epic + tasks + acceptance review task
-2. **Reviewer** reviews plans and creates additional tasks/review work if needed
-3. **Tasker** implements tasks and closes when complete
-4. **Verifier** validates acceptance review tasks and closes them or creates bugs
+For deeper details, use [`docs/OVERVIEW.md`](docs/OVERVIEW.md) as the main router instead of keeping full command, skill, and agent catalogs in this README.
 
 ## License
 
