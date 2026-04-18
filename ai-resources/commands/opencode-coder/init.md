@@ -8,4 +8,4 @@ Treat this as optional context/focus guidance:
 
 $ARGUMENTS
 
-Run the init/enablement workflow.
+Initialize and set up opencode-coder for this project.

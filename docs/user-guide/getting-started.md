@@ -33,13 +33,15 @@ Start OpenCode in the repository where you want to use the plugin.
 
 For most users, this is the main setup step.
 
-`/opencode-coder/init` will guide project setup and can:
+`/opencode-coder/init` now runs as a two-pass flow:
 
-- discover and install relevant AI resources
-- initialize beads if you want issue tracking
-- install git hooks
-- create or refresh the project's `AGENTS.md`
-- explicitly save whether this project should be `disabled`, `stealth`, or `team`
+- **Phase 1 (first run):**
+  - captures your mode intent first (`stealth`, `team`, or remain inactive/disabled)
+  - guides aimgr bootstrap if needed
+  - installs `package/coder-core`
+  - discovers optional supported add-ons (for example `package/coder-support` for generic support, plus targeted bundles like `package/coder-beads`, `package/coder-docs`, and `package/code-simplify`) and asks which to install
+- **Restart boundary:** once package installation is complete (or explicitly skipped), restart/reopen OpenCode
+- **Phase 2 (second run):** run `/opencode-coder/init` again so `coder-core` dispatches installed skill init workflows in deterministic order (for example beads/docs setup; skills without init usecases are clean no-op)
 
 Fresh projects stay inactive until you explicitly enable them with `/opencode-coder/init`.
 Startup no longer creates `.coder/` files automatically just because the plugin is installed.
@@ -55,7 +57,7 @@ If you choose saved **disabled** mode, project-local startup behavior stays off,
 
 ## 4. Review the generated project guidance
 
-After `/opencode-coder/init`, check the active guidance files:
+After completing Phase 2 `/opencode-coder/init`, check the active guidance files:
 
 - `AGENTS.md` in team mode
 - `.coder/AGENTS.md` in stealth mode
@@ -71,6 +73,16 @@ Common next steps:
 - create work with `bd create "Task description" --type task`
 - re-run `/opencode-coder/init` after installing new resources
 - run `/opencode-coder/init-or-update-docs` to inspect, refresh, audit, and verify the project docs lifecycle (optionally pass a focus context to prioritize areas while still running the full lifecycle)
+
+### Public aimgr bootstrap command path
+
+When aimgr needs repository source setup, use:
+
+```bash
+aimgr repo apply-manifest https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml
+aimgr repo sync
+aimgr install package/coder-core
+```
 
 ## Optional manual setup
 

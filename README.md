@@ -61,6 +61,12 @@ If you want to use the project-local workflow, run `/opencode-coder/init` inside
 - `team` — shared active mode
 - `disabled` — keep project-local startup inactive until you re-enable it later
 
+`/opencode-coder/init` now follows a two-pass bootstrap flow:
+
+1. **Phase 1 (first run):** asks for mode intent, installs `package/coder-core`, and optionally installs additional supported packages you select.
+2. **Restart boundary:** after package install/skip is complete, restart or reopen OpenCode.
+3. **Phase 2 (second run):** run `/opencode-coder/init` again so `coder-core` dispatches installed-skill init workflows in deterministic order (skills without an init usecase are clean no-op).
+
 ## Optional integrations
 
 ### Beads
@@ -80,10 +86,18 @@ When a project is active and [aimgr](https://github.com/hk9890/ai-config-manager
 Current split-package setup centers on:
 
 - `package/coder-core` as the baseline package
-- optional `package/coder-beads`, `package/coder-docs`, and `package/code-simplify`
+- optional `package/coder-support` (generic support bundle), plus targeted packages such as `package/coder-beads`, `package/coder-docs`, and `package/code-simplify`
 - legacy `package/opencode-coder` only for backward-compatibility setups
 
 Fresh or saved-disabled projects skip those startup side effects until explicitly enabled.
+
+For public setup, use the hosted manifest path:
+
+```bash
+aimgr repo apply-manifest https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml
+aimgr repo sync
+aimgr install package/coder-core
+```
 
 ## Quick Start
 

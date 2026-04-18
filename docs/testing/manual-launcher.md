@@ -86,7 +86,7 @@ Shell mode is inspection-first. If you stay in shell mode, install any extra res
    aimgr repo add local:/absolute/path/to/your/opencode-coder/clone/ai-resources
 
    # Full split surface
-   aimgr install --target opencode package/coder-core package/coder-docs package/code-simplify package/coder-beads
+   aimgr install --target opencode package/coder-core package/coder-support package/coder-docs package/coder-beads
 
    # Or isolated simplify validation only
    aimgr install --target opencode package/code-simplify

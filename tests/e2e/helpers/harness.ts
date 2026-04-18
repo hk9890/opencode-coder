@@ -81,7 +81,7 @@ export interface PreparedCoderResourcesResult {
   strategy: "none" | "seeded" | "aimgr-installed";
 }
 
-const STAGE2_CODER_PACKAGES = ["package/coder-core", "package/coder-docs", "package/code-simplify"] as const;
+const STAGE2_CODER_PACKAGES = ["package/coder-core", "package/coder-support", "package/coder-docs"] as const;
 const STAGE3_BEADS_PACKAGES = [...STAGE2_CODER_PACKAGES, "package/coder-beads"] as const;
 
 export interface IsolatedOpenCodePathOptions {
@@ -1094,7 +1094,7 @@ async function seedAiResourcesToDirectory(projectRoot: string, targetDir: string
   await cp(commandsSource, commandsDest, { recursive: true });
 
   // Skills (seed split ownership surfaces only)
-  for (const skill of ["coder-core", "coder-docs", "code-simplify", "coder-beads"]) {
+  for (const skill of ["coder-core", "coder-docs", "code-simplify", "complexity-review", "coder-beads"]) {
     const skillSource = join(aiResourcesDir, "skills", skill);
     const skillDest = join(targetDir, "skills", skill);
     // Check source exists before copying (some skills may not exist in all setups)

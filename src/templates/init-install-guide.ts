@@ -17,7 +17,8 @@ You MUST only do these Phase 1 responsibilities:
 1. Detect prerequisites and current startup mode.
 2. Ask the user for desired mode early (stealth, team, remain inactive/disabled).
 3. Guide or perform installation steps for missing prerequisites/resources.
-4. If resources become available, stop and hand off to Phase 2 by instructing restart/reopen.
+4. Install only selected optional packages after core setup is available.
+5. If resources become available, stop and hand off to Phase 2 by instructing restart/reopen.
 
 Do NOT run durable Phase 2 workflow here (no docs lifecycle, no AGENTS generation, no beads setup orchestration, no long mode-transition procedures).
 
@@ -47,7 +48,12 @@ npm install -g beads
 
 ### aimgr missing
 If \`aimgr\` is missing, explain both paths:
-- Standard path (recommended): install aimgr, then use \`aimgr init\` and \`aimgr install package/coder-core\`
+- Standard path (recommended): install aimgr, then configure public sources and install core with:
+\`\`\`
+aimgr repo apply-manifest https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml
+aimgr repo sync
+aimgr install package/coder-core
+\`\`\`
 - Manual equivalent path: install/copy the minimal coder-core runtime surfaces under \`.opencode/\`:
   - required skill marker: \`.opencode/skills/coder-core/SKILL.md\`
   - copy the full skill directory: \`.opencode/skills/coder-core/\`
@@ -56,13 +62,39 @@ If \`aimgr\` is missing, explain both paths:
 
 Do not auto-install aimgr. Ask user what path they want.
 
-### aimgr available but package missing
-If aimgr is available and \`package/coder-core\` is missing, MUST ask via \`question()\` whether to run:
-\`\`\`
-aimgr init && aimgr install package/coder-core
-\`\`\`
+### aimgr available: repo/package state
+Use state-aware checks (not blind JSON parsing) for \`package/coder-core\` and branch clearly:
+
+- **repo uninitialized**: explain repo has no manifest/sources yet; ask via \`question()\` whether to run:
+  \`\`\`
+  aimgr repo apply-manifest https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml
+  aimgr repo sync
+  aimgr install package/coder-core
+  \`\`\`
+
+- **repo initialized but empty/no source**: explain repo exists but has no source providing \`package/coder-core\`; ask via \`question()\` whether to run the same public manifest + sync + install path above.
+
+- **package available**: ask via \`question()\` whether to run:
+  \`\`\`
+  aimgr install package/coder-core
+  \`\`\`
+
+- **generic failure**: report that repo state detection failed, suggest running \`aimgr repo list --format=json\` manually to inspect, and offer manual equivalent path.
 
 If user declines, provide the same manual resource guidance above (install required coder-core surfaces with SKILL.md marker) and explicitly state degraded Phase 1 continues until required surfaces are present.
+
+### Optional package discovery and selection (after core available)
+
+After \`package/coder-core\` is available/installed, discover optional packages using:
+- filtered repo listing for \`package/coder*\`
+
+Ask the user via \`question()\` which discovered optional packages to install (multi-select).
+
+Rules:
+- Use exact package names (for example \`package/coder-beads\`, \`package/coder-docs\`, \`package/coder-support\`).
+- Install only selected packages.
+- If a selected package is already installed, report that clearly and continue.
+- Do not probe package names with unsupported or guessed commands.
 
 ## Step 3 — Bootstrap handoff
 
@@ -70,6 +102,7 @@ After any install/copy actions, re-check required resource surfaces.
 
 If required surfaces are now available:
 - Report Phase 1 bootstrap succeeded.
+- Report optional package installation outcome (installed/skipped/already installed).
 - Instruct user to restart/reopen OpenCode.
 - Instruct user to run \`/opencode-coder/init\` again so Phase 2 markdown/resource-backed init takes over.
 - Do NOT attempt to execute Phase 2 workflow in this same runtime template.

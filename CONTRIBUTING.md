@@ -42,7 +42,7 @@ The canonical split-capability explanation lives in [`docs/OVERVIEW.md`](docs/OV
 When manually validating split-package behavior in isolated runs, prefer canonical split-package installs such as:
 
 ```bash
-aimgr install package/coder-core package/coder-docs package/code-simplify package/coder-beads
+aimgr install package/coder-core package/coder-support package/coder-docs package/coder-beads
 ```
 
 `package/opencode-coder` is also available as a legacy compatibility bundle, but new validation should target the split packages directly.

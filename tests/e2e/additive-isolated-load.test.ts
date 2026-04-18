@@ -19,11 +19,22 @@ if (aimgrCheck.resolvedBinDir) {
     .join(":");
 }
 
-const ADDITIVE_ISOLATED_LOAD_CASES = ["coder-core", "coder-beads", "coder-docs", "code-simplify"] as const;
+type AdditiveIsolatedLoadCase = {
+  packageName: "coder-core" | "coder-beads" | "coder-docs" | "coder-support" | "code-simplify";
+  expectedSkillName: string;
+};
+
+const ADDITIVE_ISOLATED_LOAD_CASES: AdditiveIsolatedLoadCase[] = [
+  { packageName: "coder-core", expectedSkillName: "coder-core" },
+  { packageName: "coder-beads", expectedSkillName: "coder-beads" },
+  { packageName: "coder-docs", expectedSkillName: "coder-docs" },
+  { packageName: "coder-support", expectedSkillName: "complexity-review" },
+  { packageName: "code-simplify", expectedSkillName: "code-simplify" },
+];
 
 describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
-  for (const packageName of ADDITIVE_ISOLATED_LOAD_CASES) {
-    it(`installs package/${packageName} from coder-skill-installed baseline without requiring root manifest edits`, async () => {
+  for (const testCase of ADDITIVE_ISOLATED_LOAD_CASES) {
+    it(`installs package/${testCase.packageName} from coder-skill-installed baseline without requiring root manifest edits`, async () => {
       const workspace = await createFixtureWorkspace("coder-skill-installed");
 
       try {
@@ -42,15 +53,18 @@ describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
         const repoAddResult = await $`aimgr repo add local:${AI_RESOURCES_DIR}`.cwd(workspace.workdir).env(isolatedEnv).quiet();
         expect(repoAddResult.exitCode).toBe(0);
 
-        const installResult = await $`aimgr install package/${packageName}`.cwd(workspace.workdir).env(isolatedEnv).quiet();
+        const installResult = await $`aimgr install package/${testCase.packageName}`
+          .cwd(workspace.workdir)
+          .env(isolatedEnv)
+          .quiet();
         expect(installResult.exitCode).toBe(0);
 
         const installStderr = installResult.stderr.toString().toLowerCase();
         expect(installStderr).not.toContain("author identity unknown");
 
-        const skillPath = join(workspace.workdir, ".opencode", "skills", packageName, "SKILL.md");
+        const skillPath = join(workspace.workdir, ".opencode", "skills", testCase.expectedSkillName, "SKILL.md");
         const installedSkill = await readFile(skillPath, "utf8");
-        expect(installedSkill).toContain(`name: ${packageName}`);
+        expect(installedSkill).toContain(`name: ${testCase.expectedSkillName}`);
 
         const opencodeCoderSkillPath = join(workspace.workdir, ".opencode", "skills", "opencode-coder", "SKILL.md");
         const opencodeCoderSkill = await Bun.file(opencodeCoderSkillPath).exists();
@@ -60,6 +74,7 @@ describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
         expect(rootManifest).toContain("package/coder-core");
         expect(rootManifest).toContain("package/coder-beads");
         expect(rootManifest).toContain("package/coder-docs");
+        expect(rootManifest).toContain("package/coder-support");
         expect(rootManifest).toContain("package/code-simplify");
         expect(rootManifest).toContain("package/opencode-coder");
       } finally {

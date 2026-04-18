@@ -7,7 +7,7 @@ description: "Use this skill for core opencode-coder plugin/runtime workflows th
 
 | Workflow | Use when | Source of truth |
 |---|---|---|
-| Initialize and set up opencode-coder for a project | You need to initialize or finish setting up opencode-coder for a project | [references/installation-setup.md](references/installation-setup.md), [references/init-dispatch.md](references/init-dispatch.md) |
+| Initialize and set up opencode-coder for a project | You need to initialize or finish setting up opencode-coder for a project | [references/installation-setup.md](references/installation-setup.md) |
 | Mode/runtime guidance | You need to reason about saved mode vs hard-disable and runtime phase behavior | [references/mode-runtime.md](references/mode-runtime.md) |
 | Status/doctor (plugin/runtime scope) | Startup or command exposure looks wrong and you need non-beads checks first | [references/status-doctor.md](references/status-doctor.md), [references/troubleshooting-runtime.md](references/troubleshooting-runtime.md) |
 | Debugging logs (plugin/runtime) | You need OpenCode/opencode-coder logs for troubleshooting evidence | [references/debugging-logs.md](references/debugging-logs.md), [references/troubleshooting-runtime.md](references/troubleshooting-runtime.md) |

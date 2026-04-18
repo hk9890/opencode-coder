@@ -52,6 +52,17 @@ See [mode-runtime.md](mode-runtime.md) for behavior details.
 - Hard override (`OPENCODE_CODER_DISABLED=true`): plugin returns no runtime surfaces.
 - Saved mode `disabled`: project-local active behavior is suppressed, but setup/init surface may remain available.
 
+## Continuing project setup after core is available
+
+Once core resources are available for the project, continue setup by using the installed project-local skills.
+
+1. Load the installed skills for the project, especially installed skills whose names start with `coder-`.
+2. Determine which of those skills define initialization or setup workflows.
+3. Determine a logical order for initializing those skills.
+4. Run the project setup/initialization work for each relevant skill.
+5. Skip skills that do not define additional initialization work.
+6. Verify that the project setup is complete for the selected mode and installed capabilities.
+
 ## If setup still looks wrong
 
 Route to focused troubleshooting:

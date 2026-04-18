@@ -510,6 +510,56 @@ describe("OpencodeCoder Plugin Integration", () => {
       detectSpy.mockRestore();
     });
 
+    it("enforces restart boundary: Phase 1 bootstrap template gives way to Phase 2 resource command after restart", async () => {
+      const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("team"));
+      const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);
+      const healthSpy = spyOn(AimgrService.prototype, "verifyAndAutoRepairResources").mockResolvedValue({
+        verify: { available: true, healthy: false, hasIssues: true },
+        repair: { attempted: false, healthy: false },
+      });
+
+      const detectSpy = spyOn(ProjectDetectorService.prototype, "detectAndWrite");
+      detectSpy
+        .mockReturnValueOnce(
+          createProjectContext({
+            beadsReady: false,
+            runtimePhase: {
+              ...createProjectContext().runtimePhase,
+              phase: "bootstrap",
+              shouldExposeBootstrapInit: true,
+              coreAvailable: false,
+              bootstrapRequired: true,
+              missingRequiredSurfaces: ["command/opencode-coder/init", "skill/coder-core"],
+            },
+          })
+        )
+        .mockReturnValueOnce(createProjectContext());
+
+      const mockInputPhase1 = createMockPluginInput();
+      const hooksPhase1 = await OpencodeCoder(asMockPluginInput(mockInputPhase1));
+      const cfgPhase1: Record<string, any> = { command: createPhase2CommandFixture() };
+      await hooksPhase1.config?.(cfgPhase1 as any);
+
+      expect(cfgPhase1.command?.["opencode-coder/init"]?.template).toContain("Bootstrap Init (Phase 1)");
+      expect(cfgPhase1.command?.["opencode-coder/init"]?.template).toContain("restart/reopen OpenCode");
+
+      const mockInputPhase2 = createMockPluginInput();
+      const hooksPhase2 = await OpencodeCoder(asMockPluginInput(mockInputPhase2));
+      const cfgPhase2: Record<string, any> = { command: createPhase2CommandFixture() };
+      await hooksPhase2.config?.(cfgPhase2 as any);
+
+      expect(cfgPhase2.command?.["opencode-coder/init"]).toEqual({
+        description: "resource-backed init",
+        template: "resource init template",
+      });
+      expect(cfgPhase2.command?.["opencode-coder/init"]?.template).not.toContain("Bootstrap Init (Phase 1)");
+
+      resolveModeSpy.mockRestore();
+      autoInitializeSpy.mockRestore();
+      healthSpy.mockRestore();
+      detectSpy.mockRestore();
+    });
+
     it("keeps docs lifecycle commands for active stealth mode even when runtime phase is bootstrap", async () => {
       const resolveModeSpy = spyOn(PluginModeService.prototype, "resolveStartupMode").mockReturnValue(savedModeResolution("stealth"));
       const autoInitializeSpy = spyOn(AimgrService.prototype, "autoInitialize").mockResolvedValue(undefined);

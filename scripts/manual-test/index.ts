@@ -149,7 +149,7 @@ const FIXTURE_DESCRIPTIONS: Record<FixtureName, { label: string; help: string }>
   },
   "coder-skill-installed": {
     label: "coder-skill-installed — stage-2 coder runtime (non-beads)",
-    help: "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-docs/code-simplify only; no coder-beads, no orchestrator agent, no .beads",
+    help: "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-support/coder-docs only; no coder-beads, no orchestrator agent, no .beads",
   },
   "beads-initialized": {
     label: "beads-initialized — stage-3 beads/orchestrator ready",

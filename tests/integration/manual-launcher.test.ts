@@ -349,7 +349,7 @@ describe("manual launcher preflight", () => {
       "empty-project — runtime baseline: no README/.gitkeep scaffolding, no .coder state, and no seeded project-local .opencode resources"
     );
     expect(result.stdout).toContain(
-      "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-docs/code-simplify only; no coder-beads, no orchestrator agent, no .beads"
+      "coder-skill-installed — runtime stage 2: aimgr installs coder-core/coder-support/coder-docs only; no coder-beads, no orchestrator agent, no .beads"
     );
     expect(result.stdout).toContain("--fixture selects a committed fixture baseline, then prepares a runtime workspace");
     expect(result.stdout).toContain("Runtime-generated .coder/project.yaml is authoritative whenever startup rewrites project state.");
@@ -614,6 +614,7 @@ describe("manual launcher preflight", () => {
       const coderProjectConfig = Bun.file(join(preservedRoot!, "project", ".coder", "project.yaml"));
       const coderCoreSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-core", "SKILL.md"));
       const coderDocsSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-docs", "SKILL.md"));
+      const coderSupportSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "complexity-review", "SKILL.md"));
       const simplifySkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "code-simplify", "SKILL.md"));
       const beadsSkill = Bun.file(join(preservedRoot!, "project", ".opencode", "skills", "coder-beads", "SKILL.md"));
       const initCommand = Bun.file(join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init.md"));
@@ -634,6 +635,7 @@ describe("manual launcher preflight", () => {
       expect(await aiPackage.exists()).toBe(true);
       expect(await coderCoreSkill.exists()).toBe(true);
       expect(await coderDocsSkill.exists()).toBe(true);
+      expect(await coderSupportSkill.exists()).toBe(true);
       expect(await simplifySkill.exists()).toBe(true);
       expect(await beadsSkill.exists()).toBe(false);
       expect(await initCommand.exists()).toBe(true);

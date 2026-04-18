@@ -14,6 +14,29 @@ import {
   type AimgrVerifyHealth,
 } from "./aimgr-health";
 
+const PUBLIC_AIMGR_MANIFEST_URL =
+  "https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml";
+
+export type AimgrRepoPackageStateType =
+  | "uninitialized"
+  | "empty-no-source"
+  | "package-available"
+  | "package-unavailable"
+  | "failure";
+
+export interface AimgrRepoPackageState {
+  packageRef: string;
+  packageName: string;
+  state: AimgrRepoPackageStateType;
+  message?: string;
+}
+
+export interface AimgrOptionalPackage {
+  packageRef: string;
+  packageName: string;
+  description: string;
+}
+
 export interface AimgrStartupHealthResult {
   verify: AimgrVerifyHealth;
   repair: AimgrRepairHealth;
@@ -98,41 +121,88 @@ export class AimgrService {
    * Check if a package is available in the aimgr repository
    */
   isPackageAvailable(packageName: string): boolean {
+    return this.getRepoPackageState(packageName).state === "package-available";
+  }
+
+  /**
+   * Detect repository/package state from `aimgr repo list --format=json`.
+   *
+   * `aimgr repo list --format=json` emits plaintext for empty states,
+   * so this method intentionally handles both JSON and non-JSON outputs.
+   */
+  getRepoPackageState(packageName: string): AimgrRepoPackageState {
+    const packageRef = normalizePackageRef(packageName);
+    const normalizedPackageName = packageRefToName(packageRef);
+
     try {
-      this.logger.debug("Checking if package is available", { packageName });
+      this.logger.debug("Checking aimgr repo package state", { packageRef });
       const stdout = execSync("aimgr repo list --format=json", {
         encoding: "utf-8",
         stdio: ["ignore", "pipe", "pipe"],
         timeout: AIMGR_COMMAND_TIMEOUT_MS,
       });
-      const data = JSON.parse(stdout);
-      
-      // Check if package exists in any of the resource lists
-      const packages = data.packages || [];
-      const found = packages.some((pkg: any) => pkg.name === packageName);
-      
-      this.logger.debug("Package availability check", { packageName, found });
-      return found;
+
+      return this.interpretRepoListOutput(stdout, {
+        packageRef,
+        packageName: normalizedPackageName,
+      });
     } catch (error) {
-      this.logger.error("Failed to check package availability", { packageName, error: String(error) });
-      return false;
+      const commandOutput = extractCommandOutput(error);
+      const interpreted = this.interpretRepoListOutput(commandOutput, {
+        packageRef,
+        packageName: normalizedPackageName,
+      });
+
+      if (interpreted.state !== "failure") {
+        return interpreted;
+      }
+
+      this.logger.error("Failed to check package availability", {
+        packageRef,
+        error: String(error),
+      });
+
+      return {
+        packageRef,
+        packageName: normalizedPackageName,
+        state: "failure",
+        message: "Failed to query aimgr repository state",
+      };
     }
+  }
+
+  /**
+   * Discover optional public packages after core is installable.
+   */
+  listInstallableOptionalPackages(): AimgrOptionalPackage[] {
+    const discovered = new Map<string, AimgrOptionalPackage>();
+
+    const discoveredCoderPackages = this.listPackagesFromRepoPattern("package/coder*")
+      .filter((pkg) => pkg.packageRef !== "package/coder-core")
+      .filter((pkg) => pkg.packageRef !== "package/opencode-coder");
+
+    for (const pkg of discoveredCoderPackages) {
+      discovered.set(pkg.packageRef, pkg);
+    }
+
+    return [...discovered.values()].sort((a, b) => a.packageRef.localeCompare(b.packageRef));
   }
 
   /**
    * Install a package using aimgr
    */
   installPackage(packageName: string): void {
+    const packageRef = normalizePackageRef(packageName);
     try {
-      this.logger.debug("Installing package", { packageName, workdir: this.workdir });
-      execSync(`aimgr install package/${packageName}`, {
+      this.logger.debug("Installing package", { packageRef, workdir: this.workdir });
+      execSync(`aimgr install ${packageRef}`, {
         cwd: this.workdir,
         stdio: "ignore",
         timeout: AIMGR_COMMAND_TIMEOUT_MS,
       });
-      this.logger.info("Package installed successfully", { packageName });
+      this.logger.info("Package installed successfully", { packageRef });
     } catch (error) {
-      this.logger.error("Failed to install package", { packageName, error: String(error) });
+      this.logger.error("Failed to install package", { packageRef, error: String(error) });
       throw error;
     }
   }
@@ -286,20 +356,25 @@ export class AimgrService {
       this.initializeAimgr();
 
       // Step 4: Check if coder-core package is available
-      const packageAvailable = this.isPackageAvailable("coder-core");
-      if (!packageAvailable) {
-        this.logger.debug("coder-core package not available in repo");
+      const coreState = this.getRepoPackageState("package/coder-core");
+      if (coreState.state !== "package-available") {
+        this.logger.debug("coder-core package not available in repo", {
+          state: coreState.state,
+        });
         await showToast(this.client, this.logger, {
           title: "aimgr Initialized",
-          message: "Created ai.package.yaml. Run 'aimgr repo search coder-core' to discover resources.",
+          message:
+            "Created ai.package.yaml. Configure public sources with 'aimgr repo apply-manifest " +
+            `${PUBLIC_AIMGR_MANIFEST_URL}` +
+            " && aimgr repo sync', then run 'aimgr install package/coder-core'.",
           variant: "info",
-          duration: 6000,
+          duration: 9000,
         });
         return;
       }
 
       // Step 5: Install coder-core package
-      this.installPackage("coder-core");
+      this.installPackage("package/coder-core");
 
       // Step 6: Show success notification
       await showToast(this.client, this.logger, {
@@ -315,4 +390,129 @@ export class AimgrService {
       // Don't throw - we want the plugin to load even if aimgr fails
     }
   }
+
+  private interpretRepoListOutput(
+    output: string,
+    context: { packageRef: string; packageName: string }
+  ): AimgrRepoPackageState {
+    try {
+      const data = JSON.parse(output) as { packages?: Array<{ name?: string; description?: string }> };
+      const packages = data.packages ?? [];
+      const found = packages.some((pkg) => {
+        const repoName = (pkg.name ?? "").trim();
+        if (!repoName) {
+          return false;
+        }
+
+        return repoName === context.packageName || `package/${repoName}` === context.packageRef;
+      });
+
+      this.logger.debug("Package availability check", {
+        packageRef: context.packageRef,
+        found,
+      });
+
+      return {
+        packageRef: context.packageRef,
+        packageName: context.packageName,
+        state: found ? "package-available" : "package-unavailable",
+      };
+    } catch {
+      const normalized = output.trim();
+
+      if (
+        normalized.includes(
+          "Run 'aimgr repo init' or 'aimgr repo apply-manifest <path-or-url>' to initialize the repository."
+        )
+      ) {
+        return {
+          packageRef: context.packageRef,
+          packageName: context.packageName,
+          state: "uninitialized",
+          message: normalized,
+        };
+      }
+
+      if (normalized.includes("Add resources with:")) {
+        return {
+          packageRef: context.packageRef,
+          packageName: context.packageName,
+          state: "empty-no-source",
+          message: normalized,
+        };
+      }
+
+      return {
+        packageRef: context.packageRef,
+        packageName: context.packageName,
+        state: "failure",
+        message: normalized,
+      };
+    }
+  }
+
+  private listPackagesFromRepoPattern(pattern: string): AimgrOptionalPackage[] {
+    try {
+      const stdout = execSync(`aimgr repo list "${pattern}" --format=json`, {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: AIMGR_COMMAND_TIMEOUT_MS,
+      });
+      const data = JSON.parse(stdout) as {
+        packages?: Array<{ name?: string; description?: string }>;
+      };
+      const packages = data.packages ?? [];
+
+      return packages
+        .map((pkg) => {
+          const packageName = (pkg.name ?? "").trim();
+          if (!packageName) {
+            return null;
+          }
+          return {
+            packageRef: normalizePackageRef(packageName),
+            packageName,
+            description: (pkg.description ?? "").trim() || "No description available",
+          };
+        })
+        .filter((pkg): pkg is AimgrOptionalPackage => pkg !== null);
+    } catch (error) {
+      this.logger.warn("Failed to list optional packages from aimgr repo", {
+        pattern,
+        error: String(error),
+      });
+      return [];
+    }
+  }
+}
+
+function normalizePackageRef(packageNameOrRef: string): string {
+  const trimmed = packageNameOrRef.trim();
+  return trimmed.startsWith("package/") ? trimmed : `package/${trimmed}`;
+}
+
+function packageRefToName(packageRef: string): string {
+  return packageRef.replace(/^package\//, "");
+}
+
+function extractCommandOutput(error: unknown): string {
+  const commandError = error as {
+    stdout?: Buffer | string;
+    stderr?: Buffer | string;
+  };
+  const stdout = toStringOutput(commandError?.stdout);
+  const stderr = toStringOutput(commandError?.stderr);
+  return [stdout, stderr].filter(Boolean).join("\n");
+}
+
+function toStringOutput(value: Buffer | string | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.toString("utf-8");
 }

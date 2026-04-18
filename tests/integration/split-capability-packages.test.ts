@@ -5,7 +5,7 @@ import { join } from "path";
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 
 type SplitPackageCase = {
-  packageName: "coder-core" | "coder-beads" | "coder-docs" | "code-simplify";
+  packageName: "coder-core" | "coder-beads" | "coder-docs" | "coder-support" | "code-simplify";
   requiredResources: string[];
 };
 
@@ -60,6 +60,10 @@ const SPLIT_PACKAGE_CASES: SplitPackageCase[] = [
     ],
   },
   {
+    packageName: "coder-support",
+    requiredResources: ["skill/complexity-review", "skill/code-simplify", "command/simplify"],
+  },
+  {
     packageName: "code-simplify",
     requiredResources: ["skill/code-simplify", "command/simplify"],
   },
@@ -85,6 +89,7 @@ describe("split capability package ownership", () => {
     expect(rootPackageYaml).toContain("package/coder-core");
     expect(rootPackageYaml).toContain("package/coder-beads");
     expect(rootPackageYaml).toContain("package/coder-docs");
+    expect(rootPackageYaml).toContain("package/coder-support");
     expect(rootPackageYaml).toContain("package/code-simplify");
 
     expect(rootPackageYaml).toContain("package/opencode-coder");

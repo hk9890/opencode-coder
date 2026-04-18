@@ -234,6 +234,92 @@ describe("AimgrService", () => {
       expect(result).toBe(false);
       expect(mockLogger.error).toHaveBeenCalled();
     });
+
+    it("classifies uninitialized repo when list emits plaintext guidance", () => {
+      execSyncMock.mockReturnValue(
+        "No resources or packages found in repository.\n\nRun 'aimgr repo init' or 'aimgr repo apply-manifest <path-or-url>' to initialize the repository."
+      );
+
+      const state = aimgrService.getRepoPackageState("package/coder-core");
+
+      expect(state.state).toBe("uninitialized");
+      expect(aimgrService.isPackageAvailable("package/coder-core")).toBe(false);
+    });
+
+    it("classifies initialized but empty repo when no sources are configured", () => {
+      execSyncMock.mockReturnValue(
+        "No resources or packages found in repository.\n\nAdd resources with: aimgr repo add command <file>, aimgr repo add skill <folder>, or aimgr repo add agent <file>"
+      );
+
+      const state = aimgrService.getRepoPackageState("package/coder-core");
+
+      expect(state.state).toBe("empty-no-source");
+      expect(aimgrService.isPackageAvailable("package/coder-core")).toBe(false);
+    });
+
+    it("classifies package available for both package ref and package name", () => {
+      execSyncMock.mockReturnValue(
+        JSON.stringify({
+          packages: [{ name: "coder-core" }, { name: "coder-docs" }],
+        })
+      );
+
+      const byRefState = aimgrService.getRepoPackageState("package/coder-core");
+      const byNameState = aimgrService.getRepoPackageState("coder-core");
+
+      expect(byRefState).toEqual({
+        packageRef: "package/coder-core",
+        packageName: "coder-core",
+        state: "package-available",
+      });
+      expect(byNameState).toEqual({
+        packageRef: "package/coder-core",
+        packageName: "coder-core",
+        state: "package-available",
+      });
+    });
+
+    it("classifies plaintext repo guidance even when command exits non-zero", () => {
+      execSyncMock.mockImplementation(() => {
+        const err = new Error("repo list failed") as Error & {
+          stdout?: Buffer;
+          stderr?: Buffer;
+        };
+        err.stderr = Buffer.from(
+          "No resources or packages found in repository.\n\nRun 'aimgr repo init' or 'aimgr repo apply-manifest <path-or-url>' to initialize the repository."
+        );
+        throw err;
+      });
+
+      const state = aimgrService.getRepoPackageState("package/coder-core");
+
+      expect(state.state).toBe("uninitialized");
+      expect(state.message).toContain("Run 'aimgr repo init'");
+    });
+
+    it("returns generic failure state when output cannot be interpreted", () => {
+      execSyncMock.mockImplementation(() => {
+        const err = new Error("repo list failed") as Error & {
+          stdout?: Buffer;
+          stderr?: Buffer;
+        };
+        err.stderr = Buffer.from("unexpected backend failure");
+        throw err;
+      });
+
+      const state = aimgrService.getRepoPackageState("package/coder-core");
+
+      expect(state).toEqual({
+        packageRef: "package/coder-core",
+        packageName: "coder-core",
+        state: "failure",
+        message: "Failed to query aimgr repository state",
+      });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        "Failed to check package availability",
+        expect.objectContaining({ packageRef: "package/coder-core" })
+      );
+    });
   });
 
   describe("installPackage", () => {
@@ -255,7 +341,7 @@ describe("AimgrService", () => {
         stdio: "ignore",
         timeout: 10000,
       });
-      expect(mockLogger.info).toHaveBeenCalledWith("Package installed successfully", { packageName: "coder-core" });
+      expect(mockLogger.info).toHaveBeenCalledWith("Package installed successfully", { packageRef: "package/coder-core" });
     });
 
     it("should throw error when install fails", () => {
@@ -487,9 +573,10 @@ describe("AimgrService", () => {
 
       expect(mockClient.tui.showToast).toHaveBeenCalledWith({
         title: "aimgr Initialized",
-        message: "Created ai.package.yaml. Run 'aimgr repo search coder-core' to discover resources.",
+        message:
+          "Created ai.package.yaml. Configure public sources with 'aimgr repo apply-manifest https://raw.githubusercontent.com/dynatrace-oss/opencode-coder/main/ai-resources/ai.repo.yaml && aimgr repo sync', then run 'aimgr install package/coder-core'.",
         variant: "info",
-        duration: 6000,
+        duration: 9000,
       });
     });
 
@@ -512,6 +599,77 @@ describe("AimgrService", () => {
         "aimgr auto-initialization failed",
         expect.objectContaining({ error: expect.any(String), durationMs: expect.any(Number) })
       );
+    });
+  });
+
+  describe("listInstallableOptionalPackages", () => {
+    beforeEach(() => {
+      aimgrService = new AimgrService({
+        logger: mockLogger,
+        client: mockClient,
+      });
+    });
+
+    it("discovers optional packages from the coder* pattern only", () => {
+      execSyncMock.mockImplementation((cmd: string) => {
+        if (cmd === 'aimgr repo list "package/coder*" --format=json') {
+          return JSON.stringify({
+            packages: [
+              { name: "coder-core", description: "core" },
+              { name: "coder-beads", description: "beads" },
+              { name: "coder-docs", description: "docs" },
+              { name: "coder-support", description: "support" },
+            ],
+          });
+        }
+
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
+
+      const packages = aimgrService.listInstallableOptionalPackages();
+
+      expect(packages.map((pkg) => pkg.packageRef)).toEqual([
+        "package/coder-beads",
+        "package/coder-docs",
+        "package/coder-support",
+      ]);
+    });
+
+    it("keeps stable package refs and sorted order", () => {
+      execSyncMock.mockImplementation((cmd: string) => {
+        if (cmd === 'aimgr repo list "package/coder*" --format=json') {
+          return JSON.stringify({
+            packages: [
+              { name: "coder-support", description: "support" },
+              { name: "coder-beads", description: "beads" },
+              { name: "coder-docs", description: "docs" },
+              { name: "coder-core", description: "core" },
+            ],
+          });
+        }
+
+        throw new Error(`Unexpected command: ${cmd}`);
+      });
+
+      const packages = aimgrService.listInstallableOptionalPackages();
+
+      expect(packages).toEqual([
+        {
+          packageRef: "package/coder-beads",
+          packageName: "coder-beads",
+          description: "beads",
+        },
+        {
+          packageRef: "package/coder-docs",
+          packageName: "coder-docs",
+          description: "docs",
+        },
+        {
+          packageRef: "package/coder-support",
+          packageName: "coder-support",
+          description: "support",
+        },
+      ]);
     });
   });
 });

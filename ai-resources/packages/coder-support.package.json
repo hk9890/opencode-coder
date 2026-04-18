@@ -1,0 +1,9 @@
+{
+  "name": "coder-support",
+  "description": "Generic support components for all kind of architecture development and design work",
+  "resources": [
+    "skill/complexity-review",
+    "skill/code-simplify",
+    "command/simplify"
+  ]
+}
