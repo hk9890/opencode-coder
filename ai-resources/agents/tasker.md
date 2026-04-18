@@ -1,6 +1,6 @@
 ---
-mode: subagent
 description: Single-task executor — implements exactly what the task says
+mode: subagent
 model: github-copilot/gpt-5.3-codex
 color: '#3B82F6'
 ---
