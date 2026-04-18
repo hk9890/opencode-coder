@@ -1,6 +1,6 @@
 # Beads Setup Troubleshooting
 
-Fix setup/init issues for beads tracker workflows.
+Use this after beads should already exist, but the CLI, project state, or setup health is broken.
 
 ## `bd` command not found
 

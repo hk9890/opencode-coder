@@ -6,6 +6,7 @@ import { createMockClient } from "../helpers/mock-client";
 import * as core from "../../src/core";
 import * as childProcess from "child_process";
 import * as fs from "fs";
+import { join } from "path";
 
 type OpencodeClient = PluginInput["client"];
 
@@ -36,6 +37,32 @@ describe("BeadsService", () => {
         },
       },
     } as unknown as OpencodeClient;
+  });
+
+  describe("Init workflow routing (coder-beads)", () => {
+    it("keeps SKILL.md concise and routes detailed init contract to reference docs", () => {
+      const skillPath = join(import.meta.dir, "..", "..", "ai-resources", "skills", "coder-beads", "SKILL.md");
+      const referencePath = join(
+        import.meta.dir,
+        "..",
+        "..",
+        "ai-resources",
+        "skills",
+        "coder-beads",
+        "references",
+        "beads-init.md"
+      );
+      const skill = fs.readFileSync(skillPath, "utf-8");
+      const reference = fs.readFileSync(referencePath, "utf-8");
+
+      expect(skill).toContain("references/beads-init.md");
+      expect(skill).not.toContain("### `skill-init:beads`");
+
+      expect(reference).toContain("stealth");
+      expect(reference).toContain("team");
+      expect(reference).toContain("bd doctor");
+      expect(reference).toContain("Only do the missing or corrective setup steps");
+    });
   });
 
   describe("isBeadsEnabled", () => {
