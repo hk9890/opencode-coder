@@ -36,6 +36,8 @@ The workflow:
 
 The workflow also installs both `bd` and `aimgr` before running release quality gates, because integration/manual-launcher coverage depends on both CLIs being available.
 
+`aimgr` is installed from a pinned GitHub release asset via the shared workflow action in `.github/actions/install-aimgr/` rather than via the raw bootstrap script. This keeps CI/release installs reproducible and avoids `raw.githubusercontent.com` rate-limit failures.
+
 ## Local Prerequisites
 
 - `bun install`

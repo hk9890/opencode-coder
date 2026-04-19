@@ -1,0 +1,36 @@
+name: Install aimgr
+description: Install a pinned aimgr release with cache support
+
+inputs:
+  version:
+    description: aimgr version without leading v
+    required: true
+  github-token:
+    description: Token for GitHub release downloads
+    required: true
+  repository:
+    description: Source repository for aimgr releases
+    required: false
+    default: dynatrace-oss/ai-config-manager
+  install-dir:
+    description: Directory to place the aimgr binary
+    required: false
+    default: ~/.local/bin
+
+runs:
+  using: composite
+  steps:
+    - name: Cache aimgr CLI
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.install-dir }}/aimgr
+        key: aimgr-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Install aimgr CLI
+      shell: bash
+      env:
+        AIMGR_VERSION: ${{ inputs.version }}
+        AIMGR_GITHUB_REPO: ${{ inputs.repository }}
+        AIMGR_INSTALL_DIR: ${{ inputs.install-dir }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: bash "$GITHUB_ACTION_PATH/../../../scripts/install-aimgr.sh"

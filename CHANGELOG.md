@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **CI/release aimgr availability**: Updated CI and release workflows to install `aimgr` via the installer flow so integration and launcher checks run with the required CLI present.
+- **Pinned aimgr workflow install**: Replaced raw installer-script usage in CI/release workflows with pinned release-asset installation, checksum verification, caching, and a shared workflow action to reduce rate-limit failures.
 - **Installed-configured fixture targeting**: Fixed launcher fixture setup to install resources with explicit `--target opencode`, preventing install-path mismatches in isolated runs.
 
 ### Docs

@@ -12,6 +12,9 @@ on:
         required: true
         type: string
 
+env:
+  AIMGR_VERSION: 3.9.0
+
 permissions:
   contents: write
   packages: write
@@ -54,15 +57,10 @@ jobs:
           bd --version
 
       - name: Install aimgr CLI
-        run: |
-          set -euo pipefail
-          export AIMGR_INSTALL_DIR="$HOME/.local/bin"
-          mkdir -p "$AIMGR_INSTALL_DIR"
-          curl -fsSL https://raw.githubusercontent.com/dynatrace-oss/ai-config-manager/main/scripts/install.sh | sh
-          echo "$AIMGR_INSTALL_DIR" >> "$GITHUB_PATH"
-          export PATH="$AIMGR_INSTALL_DIR:$PATH"
-          command -v aimgr
-          aimgr --version
+        uses: ./.github/actions/install-aimgr
+        with:
+          version: ${{ env.AIMGR_VERSION }}
+          github-token: ${{ github.token }}
 
       - name: Type check
         run: bun run typecheck
