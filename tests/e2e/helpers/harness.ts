@@ -128,6 +128,11 @@ export interface HostBinaryResolution {
 
 export interface HostPrerequisiteOptions {
   /**
+   * Require the real opencode runtime/CLI.
+   * Defaults to true so runtime-facing suites fail fast unless they opt out explicitly.
+   */
+  requireOpencode?: boolean;
+  /**
    * Require aimgr for aimgr-installed/additive coverage paths.
    */
   requireAimgr?: boolean;
@@ -309,7 +314,7 @@ export async function checkHostToolPrerequisites(
   options: HostPrerequisiteOptions = {}
 ): Promise<HostPrerequisiteCheckResult> {
   const contract: Array<{ tool: HostToolName; required: boolean }> = [
-    { tool: "opencode", required: true },
+    { tool: "opencode", required: options.requireOpencode !== false },
     { tool: "git", required: true },
     { tool: "aimgr", required: options.requireAimgr === true },
     { tool: "bd", required: options.requireBd === true },

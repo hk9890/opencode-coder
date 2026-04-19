@@ -13,7 +13,7 @@ import {
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
-const hostPrerequisites = await checkHostToolPrerequisites({ requireAimgr: true });
+const hostPrerequisites = await checkHostToolPrerequisites({ requireOpencode: false, requireAimgr: true });
 if (!hostPrerequisites.available && hostPrerequisites.diagnostics) {
   throw new Error(hostPrerequisites.diagnostics);
 }

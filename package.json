@@ -27,6 +27,7 @@
     "test": "bun test",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
+    "test:runtime-integration": "bun test tests/runtime-integration",
     "test:e2e": "bun run build && bun run test:e2e:raw",
     "test:e2e:raw": "bun test tests/e2e --bail=1 --timeout 60000",
     "test:manual": "bun run scripts/manual-test/index.ts --",

@@ -34,7 +34,7 @@ export function ensureBeadsMarker(workdir: string): void {
  */
 export async function initBeadsWorkspace(workdir: string): Promise<boolean> {
   try {
-    const hostPrerequisites = await checkHostToolPrerequisites({ requireBd: true });
+    const hostPrerequisites = await checkHostToolPrerequisites({ requireOpencode: false, requireBd: true });
     if (!hostPrerequisites.available) {
       return false;
     }
