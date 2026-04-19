@@ -1,6 +1,7 @@
 import { mkdirSync } from "fs";
 import { join } from "path";
 import { $ } from "bun";
+import { checkHostToolPrerequisites, prependResolvedHostToolBinDirs } from "../e2e/helpers/harness";
 
 /**
  * Embedded beads backend write-concurrency rule (opencode-coder-eupg):
@@ -33,6 +34,12 @@ export function ensureBeadsMarker(workdir: string): void {
  */
 export async function initBeadsWorkspace(workdir: string): Promise<boolean> {
   try {
+    const hostPrerequisites = await checkHostToolPrerequisites({ requireBd: true });
+    if (!hostPrerequisites.available) {
+      return false;
+    }
+
+    prependResolvedHostToolBinDirs(hostPrerequisites.tools, { tools: ["bd"] });
     const result = await $`bd init --non-interactive --skip-hooks --skip-agents --quiet`.cwd(workdir).quiet();
     return result.exitCode === 0;
   } catch {

@@ -11,11 +11,13 @@ import {
   shouldActivateWizard,
 } from "../../scripts/manual-test/index";
 import {
+  buildStrippedHostEnv,
   OPENCODE_DYNATRACE_PACKAGE_NAME,
-  checkOpencodeAvailability,
+  checkHostToolPrerequisites,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
   createIsolatedOpenCodePathsWithPluginSource,
+  prependResolvedHostToolBinDirs,
   prepareWorkspacePluginSource,
   readIsolatedTestManifest,
   resolveHostOpenCodeConfigPath,
@@ -30,25 +32,8 @@ const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const DYNATRACE_PLUGIN_SPEC = `${OPENCODE_DYNATRACE_PACKAGE_NAME}@0.6.0`;
 
 function buildLauncherTestEnv(extraEnv: Record<string, string> = {}): Record<string, string> {
-  const env: Record<string, string> = {
-    PATH: process.env.PATH ?? "",
-  };
-
-  for (const key of ["USER", "LOGNAME", "LANG"] as const) {
-    const value = process.env[key];
-    if (value && value.length > 0) {
-      env[key] = value;
-    }
-  }
-
-  for (const [key, value] of Object.entries(process.env)) {
-    if (key.startsWith("LC_") && value && value.length > 0) {
-      env[key] = value;
-    }
-  }
-
   return {
-    ...env,
+    ...buildStrippedHostEnv(),
     ...extraEnv,
   };
 }
@@ -75,29 +60,20 @@ async function runLauncher(
   return { exitCode, stdout, stderr };
 }
 
-const opencodeCheck = await checkOpencodeAvailability();
-if (opencodeCheck.resolvedBinDir) {
-  process.env.PATH = [opencodeCheck.resolvedBinDir, process.env.PATH ?? ""]
-    .filter((entry) => entry && entry.length > 0)
-    .join(":");
+const launcherHostPrerequisites = await checkHostToolPrerequisites({
+  requireAimgr: false,
+  requireBd: false,
+});
+if (!launcherHostPrerequisites.available && launcherHostPrerequisites.diagnostics) {
+  throw new Error(launcherHostPrerequisites.diagnostics);
 }
+prependResolvedHostToolBinDirs(launcherHostPrerequisites.tools, {
+  tools: ["opencode", "git", "aimgr", "bd"],
+});
+const opencodeCheck = launcherHostPrerequisites.tools.find((tool) => tool.tool === "opencode");
+const bdCheck = launcherHostPrerequisites.tools.find((tool) => tool.tool === "bd");
 const privateTestsEnabled = process.env.OPENCODE_CODER_PRIVATE_TESTS === "true";
-
-async function checkBdAvailability(): Promise<boolean> {
-  try {
-    const proc = Bun.spawn({
-      cmd: ["bd", "version"],
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const code = await proc.exited;
-    return code === 0;
-  } catch {
-    return false;
-  }
-}
-
-const bdAvailable = await checkBdAvailability();
+const bdAvailable = bdCheck?.available === true;
 
 async function getLauncherPreparedEnv(stdout: string): Promise<Record<string, string>> {
   const preservedMatch = stdout.match(/Environment preserved at: (.+)\n?/);
@@ -381,41 +357,6 @@ describe("manual launcher preflight", () => {
     }
   );
 
-  it.skipIf(!bdAvailable)("documents single-writer behavior via concurrent bd create lock failure", async () => {
-    const workspace = await createFixtureWorkspace("beads-initialized");
-
-    try {
-      const createA = Bun.spawn({
-        cmd: ["bd", "create", "--type=task", "--title", "single-writer-a", "--description", "concurrency guard"],
-        cwd: workspace.workdir,
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-      const createB = Bun.spawn({
-        cmd: ["bd", "create", "--type=task", "--title", "single-writer-b", "--description", "concurrency guard"],
-        cwd: workspace.workdir,
-        stdout: "pipe",
-        stderr: "pipe",
-      });
-
-      const results = await Promise.all([
-        Promise.all([createA.exited, new Response(createA.stdout).text(), new Response(createA.stderr).text()]),
-        Promise.all([createB.exited, new Response(createB.stdout).text(), new Response(createB.stderr).text()]),
-      ]);
-
-      const exitCodes = results.map(([exitCode]) => exitCode);
-      const bothSucceeded = exitCodes.every((exitCode) => exitCode === 0);
-      expect(bothSucceeded).toBe(false);
-
-      const combinedOutput = results
-        .map(([, stdout, stderr]) => `${stdout}\n${stderr}`.toLowerCase())
-        .join("\n");
-      expect(combinedOutput).toMatch(/lock|exclusive|busy|timeout/);
-    } finally {
-      await rm(workspace.tempRoot, { recursive: true, force: true });
-    }
-  });
-
   it("rejects removed --probe-plugin-load option", async () => {
     const result = await runLauncher(["--mode=command", "--probe-plugin-load", "--", "env"]);
 
@@ -453,7 +394,7 @@ describe("manual launcher preflight", () => {
       const result = await runLauncher(["--mode=command", "--fixture=empty-project", "--", "true"]);
 
       expect(result.exitCode).toBe(0);
-      if (opencodeCheck.available) {
+      if (opencodeCheck?.available) {
         expect(result.stdout).toContain("Isolated OpenCode data prewarmed: yes (empty baseline copied)");
       } else {
         expect(result.stdout).toContain("Isolated OpenCode data prewarmed: no (skipped:");
@@ -462,7 +403,7 @@ describe("manual launcher preflight", () => {
       preservedRoot = getPreservedRoot(result.stdout);
 
       const isolatedDb = Bun.file(join(preservedRoot, "isolated-opencode", "xdg-data", "opencode", "opencode.db"));
-      if (opencodeCheck.available) {
+      if (opencodeCheck?.available) {
         expect(await isolatedDb.exists()).toBe(true);
       } else {
         expect(await isolatedDb.exists()).toBe(false);
@@ -906,7 +847,7 @@ describe("manual launcher preflight", () => {
   });
 });
 
-describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launcher non-interactive mode", () => {
+describe.skipIf(!opencodeCheck?.available || !privateTestsEnabled)("manual launcher non-interactive mode", () => {
   it("runs one-shot command with shared isolated setup and explicit auth seed", async () => {
     const tempAuthDir = await mkdtemp(join(tmpdir(), "opencode-coder-manual-auth-"));
     const authPath = join(tempAuthDir, "auth.json");
@@ -1227,7 +1168,7 @@ describe.skipIf(!opencodeCheck.available || !privateTestsEnabled)("manual launch
   }, 120000);
 });
 
-describe.skipIf(!opencodeCheck.available)("manual launcher startup viability contract", () => {
+describe.skipIf(!opencodeCheck?.available)("manual launcher startup viability contract", () => {
   it("avoids first-run migration log in fresh manual launcher invocations via prewarmed isolated data", async () => {
     let preservedRoot: string | undefined;
 

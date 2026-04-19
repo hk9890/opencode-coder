@@ -113,10 +113,43 @@ interface PrewarmedOpenCodeDataResult {
   baselineDir?: string;
 }
 
-export interface BinaryAvailabilityCheckResult {
+export type HostToolName = "opencode" | "git" | "aimgr" | "bd";
+export type HostBinaryResolutionSource = "PATH" | "mise-latest" | "mise-scan";
+
+export const STRIPPED_ENV_ALLOWLIST_KEYS = ["PATH", "USER", "LOGNAME", "LANG"] as const;
+
+export interface HostBinaryResolution {
+  tool: HostToolName;
   available: boolean;
+  executablePath?: string;
   resolvedBinDir?: string;
+  source?: HostBinaryResolutionSource;
+}
+
+export interface HostPrerequisiteOptions {
+  /**
+   * Require aimgr for aimgr-installed/additive coverage paths.
+   */
+  requireAimgr?: boolean;
+  /**
+   * Require bd for beads bootstrap coverage paths.
+   */
+  requireBd?: boolean;
+}
+
+export interface HostToolPrerequisiteResult extends HostBinaryResolution {
+  required: boolean;
+}
+
+export interface HostPrerequisiteCheckResult {
+  available: boolean;
+  tools: HostToolPrerequisiteResult[];
   diagnostics?: string;
+}
+
+export interface PrependResolvedHostToolPathOptions {
+  tools?: HostToolName[];
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface IsolatedAuthSeedInput {
@@ -189,6 +222,175 @@ async function findMiseInstalledExecutable(
   } catch {
     return [];
   }
+}
+
+export async function resolveHostBinary(
+  executableName: HostToolName,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<HostBinaryResolution> {
+  const fromPath = await findExecutableOnPath(executableName, env);
+  if (fromPath) {
+    return {
+      tool: executableName,
+      available: true,
+      executablePath: fromPath,
+      resolvedBinDir: dirname(fromPath),
+      source: "PATH",
+    };
+  }
+
+  const homeDir = env.HOME?.trim() || homedir();
+  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", executableName, "latest", executableName);
+  try {
+    await access(miseLatestCandidate, constants.X_OK);
+    return {
+      tool: executableName,
+      available: true,
+      executablePath: miseLatestCandidate,
+      resolvedBinDir: dirname(miseLatestCandidate),
+      source: "mise-latest",
+    };
+  } catch {
+    // continue to full mise scan
+  }
+
+  const installs = await findMiseInstalledExecutable(executableName, env);
+  if (installs.length > 0) {
+    const bestCandidate = installs[installs.length - 1];
+    return {
+      tool: executableName,
+      available: true,
+      executablePath: bestCandidate,
+      resolvedBinDir: dirname(bestCandidate),
+      source: "mise-scan",
+    };
+  }
+
+  return {
+    tool: executableName,
+    available: false,
+  };
+}
+
+function formatMissingRequiredToolsDiagnostics(results: HostToolPrerequisiteResult[]): string {
+  const missingRequired = results.filter((result) => result.required && !result.available);
+  const missingList = missingRequired.map((result) => result.tool).join(", ");
+
+  const lines = [
+    `Missing required host tools for test bootstrap: ${missingList}`,
+    "",
+    "Required host tools are resolved from PATH first, then from common mise install paths.",
+    "Install the missing binaries and retry.",
+    "",
+    "Checks:",
+    ...results.map((result) => {
+      const requirement = result.required ? "required" : "conditional";
+      const status = result.available
+        ? `found at ${result.executablePath ?? "<unknown>"} (${result.source ?? "unknown source"})`
+        : "not found";
+      return `  - ${result.tool} (${requirement}): ${status}`;
+    }),
+  ];
+
+  const pathEntries = process.env.PATH?.split(":").filter(Boolean) ?? [];
+  if (pathEntries.length > 0) {
+    lines.push("", `Current PATH entries: ${pathEntries.join(":")}`);
+  }
+
+  lines.push(
+    "",
+    "Tip: restart your shell/OpenCode host if binaries were recently installed and PATH has stale values."
+  );
+
+  return lines.join("\n");
+}
+
+export async function checkHostToolPrerequisites(
+  options: HostPrerequisiteOptions = {}
+): Promise<HostPrerequisiteCheckResult> {
+  const contract: Array<{ tool: HostToolName; required: boolean }> = [
+    { tool: "opencode", required: true },
+    { tool: "git", required: true },
+    { tool: "aimgr", required: options.requireAimgr === true },
+    { tool: "bd", required: options.requireBd === true },
+  ];
+
+  const tools: HostToolPrerequisiteResult[] = [];
+  for (const entry of contract) {
+    const resolved = await resolveHostBinary(entry.tool);
+    tools.push({
+      ...resolved,
+      required: entry.required,
+    });
+  }
+
+  const hasMissingRequired = tools.some((result) => result.required && !result.available);
+  if (hasMissingRequired) {
+    return {
+      available: false,
+      tools,
+      diagnostics: formatMissingRequiredToolsDiagnostics(tools),
+    };
+  }
+
+  return {
+    available: true,
+    tools,
+  };
+}
+
+export function prependResolvedHostToolBinDirs(
+  tools: HostToolPrerequisiteResult[],
+  options: PrependResolvedHostToolPathOptions = {}
+): string {
+  const env = options.env ?? process.env;
+  const selectedTools = options.tools?.length ? new Set(options.tools) : null;
+  const prependDirs: string[] = [];
+
+  for (const tool of tools) {
+    if (!tool.available || !tool.resolvedBinDir) {
+      continue;
+    }
+
+    if (selectedTools && !selectedTools.has(tool.tool)) {
+      continue;
+    }
+
+    if (!prependDirs.includes(tool.resolvedBinDir)) {
+      prependDirs.push(tool.resolvedBinDir);
+    }
+  }
+
+  if (prependDirs.length === 0) {
+    return env.PATH ?? "";
+  }
+
+  const existingEntries = env.PATH?.split(":").filter(Boolean) ?? [];
+  const nextPath = [...prependDirs, ...existingEntries.filter((entry) => !prependDirs.includes(entry))].join(":");
+  env.PATH = nextPath;
+  return nextPath;
+}
+
+export function buildStrippedHostEnv(
+  sourceEnv: NodeJS.ProcessEnv = process.env,
+  passthroughKeys: readonly string[] = STRIPPED_ENV_ALLOWLIST_KEYS
+): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  for (const key of passthroughKeys) {
+    const value = sourceEnv[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      env[key] = value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(sourceEnv)) {
+    if (key.startsWith("LC_") && typeof value === "string" && value.trim().length > 0) {
+      env[key] = value;
+    }
+  }
+
+  return env;
 }
 
 function buildPluginSpecFromPin(packageName: string, versionRange: string): string {
@@ -404,33 +606,7 @@ function parseExactVersionFromPluginSpec(spec: string): string | null {
 }
 
 function buildIsolatedPackageManagerEnv(rootDir: string, sourceEnv: NodeJS.ProcessEnv = process.env): Record<string, string> {
-  const env: Record<string, string> = {};
-
-  const path = sourceEnv.PATH?.trim();
-  if (path) {
-    env.PATH = path;
-  }
-
-  const user = sourceEnv.USER?.trim();
-  if (user) {
-    env.USER = user;
-  }
-
-  const logname = sourceEnv.LOGNAME?.trim();
-  if (logname) {
-    env.LOGNAME = logname;
-  }
-
-  const lang = sourceEnv.LANG?.trim();
-  if (lang) {
-    env.LANG = lang;
-  }
-
-  for (const [key, value] of Object.entries(sourceEnv)) {
-    if (key.startsWith("LC_") && typeof value === "string" && value.trim().length > 0) {
-      env[key] = value;
-    }
-  }
+  const env = buildStrippedHostEnv(sourceEnv);
 
   env.HOME = join(rootDir, ".harness-home");
   env.XDG_CONFIG_HOME = join(rootDir, ".harness-xdg-config");
@@ -695,76 +871,9 @@ export function startProgressHeartbeat(options: ProgressHeartbeatOptions): Progr
   };
 }
 
-export async function checkOpencodeAvailability(): Promise<BinaryAvailabilityCheckResult> {
-  const opencodePath = await findExecutableOnPath("opencode");
-  if (opencodePath) {
-    return { available: true };
-  }
-
-  const homeDir = process.env.HOME?.trim() || homedir();
-  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "opencode", "latest", "opencode");
-  try {
-    await access(miseLatestCandidate, constants.X_OK);
-    console.error(`[harness] opencode not on PATH, auto-resolved from mise: ${miseLatestCandidate}`);
-    return {
-      available: true,
-      resolvedBinDir: dirname(miseLatestCandidate),
-    };
-  } catch {
-    // fall through to full mise scan
-  }
-
-  const miseInstalls = await findMiseInstalledExecutable("opencode");
-  if (miseInstalls.length > 0) {
-    const bestCandidate = miseInstalls[miseInstalls.length - 1];
-    console.error(`[harness] opencode not on PATH, auto-resolved from mise: ${bestCandidate}`);
-    return {
-      available: true,
-      resolvedBinDir: dirname(bestCandidate),
-    };
-  }
-
-  const diagnostics: string[] = [
-    "opencode binary not found in PATH.",
-    "",
-    "This usually happens when OpenCode was installed/updated but the current shell has stale PATH values.",
-    "",
-    "Suggested fix: restart the shell/OpenCode host and re-run tests.",
-    "",
-    "Diagnostic info:",
-  ];
-
-  diagnostics.push("  No opencode binary found in common mise install path");
-
-  const pathEntries = process.env.PATH?.split(":").filter((entry) => entry.includes("opencode")) ?? [];
-  if (pathEntries.length > 0) {
-    diagnostics.push(`  PATH entries containing 'opencode': ${pathEntries.join(", ")}`);
-  }
-
-  return { available: false, diagnostics: diagnostics.join("\n") };
-}
-
 async function resolveOpencodeExecutablePath(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
-  const opencodePath = await findExecutableOnPath("opencode", env);
-  if (opencodePath) {
-    return opencodePath;
-  }
-
-  const homeDir = env.HOME?.trim() || homedir();
-  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "opencode", "latest", "opencode");
-  try {
-    await access(miseLatestCandidate, constants.X_OK);
-    return miseLatestCandidate;
-  } catch {
-    // continue to full scan
-  }
-
-  const installs = await findMiseInstalledExecutable("opencode", env);
-  if (installs.length > 0) {
-    return installs[installs.length - 1];
-  }
-
-  return null;
+  const opencode = await resolveHostBinary("opencode", env);
+  return opencode.executablePath ?? null;
 }
 
 async function ensurePrewarmedOpenCodeDataBaseline(cacheRoot: string): Promise<PrewarmedOpenCodeDataResult> {
@@ -862,45 +971,6 @@ async function ensurePrewarmedOpenCodeDataBaseline(cacheRoot: string): Promise<P
   return {
     status: "applied",
     baselineDir: baselineDataDir,
-  };
-}
-
-/**
- * Checks whether the `aimgr` binary is available in PATH.
- */
-export async function checkAimgrAvailability(): Promise<BinaryAvailabilityCheckResult> {
-  const aimgrPath = await findExecutableOnPath("aimgr");
-  if (aimgrPath) {
-    return { available: true };
-  }
-
-  const homeDir = process.env.HOME?.trim() || homedir();
-  const miseLatestCandidate = join(homeDir, ".local", "share", "mise", "installs", "aimgr", "latest", "aimgr");
-  try {
-    await access(miseLatestCandidate, constants.X_OK);
-    console.error(`[harness] aimgr not on PATH, auto-resolved from mise: ${miseLatestCandidate}`);
-    return {
-      available: true,
-      resolvedBinDir: dirname(miseLatestCandidate),
-    };
-  } catch {
-    // fall through to full mise scan
-  }
-
-  const miseInstalls = await findMiseInstalledExecutable("aimgr");
-  if (miseInstalls.length > 0) {
-    const bestCandidate = miseInstalls[miseInstalls.length - 1];
-    console.error(`[harness] aimgr not on PATH, auto-resolved from mise: ${bestCandidate}`);
-    return {
-      available: true,
-      resolvedBinDir: dirname(bestCandidate),
-    };
-  }
-
-  return {
-    available: false,
-    diagnostics:
-      "aimgr binary not found in PATH. Active e2e scenarios may still prove plugin load and startup parity, but docs lifecycle commands remain gated when runtime resource verification cannot confirm healthy resources.",
   };
 }
 

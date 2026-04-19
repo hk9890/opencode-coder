@@ -3,24 +3,14 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-const BASE_ENV_KEYS = ["PATH", "USER", "LOGNAME", "LANG"] as const;
+import {
+  buildStrippedHostEnv,
+  checkHostToolPrerequisites,
+  prependResolvedHostToolBinDirs,
+} from "../../tests/e2e/helpers/harness";
 
 function buildPreflightEnv(tempHome: string): Record<string, string> {
-  const env: Record<string, string> = {};
-
-  for (const key of BASE_ENV_KEYS) {
-    const value = process.env[key];
-    if (value && value.length > 0) {
-      env[key] = value;
-    }
-  }
-
-  for (const [key, value] of Object.entries(process.env)) {
-    if (key.startsWith("LC_") && value && value.length > 0) {
-      env[key] = value;
-    }
-  }
+  const env = buildStrippedHostEnv();
 
   env.HOME = tempHome;
   env.OPENCODE_CODER_PRIVATE_TESTS = "false";
@@ -44,6 +34,18 @@ async function runCommand(command: string[], env: Record<string, string>): Promi
 }
 
 async function main(): Promise<number> {
+  const hostPrerequisites = await checkHostToolPrerequisites({
+    requireAimgr: false,
+    requireBd: false,
+  });
+  if (!hostPrerequisites.available) {
+    console.error(hostPrerequisites.diagnostics ?? "Missing required host tools for preflight.");
+    return 1;
+  }
+  prependResolvedHostToolBinDirs(hostPrerequisites.tools, {
+    tools: ["opencode", "git", "aimgr", "bd"],
+  });
+
   const tempHome = await mkdtemp(join(tmpdir(), "opencode-coder-preflight-home-"));
 
   try {

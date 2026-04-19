@@ -108,7 +108,8 @@ Use them for:
 
 Prerequisites:
 - built plugin artifact (`bun run build`)
-- `opencode` available on `PATH`
+- host prerequisites are checked before deeper bootstrap: required `opencode` + `git`; conditional `aimgr` for aimgr/additive coverage; conditional `bd` for beads bootstrap coverage
+- host tool resolution checks `PATH` first, then common mise install locations (`~/.local/share/mise/installs/<tool>/...`)
 - Private-package coverage (including `@hk9890/opencode-dynatrace`) is opt-in via `OPENCODE_CODER_PRIVATE_TESTS=true`. Default public-safe isolated runs skip private plugin installation.
 
 Commands:
@@ -137,6 +138,8 @@ Entry points:
 bun run test:manual -- --help
 bun run test:launcher:preflight
 ```
+
+Launcher/e2e/integration preflight uses the shared host prerequisite helper before suite-specific setup. The helper verifies host availability and reports resolved executable/bin-dir details, but does **not** mutate `process.env.PATH` or inject tools into generated isolated/manual environments implicitly.
 
 What launcher preflight proves:
 

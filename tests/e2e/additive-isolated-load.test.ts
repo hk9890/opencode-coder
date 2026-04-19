@@ -3,21 +3,25 @@ import { describe, expect, it } from "bun:test";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import {
-  checkAimgrAvailability,
+  checkHostToolPrerequisites,
   cleanupFixtureWorkspace,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
+  prependResolvedHostToolBinDirs,
 } from "./helpers/harness";
 
 const PROJECT_ROOT = join(import.meta.dir, "..", "..");
 const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
-const aimgrCheck = await checkAimgrAvailability();
-if (aimgrCheck.resolvedBinDir) {
-  process.env.PATH = [aimgrCheck.resolvedBinDir, process.env.PATH ?? ""]
-    .filter((entry) => entry && entry.length > 0)
-    .join(":");
+const hostPrerequisites = await checkHostToolPrerequisites({ requireAimgr: true });
+if (!hostPrerequisites.available && hostPrerequisites.diagnostics) {
+  throw new Error(hostPrerequisites.diagnostics);
 }
+prependResolvedHostToolBinDirs(hostPrerequisites.tools, {
+  tools: ["opencode", "git", "aimgr"],
+});
+
+const aimgrCheck = hostPrerequisites.tools.find((tool) => tool.tool === "aimgr");
 
 type AdditiveIsolatedLoadCase = {
   packageName: "coder-core" | "coder-beads" | "coder-docs" | "coder-support" | "code-simplify";
@@ -32,7 +36,7 @@ const ADDITIVE_ISOLATED_LOAD_CASES: AdditiveIsolatedLoadCase[] = [
   { packageName: "code-simplify", expectedSkillName: "code-simplify" },
 ];
 
-describe.skipIf(!aimgrCheck.available)("additive isolated loadability", () => {
+describe.skipIf(!aimgrCheck?.available)("additive isolated loadability", () => {
   for (const testCase of ADDITIVE_ISOLATED_LOAD_CASES) {
     it(`installs package/${testCase.packageName} from coder-skill-installed baseline without requiring root manifest edits`, async () => {
       const workspace = await createFixtureWorkspace("coder-skill-installed");

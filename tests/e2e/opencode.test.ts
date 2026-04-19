@@ -4,13 +4,13 @@ import { cp, mkdir, readFile, rm } from "fs/promises";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
-  checkAimgrAvailability,
-  checkOpencodeAvailability,
+  checkHostToolPrerequisites,
   cleanupFixtureWorkspace,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
   formatElapsed,
   findAvailablePort,
+  prependResolvedHostToolBinDirs,
   readIfExists,
   resolveCopilotAuthSeedFromEnv,
   runOpencodeCli,
@@ -27,25 +27,18 @@ const PROJECT_ROOT = join(__dirname, "..", "..");
 const ARTIFACT_DIR = join(PROJECT_ROOT, "tests", "e2e", ".artifacts");
 const AI_RESOURCES_DIR = join(PROJECT_ROOT, "ai-resources");
 
-const opencodeCheck = await checkOpencodeAvailability();
-if (opencodeCheck.resolvedBinDir) {
-  process.env.PATH = [opencodeCheck.resolvedBinDir, process.env.PATH ?? ""]
-    .filter((entry) => entry && entry.length > 0)
-    .join(":");
+const hostPrerequisites = await checkHostToolPrerequisites({
+  requireAimgr: false,
+  requireBd: true,
+});
+if (!hostPrerequisites.available && hostPrerequisites.diagnostics) {
+  throw new Error(hostPrerequisites.diagnostics);
 }
-if (!opencodeCheck.available && opencodeCheck.diagnostics) {
-  console.warn("\n" + opencodeCheck.diagnostics + "\n");
-}
+prependResolvedHostToolBinDirs(hostPrerequisites.tools, {
+  tools: ["opencode", "git", "bd"],
+});
 
-const aimgrCheck = await checkAimgrAvailability();
-if (aimgrCheck.resolvedBinDir) {
-  process.env.PATH = [aimgrCheck.resolvedBinDir, process.env.PATH ?? ""]
-    .filter((entry) => entry && entry.length > 0)
-    .join(":");
-}
-if (!aimgrCheck.available && aimgrCheck.diagnostics) {
-  console.warn("\n" + aimgrCheck.diagnostics + "\n");
-}
+const opencodeCheck = hostPrerequisites.tools.find((tool) => tool.tool === "opencode");
 
 async function withScenarioLogging<T>(name: string, fn: () => Promise<T>): Promise<T> {
   const startedAt = Date.now();
@@ -82,7 +75,7 @@ async function runLoggedOpencodeCli(
   return result;
 }
 
-describe.skipIf(!opencodeCheck.available)("OpencodeCoder E2E Tests", () => {
+describe.skipIf(!opencodeCheck?.available)("OpencodeCoder E2E Tests", () => {
   const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
   const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
   const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";

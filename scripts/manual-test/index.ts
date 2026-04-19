@@ -7,12 +7,13 @@ import { basename, join } from "path";
 import {
   FIXTURE_NAMES,
   type FixtureName,
-  checkOpencodeAvailability,
+  checkHostToolPrerequisites,
   createFixtureWorkspace,
   createIsolatedOpenCodePaths,
   createProjectPathWorkspace,
   isFixtureName,
   type PluginSource,
+  prependResolvedHostToolBinDirs,
   prepareCoderFixtureResources,
   prepareWorkspacePluginSource,
   resolveAuthSeedPath,
@@ -690,13 +691,18 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 
   let extraPathDirs: string[] = [];
   if (requiresOpencodeBinary(args.mode)) {
-    const opencodeCheck = await checkOpencodeAvailability();
-    if (!opencodeCheck.available) {
-      console.error(opencodeCheck.diagnostics ?? "opencode binary not found in PATH.");
+    const hostPrerequisites = await checkHostToolPrerequisites({
+      requireAimgr: false,
+      requireBd: false,
+    });
+    if (!hostPrerequisites.available) {
+      console.error(hostPrerequisites.diagnostics ?? "Missing required host tools for launcher startup.");
       return 1;
     }
 
-    extraPathDirs = opencodeCheck.resolvedBinDir ? [opencodeCheck.resolvedBinDir] : [];
+    const opencode = hostPrerequisites.tools.find((tool) => tool.tool === "opencode");
+    extraPathDirs = opencode?.resolvedBinDir ? [opencode.resolvedBinDir] : [];
+    prependResolvedHostToolBinDirs(hostPrerequisites.tools, { tools: ["opencode", "git"] });
   }
 
   await mkdir(MANUAL_RUNS_ROOT, { recursive: true });
@@ -721,13 +727,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const openCodeBootstrapRequired = requiresOpenCodeBootstrap(args.mode);
     let selectedPluginSource = args.pluginSource;
 
-    const isolatedPaths = openCodeBootstrapRequired
-      ? await createIsolatedOpenCodePaths(workspace.tempRoot, {
-          prewarmOpenCodeData: true,
-        })
-      : await createIsolatedOpenCodePaths(workspace.tempRoot, {
-          prewarmOpenCodeData: true,
-        });
+    const isolatedPaths = await createIsolatedOpenCodePaths(workspace.tempRoot, {
+      prewarmOpenCodeData: true,
+    });
 
     if (openCodeBootstrapRequired) {
       const hostEnvForPluginPrep: NodeJS.ProcessEnv = {
@@ -742,7 +744,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           key === "XDG_CACHE_HOME" ||
           key === "BUN_INSTALL" ||
           key === "NODE_AUTH_TOKEN" ||
-          key.startsWith("OPENCODE_") ||
+          (key.startsWith("OPENCODE_") && key !== "OPENCODE_CONFIG_DIR") ||
           key.startsWith("NPM_CONFIG_") ||
           key.startsWith("npm_config_")
         ) {
