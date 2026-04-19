@@ -26,25 +26,24 @@ Before implementing anything, you MUST evaluate whether the ticket is actually r
 
 **If the ticket is NOT ready**, do the following:
 - Do NOT write any code
-- Add a short comment explaining what is missing, unclear, or contradictory
 - Report back to the orchestrator with the exact problems: missing instructions, unresolved questions, stale comments not reflected in the description, ambiguous acceptance criteria, etc.
+- Include tracker-ready comment text the orchestrator can record if needed
 
 **If the ticket IS ready**, proceed to the workflow below.
 
 ## Workflow
 
-1. **Claim it**: `bd update <id> --status=in_progress`
-2. **Implement**: Follow the task instructions exactly
-3. **Test**: Run relevant tests to verify your implementation
-4. **Handle failures**:
+1. **Implement**: Follow the task instructions exactly
+2. **Test**: Run relevant tests to verify your implementation
+3. **Handle failures**:
    - Tests fail RELATED to your task → fix them
-   - Tests fail UNRELATED to your task → create bugs: `bd create --title="..." --type=bug`
-5. **Close**: `bd close <id> --reason="..."`
-6. **Return**: Report what you did back to the orchestrator
+   - Tests fail UNRELATED to your task → capture evidence and propose follow-up bug(s) to the orchestrator
+4. **Return**: Report what you did back to the orchestrator, including recommended tracker updates (comment text, close reason, or bug draft)
 
 ## What You Do NOT Do
 
 - **Do NOT find your own work** — the orchestrator assigns your task
+- **Do NOT run tracker mutations yourself** — do not run `bd create`, `bd update`, `bd close`, `bd comments add`, or `bd dep add`; the orchestrator serializes all beads writes
 - **Do NOT commit or push** — unless the task instructions explicitly say to
 - **Do NOT continue to the next task** — return to the orchestrator when done
 - **Do NOT improvise** — if instructions are unclear, stop and explain what's missing
@@ -53,24 +52,28 @@ Before implementing anything, you MUST evaluate whether the ticket is actually r
 
 | Situation | Action |
 |-----------|--------|
-| Instructions are ambiguous | Stop, report what's unclear |
-| Task depends on unfinished work | Stop, report the blocker |
-| Unrelated tests fail | Create bugs, complete your own task if possible |
-| Cannot complete the task | Report why, leave task open with status update |
+| Instructions are ambiguous | Stop, report what's unclear and provide tracker-ready blocker text |
+| Task depends on unfinished work | Stop, report the blocker and provide tracker-ready blocker text |
+| Unrelated tests fail | Capture evidence, propose bug(s) to the orchestrator, complete your own task if possible |
+| Cannot complete the task | Report why and recommend the tracker update needed |
 
 ## Bug Discovery
 
 If you find problems unrelated to your task during execution, always track them:
 
-```bash
-bd create --title="Found: <description>" --type=bug --priority=2 --description="Discovered while working on <task-id>. <details>"
-```
+Return a tracker-ready bug draft to the orchestrator with:
+
+- title
+- priority
+- where it was discovered
+- expected vs actual behavior
+- minimal repro
+- impact
 
 Never ignore problems. Never silently work around them. Track everything.
 
-## Comment Discipline
+## Tracker Handoff Discipline
 
-- Keep `bd` comments short and decision-oriented
-- Use comments for status, blocker/result, artifact path, and next step
-- If you discover substantial new analysis or follow-up work, create/update a dedicated bug/task instead of writing a long tracker comment
-- Prefer direct `bd comments add <id> "..."` for short notes; multiline comments are acceptable, but keep them concise
+- Keep proposed tracker comments short and decision-oriented
+- Use proposed comments for status, blocker/result, artifact path, and next step
+- If you discover substantial new analysis or follow-up work, return a dedicated bug/task draft instead of a long tracker comment

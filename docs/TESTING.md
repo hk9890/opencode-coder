@@ -296,6 +296,7 @@ Beads coverage uses a two-tier fixture model so tests stay reproducible without 
 - Test harness/runtime paths create functional beads state in copied workspaces using `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
 - This split keeps fixtures stable in git while still exercising real beads runtime behavior.
 - Beads (embedded dolt backend) is single-writer per workspace, so serialize `bd` writes in tests and evals for the same `.beads/` directory.
+- Do not treat concurrent lock failure as the expected success signal. The correct contract in this repo is: one orchestrator/main test lane performs tracker mutations serially per workspace.
 - When `bd` changes, rerun beads-related coverage and confirm bootstrap still works with `bd init --non-interactive --skip-hooks --skip-agents --quiet`.
 - Useful references: `tests/unit/beads-service.test.ts`, `tests/integration/beads-init-markdown-boundary.test.ts`, `tests/integration/manual-launcher.test.ts`, `tests/helpers/beads-fixture.ts`.
 

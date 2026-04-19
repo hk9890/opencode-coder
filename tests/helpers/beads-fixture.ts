@@ -14,6 +14,8 @@ import { checkHostToolPrerequisites, prependResolvedHostToolBinDirs } from "../e
  * - Keep `bd create` / `bd update` / `bd close` calls serialized within a workspace.
  * - If parallel test workers need `bd` writes, each worker should use its own
  *   isolated workspace instead of sharing one `.beads/` directory.
+ * - Do not assert that concurrent writes must fail; the repo contract is to
+ *   avoid concurrent writes entirely and serialize tracker mutations per workspace.
  */
 
 /**

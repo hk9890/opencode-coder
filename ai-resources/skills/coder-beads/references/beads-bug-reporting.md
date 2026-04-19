@@ -27,6 +27,14 @@ Include in description:
 bd create --title="Found: <description>" --type=bug --priority=2 --description="Discovered while working on <task-id>. Expected: <...>. Actual: <...>. Repro: <...>."
 ```
 
+## Subagent discovery routing
+
+When a tasker, reviewer, or verifier discovers a defect:
+
+- the subagent should return a tracker-ready bug draft plus evidence
+- the orchestrator should create the bug
+- keep bug creation serialized with other tracker writes for that workspace
+
 For acceptance-review failures:
 
 ```bash
@@ -44,3 +52,4 @@ bd create --title="Found: <acceptance gap>" --type=bug --priority=1 --descriptio
 - title states concrete symptom
 - avoid vague descriptions like “doesn't work”
 - never silently work around untracked defects
+- do not rely on concurrent `bd` write failure as expected behavior; serialize tracker writes instead

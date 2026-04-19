@@ -104,3 +104,4 @@ Notes:
 - Fixture-based beads runtime checks use the two-tier fixture model described in [`../../tests/e2e/fixtures/README.md`](../../tests/e2e/fixtures/README.md).
 - Test harness paths initialize copied beads workspaces with `bd init --non-interactive --skip-hooks --skip-agents --quiet` when required.
 - Beads uses a single-writer embedded backend, so serialize `bd` writes in tests and evals for the same workspace.
+- Do not rely on “one concurrent write must fail” as a test oracle; route tracker mutations through one serialized lane per workspace.
