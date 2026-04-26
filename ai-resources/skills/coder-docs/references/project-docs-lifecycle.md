@@ -1,8 +1,17 @@
 # Project-Docs Lifecycle
 
-Canonical lifecycle logic for docs setup/update/improvement work.
+Shared deep lifecycle logic for docs create/update/improve flows.
 
-This reference defines the lifecycle phases and completion bar for docs workflows.
+This reference is supporting logic, not the top-level intent router.
+
+Primary flow entrypoints:
+
+- create flow: [docs-init.md](docs-init.md)
+- update flow: [docs-update.md](docs-update.md)
+- improve flow: [docs-improve.md](docs-improve.md)
+- review flow (read-only): [project-doc-review-guidelines.md](project-doc-review-guidelines.md)
+
+Use this file for lifecycle phases, deep procedures, and verification standards reused by those entrypoints.
 
 ## Input contract
 
@@ -128,5 +137,3 @@ Use when a failure shows missing/unclear/stale guidance.
 4. Propose recurrence-prevention edits.
 5. Confirm high-impact changes.
 6. Apply updates and run verification loop.
-
-Non-goal: typo-only editorial cleanup without workflow impact.

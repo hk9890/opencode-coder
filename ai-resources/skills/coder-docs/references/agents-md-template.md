@@ -14,7 +14,6 @@ Generate a compact AGENTS file that routes tasks to canonical docs and installed
 
 - Target style: routing table, not handbook
 - Keep inline content minimal (project identity + session completion rules if required by project policy)
-- Prefer pointers over duplicated procedures
 
 ## Path placeholders
 

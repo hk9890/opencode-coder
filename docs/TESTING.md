@@ -310,7 +310,7 @@ This is the critical policy for AI-facing resources in this repo:
 - Test **runtime exposure** in e2e tests.
 - Test **semantic quality and usefulness** with manual testing.
 
-For docs lifecycle changes such as `/opencode-coder/init-or-update-docs`, `/opencode-coder/init`, and `/opencode-coder/improve-doc`:
+For docs lifecycle changes such as `/opencode-coder/create-docs`, `/opencode-coder/init-or-update-docs`, `/opencode-coder/improve-doc`, `/opencode-coder/review-docs`, and `/opencode-coder/init`:
 
 1. Run deterministic checks:
 

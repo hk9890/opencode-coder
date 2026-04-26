@@ -476,8 +476,14 @@ describe("manual launcher preflight", () => {
       const docsCommand = Bun.file(
         join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "init-or-update-docs.md")
       );
+      const createDocsCommand = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "create-docs.md")
+      );
       const improveDocCommand = Bun.file(
         join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "improve-doc.md")
+      );
+      const reviewDocsCommand = Bun.file(
+        join(preservedRoot!, "project", ".opencode", "commands", "opencode-coder", "review-docs.md")
       );
       const orchestratorAgent = Bun.file(join(preservedRoot!, "project", ".opencode", "agents", "orchestrator.md"));
       const opencodeAgentsDir = Bun.file(join(preservedRoot!, "project", ".opencode", "agents"));
@@ -494,8 +500,10 @@ describe("manual launcher preflight", () => {
       expect(await simplifySkill.exists()).toBe(true);
       expect(await beadsSkill.exists()).toBe(false);
       expect(await initCommand.exists()).toBe(true);
+      expect(await createDocsCommand.exists()).toBe(true);
       expect(await docsCommand.exists()).toBe(true);
       expect(await improveDocCommand.exists()).toBe(true);
+      expect(await reviewDocsCommand.exists()).toBe(true);
       expect(await orchestratorAgent.exists()).toBe(false);
       expect(await opencodeAgentsDir.exists()).toBe(false);
       expect(await beadsDir.exists()).toBe(false);

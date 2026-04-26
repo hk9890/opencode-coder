@@ -25,8 +25,6 @@ Prefer:
 - checklists
 - decision tables
 
-Avoid long narrative text with no execution value.
-
 ### A2 — Repo-local anchors required
 
 Every operational rule should include at least one local anchor:
@@ -39,9 +37,6 @@ Every operational rule should include at least one local anchor:
 ### A3 — Topic boundaries
 
 Each canonical file should stay on its assigned topic.
-
-- Do not copy testing catalogs into `CHANGE-WORKFLOW.md`.
-- Do not copy coding conventions into `TESTING.md`.
 
 ### A4 — Skill-aware local delta
 
@@ -62,11 +57,8 @@ Change-landing guidance belongs in `CHANGE-WORKFLOW.md`.
 
 Canonical docs should avoid:
 
-- self-descriptive openings with no operational value
-- roadmap/time-phase language
 - generic advice without local anchors
 - large pasted code blocks when a file pointer is enough
-- standalone generic workflow writeups in skill-backed topics
 
 ## Minimal validation before handoff
 

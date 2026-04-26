@@ -28,6 +28,8 @@
       "expected_output": "A docs cleanup response that inspects likely problems, proposes ordered cleanup work, and includes a verify rerun gate.",
       "files": [],
       "expectations": [
+        "Routes this request to the update-docs flow as the primary entrypoint",
+        "Explicitly states docs-only scope with no source-file edits",
         "Takes action-oriented ownership without pretending concrete files were already inspected",
         "Covers the lifecycle phases with a clear sequence",
         "Requires evidence gathering before consolidation/removal decisions",
@@ -42,6 +44,7 @@
       "expected_output": "An incident-driven docs improvement response that removes misrouted or hollow release guidance and restores correct skill routing.",
       "files": [],
       "expectations": [
+        "Routes this request to the improve-docs flow as the primary entrypoint",
         "Treats this as stale or misrouted docs incident",
         "Routes release workflow to github-releases rather than duplicating full release instructions",
         "Avoids preserving hollow generic RELEASING content",
@@ -52,13 +55,13 @@
     {
       "id": 3,
       "prompt": "Review our docs and tell me what is stale or confusing before changing anything.",
-      "expected_output": "A discussion-first docs improvement response that proposes options and asks for confirmation before major edits.",
+      "expected_output": "A read-only review response that reports findings and recommendations without making edits.",
       "files": [],
       "expectations": [
-        "Starts with strengths, gaps, and improvement proposals",
-        "Asks the user to choose proposals before broad edits",
-        "Requests explicit confirmation before destructive consolidation/removal",
-        "Keeps full lifecycle integrity after choices are made",
+        "Routes this request to the review/validate flow as the primary entrypoint",
+        "Explicitly states read-only behavior with no edits",
+        "Returns findings with severity, evidence, and suggested fixes",
+        "Recommends update or improve flow as next step for edits",
         "Does not fabricate an incident when none was provided"
       ]
     },
@@ -81,6 +84,7 @@
       "expected_output": "A project-doc review response that identifies stale doc failures, prescribes file-level corrections, and requires re-verification.",
       "files": [],
       "expectations": [
+        "Uses review findings format and keeps this pass read-only unless edit permission is explicit",
         "Flags stale links as verification failures",
         "Consolidates non-standard change-landing routing to docs/CHANGE-WORKFLOW.md",
         "Preserves project-specific content while removing duplicated generic sections",

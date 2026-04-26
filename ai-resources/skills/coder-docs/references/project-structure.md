@@ -1,6 +1,14 @@
 # Project-Doc Structure Guidance
 
-This reference defines structure rules that docs lifecycle workflows should apply.
+This reference defines structure and routing constraints.
+
+This file owns:
+
+- mode/path rules
+- structural constraints
+- AGENTS routing structure
+
+It does **not** own canonical doc-set definition or file ownership taxonomy; those live in [project-setup.md](project-setup.md).
 
 ## Mode-aware locations
 
@@ -16,27 +24,19 @@ Use placeholders during planning:
 - `{agents_md}` for mode-correct AGENTS file
 - `{docs}` for mode-correct docs directory
 
-## Standard docs contract
+## Structural constraints
 
-Topic files should use canonical names when created:
-
-- `OVERVIEW.md`
-- `CODING.md`
-- `TESTING.md`
-- `RELEASING.md`
-- `MONITORING.md`
-- `CHANGE-WORKFLOW.md`
-
-Create a topic file only when it has real repository-specific content.
-
-If a topic is skill-only (no local delta), route via AGENTS to the installed skill and skip hollow doc creation.
+- Use canonical topic names defined by [project-setup.md](project-setup.md).
+- Keep AGENTS concise and pointer-based.
+- Keep routes aligned to real files/skills only.
+- Treat non-standard docs as consolidation candidates unless explicitly justified.
 
 ## AGENTS routing rules
 
-- AGENTS is a routing surface, not a handbook.
 - Keep AGENTS concise and pointer-based.
 - Preserve custom non-template sections unless obsolete.
 - Ensure every route points to a real file or installed skill.
+- Keep AGENTS guidance as a routing layer, not a full procedure handbook.
 
 ## Consolidation orientation
 

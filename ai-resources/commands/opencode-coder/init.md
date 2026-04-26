@@ -8,4 +8,5 @@ Treat this as optional context/focus guidance:
 
 $ARGUMENTS
 
-Initialize and set up opencode-coder for this project.
+Initialize and set up coder-core skill for this project. Run the Installation & Setup workflow and follow the
+instructions there 

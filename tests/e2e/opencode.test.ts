@@ -77,7 +77,12 @@ async function runLoggedOpencodeCli(
 
 describe.skipIf(!opencodeCheck?.available)("OpencodeCoder E2E Tests", () => {
   const countMatches = (items: string[], value: string): number => items.filter((item) => item === value).length;
-  const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
+  const DOCS_LIFECYCLE_COMMANDS = [
+    "opencode-coder/create-docs",
+    "opencode-coder/init-or-update-docs",
+    "opencode-coder/improve-doc",
+    "opencode-coder/review-docs",
+  ] as const;
   const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";
   const COPILOT_MODEL_ENV = "E2E_COPILOT_MODEL";
   const DEFAULT_COPILOT_MODEL = "github-copilot/gpt-5.3-codex";
@@ -234,12 +239,20 @@ describe.skipIf(!opencodeCheck?.available)("OpencodeCoder E2E Tests", () => {
     await mkdir(commandsTargetDir, { recursive: true });
     await cp(join(AI_RESOURCES_DIR, "commands", "opencode-coder", "init.md"), join(commandsTargetDir, "init.md"));
     await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "create-docs.md"),
+      join(commandsTargetDir, "create-docs.md")
+    );
+    await cp(
       join(AI_RESOURCES_DIR, "commands", "opencode-coder", "init-or-update-docs.md"),
       join(commandsTargetDir, "init-or-update-docs.md")
     );
     await cp(
       join(AI_RESOURCES_DIR, "commands", "opencode-coder", "improve-doc.md"),
       join(commandsTargetDir, "improve-doc.md")
+    );
+    await cp(
+      join(AI_RESOURCES_DIR, "commands", "opencode-coder", "review-docs.md"),
+      join(commandsTargetDir, "review-docs.md")
     );
 
     const coreSkillTargetDir = join(skillsRootDir, "coder-core");

@@ -49,11 +49,20 @@ function savedModeResolution(mode: PluginModeResolution["mode"], source: PluginM
   };
 }
 
-const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
+const DOCS_LIFECYCLE_COMMANDS = [
+  "opencode-coder/create-docs",
+  "opencode-coder/init-or-update-docs",
+  "opencode-coder/improve-doc",
+  "opencode-coder/review-docs",
+] as const;
 const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md";
 
 function createLifecycleCommandFixture() {
   return {
+    "opencode-coder/create-docs": {
+      description: "docs create",
+      template: "create docs template",
+    },
     "opencode-coder/init-or-update-docs": {
       description: "docs lifecycle",
       template: "docs template",
@@ -61,6 +70,10 @@ function createLifecycleCommandFixture() {
     "opencode-coder/improve-doc": {
       description: "incident improvement",
       template: "improve template",
+    },
+    "opencode-coder/review-docs": {
+      description: "docs review read-only",
+      template: "review docs template",
     },
     "opencode-coder/update-agent-md": {
       description: "legacy docs command",
@@ -381,6 +394,10 @@ describe("OpencodeCoder Plugin Integration", () => {
       expect(cfg.command?.["opencode-coder/init-or-update-docs"]?.template).toBe("docs template");
       expect(cfg.command?.["opencode-coder/improve-doc"]?.description).toBe("incident improvement");
       expect(cfg.command?.["opencode-coder/improve-doc"]?.template).toBe("improve template");
+      expect(cfg.command?.["opencode-coder/create-docs"]?.description).toBe("docs create");
+      expect(cfg.command?.["opencode-coder/create-docs"]?.template).toBe("create docs template");
+      expect(cfg.command?.["opencode-coder/review-docs"]?.description).toBe("docs review read-only");
+      expect(cfg.command?.["opencode-coder/review-docs"]?.template).toBe("review docs template");
       expect(cfg.command?.[LEGACY_DOCS_COMMAND]).toBeUndefined();
 
       resolveModeSpy.mockRestore();

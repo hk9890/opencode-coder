@@ -1,6 +1,12 @@
 # Project-Doc Setup
 
-Use this reference to establish a clean project-doc baseline that supports selective loading by humans and coding agents.
+Use this reference to establish the canonical project-doc baseline.
+
+This file owns:
+
+- canonical doc set
+- file ownership boundaries
+- taxonomy baseline
 
 ## Baseline model
 
@@ -66,16 +72,12 @@ Notes:
 
 - Commit/push/branch/PR/review/merge expectations
 
-## Steering-doc defaults
+## Boundary to project-structure
 
-- Agent-first writing for canonical steering docs
-- Scan-first and action-first structure
-- No default compatibility redirect files for steering docs
-- Non-standard steering docs are consolidation candidates unless explicitly justified
+`project-setup.md` defines **what docs exist and who owns what**.
 
-## Routing pattern
+Use [project-structure.md](project-structure.md) for:
 
-1. Load AGENTS first.
-2. Route to only the docs needed for the current task.
-3. Route to reusable skills for generic workflow baselines.
-4. Keep project docs focused on local deltas: commands, paths, constraints, and failure modes.
+- mode-aware paths (`team` vs `stealth`)
+- structural constraints
+- AGENTS routing structure rules

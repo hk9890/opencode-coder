@@ -20,6 +20,10 @@
     "should_trigger": true
   },
   {
+    "query": "Update the docs to match what this repository actually does, but don't change source files.",
+    "should_trigger": true
+  },
+  {
     "query": "Are my project doc files good, or is there anything to improve?",
     "should_trigger": true
   },
@@ -33,6 +37,10 @@
   },
   {
     "query": "Can you review our project documentation and tell me what is stale or missing?",
+    "should_trigger": true
+  },
+  {
+    "query": "Review and validate the docs without editing anything.",
     "should_trigger": true
   },
   {

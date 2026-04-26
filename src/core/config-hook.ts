@@ -9,7 +9,12 @@ import type {
   ProjectContext,
 } from "../service";
 
-export const DOCS_LIFECYCLE_COMMANDS = ["opencode-coder/init-or-update-docs", "opencode-coder/improve-doc"] as const;
+export const DOCS_LIFECYCLE_COMMANDS = [
+  "opencode-coder/create-docs",
+  "opencode-coder/init-or-update-docs",
+  "opencode-coder/improve-doc",
+  "opencode-coder/review-docs",
+] as const;
 export const LEGACY_DOCS_COMMAND = "opencode-coder/update-agent-md" as const;
 
 interface ConfigInput {

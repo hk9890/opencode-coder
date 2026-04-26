@@ -20,8 +20,10 @@ const LEGACY_COMBINED_PACKAGE_RESOURCES = [
   "command/opencode-coder/doctor",
   "command/opencode-coder/report-bug",
   "command/opencode-coder/dump-session",
+  "command/opencode-coder/create-docs",
   "command/opencode-coder/init-or-update-docs",
   "command/opencode-coder/improve-doc",
+  "command/opencode-coder/review-docs",
   "command/simplify",
   "agent/orchestrator",
   "agent/reviewer",
@@ -55,8 +57,10 @@ const SPLIT_PACKAGE_CASES: SplitPackageCase[] = [
     packageName: "coder-docs",
     requiredResources: [
       "skill/coder-docs",
+      "command/opencode-coder/create-docs",
       "command/opencode-coder/init-or-update-docs",
       "command/opencode-coder/improve-doc",
+      "command/opencode-coder/review-docs",
     ],
   },
   {

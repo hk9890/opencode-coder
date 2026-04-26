@@ -72,7 +72,10 @@ Common next steps:
 - run `bd ready` to see unblocked work if you use beads
 - create work with `bd create "Task description" --type task`
 - re-run `/opencode-coder/init` after installing new resources
-- run `/opencode-coder/init-or-update-docs` to inspect, refresh, audit, and verify the project docs lifecycle (optionally pass a focus context to prioritize areas while still running the full lifecycle)
+- run `/opencode-coder/create-docs` when you want first-time/greenfield docs baseline creation
+- run `/opencode-coder/init-or-update-docs` to refresh/update an existing docs set (it can fall back to create if canonical docs are missing)
+- run `/opencode-coder/improve-doc` for structure/quality improvements (not read-only by default)
+- run `/opencode-coder/review-docs` for read-only findings and suggestions without editing files
 
 ### Public aimgr bootstrap command path
 

@@ -30,8 +30,10 @@ describe("docs lifecycle command contracts", () => {
   it("publishes docs lifecycle commands from split docs package and excludes legacy update-agent-md", () => {
     const packageSpec = JSON.parse(readFileSync(DOCS_PACKAGE_PATH, "utf8")) as { resources: string[] };
 
+    expect(packageSpec.resources).toContain("command/opencode-coder/create-docs");
     expect(packageSpec.resources).toContain("command/opencode-coder/init-or-update-docs");
     expect(packageSpec.resources).toContain("command/opencode-coder/improve-doc");
+    expect(packageSpec.resources).toContain("command/opencode-coder/review-docs");
     expect(packageSpec.resources).not.toContain("command/opencode-coder/update-agent-md");
   });
 
@@ -40,16 +42,26 @@ describe("docs lifecycle command contracts", () => {
   });
 
   it("keeps docs lifecycle command files and removes legacy command file", () => {
+    expect(existsSync(join(COMMANDS_DIR, "create-docs.md"))).toBe(true);
     expect(existsSync(join(COMMANDS_DIR, "init-or-update-docs.md"))).toBe(true);
     expect(existsSync(join(COMMANDS_DIR, "improve-doc.md"))).toBe(true);
+    expect(existsSync(join(COMMANDS_DIR, "review-docs.md"))).toBe(true);
     expect(existsSync(join(COMMANDS_DIR, "docs.md"))).toBe(false);
     expect(existsSync(join(COMMANDS_DIR, "update-agent-md.md"))).toBe(false);
+  });
+
+  it("enforces review-docs read-only command contract in published command surface", () => {
+    const reviewCommand = readFileSync(join(COMMANDS_DIR, "review-docs.md"), "utf8");
+
+    expect(reviewCommand).toContain("Keep this session read-only");
+    expect(reviewCommand).toContain("Do **not** modify, create, rename, or delete files");
+    expect(reviewCommand).toContain("findings with severity/evidence");
   });
 
   it("documents /opencode-coder/init as resource-backed command, not plugin bootstrap detector", () => {
     const initCommand = readFileSync(INIT_COMMAND_PATH, "utf8");
 
-    expect(initCommand).toContain("Initialize and set up opencode-coder for this project.");
+    expect(initCommand).toContain("Initialize and set up coder-core skill for this project.");
     expect(initCommand).not.toContain("two-pass workflow");
   });
 
@@ -71,13 +83,13 @@ describe("docs lifecycle command contracts", () => {
     const docsSkill = readFileSync(CODER_DOCS_SKILL_PATH, "utf8");
     const docsInitReference = readFileSync(DOCS_INIT_REFERENCE_PATH, "utf8");
 
-    expect(docsSkill).toContain("Initialize and set up project docs");
+    expect(docsSkill).toContain("Create project docs");
     expect(docsSkill).toContain("references/docs-init.md");
     expect(docsSkill).not.toContain("Run docs init workflow when dispatched");
 
-    expect(docsInitReference).toContain("Initialize and Set Up Project Docs");
+    expect(docsInitReference).toContain("Create Project Docs");
     expect(docsInitReference).toContain("team");
     expect(docsInitReference).toContain("stealth");
-    expect(docsInitReference).toContain("Only create or update the docs and routing files");
+    expect(docsInitReference).toContain("files intentionally skipped");
   });
 });
