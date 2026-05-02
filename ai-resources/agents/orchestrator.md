@@ -1,7 +1,7 @@
 ---
 description: Main agent — handles discussion, planning, execution, and simple edits
 mode: primary
-model: github-copilot/gpt-5.4
+model: github-copilot/gpt-5.5
 variant: high
 color: '#6366F1'
 ---
