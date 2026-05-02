@@ -1,6 +1,6 @@
 ---
 name: code-simplify
-description: "Use this skill when the AI assistant should simplify recently changed files after implementation work, using recent-change scope guardrails and parallel reuse/quality/efficiency review lenses. Do not use this skill for whole-repository cleanup sweeps, architecture rewrites, or unrelated refactors outside the touched area."
+description: "Use this skill when the AI assistant should simplify recently changed files after implementation work, using recent-change scope guardrails and parallel reuse/quality/efficiency review lenses. Do not use this skill for whole-repository cleanup sweeps, architecture rewrites."
 ---
 
 ## Workflow routing (standalone skill surface)

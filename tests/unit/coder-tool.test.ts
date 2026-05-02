@@ -1,5 +1,8 @@
 import { describe, expect, it, mock } from "bun:test";
 import { createCoderTool } from "../../src/tool/coder-tool";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 describe("createCoderTool subcommand dispatch", () => {
   function createFixture() {
@@ -92,5 +95,25 @@ describe("createCoderTool subcommand dispatch", () => {
     await expect(execute({ command: "not-a-command" }, context)).resolves.toContain(
       'Unknown command: "not-a-command"',
     );
+  });
+
+  it("detects current beads hook shims", async () => {
+    const { execute, context } = createFixture();
+    const workdir = mkdtempSync(join(tmpdir(), "coder-tool-beads-"));
+
+    try {
+      mkdirSync(join(workdir, ".beads"));
+      mkdirSync(join(workdir, ".git", "hooks"), { recursive: true });
+      writeFileSync(join(workdir, ".beads", "config.json"), JSON.stringify({ mode: "embedded" }));
+      writeFileSync(join(workdir, ".git", "hooks", "pre-commit"), "bd hooks run pre-commit \"$@\"\n");
+
+      const response = await execute({ command: "beads" }, { ...context, directory: workdir });
+
+      expect(response).toContain("Initialized: yes");
+      expect(response).toContain("Mode: embedded");
+      expect(response).toContain("Git hooks installed: yes");
+    } finally {
+      rmSync(workdir, { recursive: true, force: true });
+    }
   });
 });

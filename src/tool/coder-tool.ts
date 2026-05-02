@@ -120,7 +120,7 @@ Debug: ${debugEnabled ? "enabled" : "disabled"}`;
           if (existsSync(preCommitPath)) {
             try {
               const hookContent = readFileSync(preCommitPath, "utf-8");
-              hooksInstalled = hookContent.includes("bd sync");
+              hooksInstalled = hookContent.includes("bd hooks run") || hookContent.includes("bd sync");
             } catch {
               hooksInstalled = false;
             }

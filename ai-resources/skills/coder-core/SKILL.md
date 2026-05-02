@@ -1,6 +1,6 @@
 ---
 name: coder-core
-description: "Use this skill for core opencode-coder plugin/runtime workflows like init/setup guidance, mode/runtime behavior, plugin-runtime status and doctor troubleshooting, plugin/runtime debug log analysis, plugin/runtime bug reporting, and session dump export."
+description: "Use this skill only for core opencode-coder plugin/runtime workflows: init/setup guidance, mode/runtime behavior, plugin-runtime status/doctor troubleshooting, plugin/runtime debug-log analysis, plugin/runtime bug reporting, and session dump export."
 ---
 
 ## Core workflow routing (direct skill surface)
