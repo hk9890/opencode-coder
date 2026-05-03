@@ -7,15 +7,6 @@ description: "GitHub backend for task synchronization. Syncs beads issues with G
 
 GitHub-specific backend for bidirectional task synchronization using gh CLI.
 
-## About This Skill
-
-This skill implements GitHub issue synchronization with beads. It:
-
-- Syncs beads issues with GitHub issues bidirectionally
-- Supports import (GitHub → beads), export (beads → GitHub), and bidirectional workflows
-- Uses gh CLI for all GitHub operations
-- Can be invoked directly or via task-sync skill delegation
-
 **Important**: Load `task-sync` skill for workflow orchestration guidance. If not loaded, load it first:
 
 ```
@@ -249,7 +240,6 @@ Common error scenarios and resolutions:
 
 - **Not found**: Install beads CLI
 - **Not in beads project**: Run `bd init --skip-agents` (or `bd init --stealth --skip-agents`) or navigate to a beads project
-- **Boundary**: Direct/manual beads init is tracker/hooks setup only. It must not be used to create or refresh project markdown docs (`AGENTS.md`, `README`, etc.); that remains the opencode-coder docs-lifecycle responsibility.
 - **Create failed**: Check bead parameters and .beads/ permissions
 
 ### Sync Errors
@@ -259,18 +249,3 @@ Common error scenarios and resolutions:
 - **Failed to create GitHub issue**: Show error, offer retry
 
 **For complete error guide**: See [references/error-handling.md](references/error-handling.md)
-
-## Reference Files
-
-GitHub-specific documentation and commands:
-
-- **[gh-commands.md](references/gh-commands.md)** - Complete gh CLI command reference for all sync operations
-- **[label-mapping.md](references/label-mapping.md)** - Bidirectional priority/label mapping and formatting rules
-- **[error-handling.md](references/error-handling.md)** - All error scenarios with causes and resolutions
-- **[bidirectional-workflow.md](references/bidirectional-workflow.md)** - GitHub-specific bidirectional sync implementation
-
-Load task-sync skill references for workflow guidance:
-- task-sync/references/import-workflow.md
-- task-sync/references/export-workflow.md
-- task-sync/references/bidirectional-workflow.md
-- task-sync/references/safety-guidelines.md

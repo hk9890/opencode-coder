@@ -2,8 +2,6 @@
 
 Guide for reporting opencode-coder plugin/runtime issues with actionable evidence.
 
-This core reference excludes beads tracker filing/follow-up workflow details.
-
 ## What belongs here
 
 Report plugin/runtime problems such as:
@@ -53,3 +51,5 @@ https://github.com/dynatrace-oss/opencode-coder
 ```
 
 Keep reports focused: one issue per problem, specific title, sanitized attachments.
+
+If you need tracker filing/follow-up workflow guidance, use the `coder-beads` skill.

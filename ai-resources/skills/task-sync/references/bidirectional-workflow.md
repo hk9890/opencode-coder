@@ -356,16 +356,6 @@ For each synced issue:
      └─ Merge (union) → Auto-resolve
 ```
 
-## Best Practices
-
-1. **Import first**: Always fetch external changes before pushing local changes
-2. **Detect conflicts early**: Compare states before making changes
-3. **Auto-resolve when safe**: Don't bother user with obvious cases
-4. **Ask for ambiguous**: When both systems changed, user decides
-5. **Clear communication**: Show exactly what conflicts exist and why
-6. **Atomic operations**: Complete each resolution fully before moving to next
-7. **Show final summary**: User should see complete picture of what happened
-
 ## Error Handling
 
 ### Partial Failures
@@ -383,12 +373,3 @@ If user cancels during conflict resolution:
 - Mark unresolved conflicts as pending
 - Show what was completed
 - Allow resume later
-
-## Integration with Backends
-
-Backend skills should:
-1. Provide individual issue fetch capability for conflict detection
-2. Support update operations (not just create)
-3. Handle both import and export in single session
-4. Return timestamps when available
-5. Reference this workflow for bidirectional sync

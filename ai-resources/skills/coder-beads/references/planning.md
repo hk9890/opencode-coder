@@ -1,6 +1,6 @@
 # Beads Planning Reference
 
-Self-contained guide for creating epics, tasks, acceptance-review tasks, and beads execution plans.
+Guide for creating epics, tasks, acceptance-review tasks, and beads execution plans.
 
 ## Beads issue types
 

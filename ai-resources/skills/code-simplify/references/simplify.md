@@ -103,17 +103,6 @@ Run the smallest relevant validation for the files you changed:
 
 If no meaningful validation is available, state that explicitly.
 
-## Implementation Notes
-
-This workflow is prompt-driven through the hosting skill and command layer rather than a special built-in product feature.
-
-Keep these invariants intact even if the surrounding runtime changes:
-
-- default scope comes from recent changes, not a whole-repo cleanup sweep
-- reuse, quality, and efficiency should be reviewed separately, in parallel when the environment supports it
-- safe local simplifications can be applied directly
-- broader refactors still require user confirmation
-
 ## Output Format
 
 End with a concise summary that covers:

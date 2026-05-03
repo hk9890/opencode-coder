@@ -12,8 +12,6 @@ GitHub-specific implementation details for bidirectional synchronization with be
 - [Phase 4: GitHub-Specific Conflict Resolution](#phase-4-github-specific-conflict-resolution)
 - [GitHub-Specific Conflict Examples](#github-specific-conflict-examples)
 - [Error Handling in GitHub Commands](#error-handling-in-github-commands)
-- [Best Practices](#best-practices)
-- [Integration with task-sync Skill](#integration-with-task-sync-skill)
 
 ## Overview
 
@@ -507,22 +505,3 @@ if ! gh issue list --repo $REPO --state open 2>&1; then
   exit 1
 fi
 ```
-
-## Best Practices
-
-1. **Always fetch current state**: Don't assume cached data is current
-2. **Use timestamps**: Compare `updatedAt` fields when available
-3. **Handle edge cases**: Issue already closed, label doesn't exist, etc.
-4. **Batch operations**: Use loops but handle individual failures
-5. **Log all changes**: Track what was auto-resolved vs user-resolved
-6. **Provide URLs**: Show GitHub issue URLs in summary for easy access
-7. **Add comments**: Use `gh issue comment` to explain sync actions
-
-## Integration with task-sync Skill
-
-This skill should:
-1. Load task-sync skill for workflow guidance
-2. Follow conflict categorization from task-sync/references/safety-guidelines.md
-3. Reference task-sync/references/bidirectional-workflow.md for overall flow
-4. Implement GitHub-specific commands documented here
-5. Report results in format expected by task-sync orchestrator

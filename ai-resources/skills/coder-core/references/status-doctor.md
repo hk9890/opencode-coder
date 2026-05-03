@@ -2,8 +2,6 @@
 
 Core status/doctor checks for plugin runtime health.
 
-This reference intentionally excludes beads-owned health checks such as `bd doctor`, hooks verification, and tracker diagnostics.
-
 ## Quick runtime verification
 
 ```bash
@@ -39,3 +37,5 @@ Detailed troubleshooting routes:
 - [troubleshooting-runtime.md](troubleshooting-runtime.md)
 - [debugging-logs.md](debugging-logs.md)
 - [bug-reporting.md](bug-reporting.md)
+
+For tracker diagnostics (`bd doctor`), hooks verification, or beads workflow health checks, use the `coder-beads` skill.

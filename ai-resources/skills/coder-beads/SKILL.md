@@ -5,19 +5,6 @@ description: "Use this skill for beads-centric planning, issue structure, execut
 
 # coder-beads
 
-Standalone beads workflow surface.
-
-This skill owns:
-
-- planning and issue decomposition for beads work
-- issue/task structure and labels
-- execution orchestration across ready/blocked work
-- acceptance-review gate patterns
-- beads initialization, setup/runtime troubleshooting, and health checks
-- beads follow-up behavior for tracker workflow issues (creating bugs/tasks for discovered issues)
-
-This skill does **not** own docs lifecycle or AGENTS generation workflows.
-
 ## Workflow routing
 
 | Need | Source of truth |
@@ -32,11 +19,7 @@ This skill does **not** own docs lifecycle or AGENTS generation workflows.
 | Perform quick status/health verification | [references/beads-status-health.md](references/beads-status-health.md) |
 | File tracker follow-ups / bug reports with evidence | [references/beads-bug-reporting.md](references/beads-bug-reporting.md) |
 
-## Optional companions (not required)
+## Additional routing
 
-Use other skills only when scope extends beyond beads ownership:
-
-- docs lifecycle or AGENTS authoring tasks
-- plugin-core/runtime internals outside beads workflow ownership
-
-These are optional companions, never prerequisites for using `coder-beads`.
+- For docs lifecycle or AGENTS authoring work, route to `coder-docs`.
+- For plugin runtime/bootstrap/status/doctor workflows, route to `coder-core`.

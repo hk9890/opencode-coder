@@ -100,8 +100,6 @@ Based on the user interview, fill in these components:
 
 ### Skill Writing Guide
 
-This section is **authoring-time guidance** for the person writing/editing a skill. Do not copy this guidance into runtime `SKILL.md` text unless it directly changes execution behavior.
-
 #### Anatomy of a Skill
 
 ```
@@ -124,8 +122,6 @@ Skills use a three-level loading system:
 
 These word counts are approximate and you can feel free to go longer if needed.
 
-Treat these as authoring heuristics for structuring files, not runtime instructions to the model using the finished skill.
-
 **Key patterns:**
 - Keep SKILL.md under 500 lines; if you're approaching this limit, add an additional layer of hierarchy along with clear pointers about where the model using the skill should go next to follow up.
 - Reference files clearly from SKILL.md with guidance on when to read them
@@ -146,7 +142,7 @@ The AI reads only the relevant reference file.
 
 This goes without saying, but skills must not contain malware, exploit code, or any content that could compromise system security. A skill's contents should not surprise the user in their intent if described. Don't go along with requests to create misleading skills or skills designed to facilitate unauthorized access, data exfiltration, or other malicious activities. Things like a "roleplay as an XYZ" are OK though.
 
-#### Runtime-value sentence review (authoring-time gate)
+#### Runtime-value sentence review
 
 Before finalizing runtime `SKILL.md` content, review each sentence and ask: **does this sentence change runtime routing, decisions, constraints, or outputs?**
 
@@ -184,8 +180,6 @@ Output: feat(auth): implement JWT-based authentication
 ```
 
 ### Writing Style
-
-These are authoring-time heuristics for writing robust runtime instructions.
 
 Try to explain to the model why things are important in lieu of heavy-handed musty MUSTs. Use theory of mind and try to make the skill general and not super-narrow to specific examples. Start by writing a draft and then look at it with fresh eyes and improve it.
 
@@ -384,8 +378,6 @@ kill $VIEWER_PID 2>/dev/null
 This is the heart of the loop. You've run the test cases, the user has reviewed the results, and now you need to make the skill better based on their feedback.
 
 ### How to think about improvements
-
-The following are authoring-time iteration heuristics for revising skills after eval feedback.
 
 1. **Generalize from the feedback.** The big picture thing that's happening here is that we're trying to create skills that can be used a million times (maybe literally, maybe even more who knows) across many different prompts. Here you and the user are iterating on only a few examples over and over again because it helps move faster. The user knows these examples in and out and it's quick for them to assess new outputs. But if the skill you and the user are codeveloping works only for those examples, it's useless. Rather than put in fiddly overfitty changes, or oppressively constrictive MUSTs, if there's some stubborn issue, you might try branching out and using different metaphors, or recommending different patterns of working. It's relatively cheap to try and maybe you'll land on something great.
 

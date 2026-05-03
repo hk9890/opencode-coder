@@ -259,15 +259,6 @@ After showing summary, ask if user wants to:
 - Skip this bead
 - Continue with remaining exports
 
-## Best Practices
-
-1. **Always show preview**: User should see what will be exported before action
-2. **Allow selection**: User should control which beads to export
-3. **Capture external IDs**: Critical for future sync and tracking
-4. **Handle partial failures**: One failure shouldn't abort entire export
-5. **Clear reporting**: Show success and failures separately
-6. **Preserve metadata**: Include bead context in external issue
-
 ## Status Sync After Export
 
 After successfully exporting a bead, consider syncing status:
@@ -282,13 +273,3 @@ After export, if bead status is `closed` or `done`:
 ### If Bead is In Progress
 
 No immediate status sync needed - bidirectional sync will handle future updates
-
-## Integration with Backends
-
-Backend skills should:
-1. Follow this workflow structure
-2. Implement system-specific create commands
-3. Document system-specific priority/label mappings
-4. Handle system-specific ID extraction
-5. Provide external URLs in summary
-6. Reference this workflow from backend SKILL.md

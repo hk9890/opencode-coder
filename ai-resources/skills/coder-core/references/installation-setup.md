@@ -2,8 +2,6 @@
 
 Core setup guidance for opencode-coder plugin/runtime behavior.
 
-This reference intentionally excludes beads tracker bootstrap, hooks, and tracker-health workflows.
-
 ## Preferred setup path
 
 Use the plugin's init/setup entrypoint in your OpenCode session when available.
@@ -69,3 +67,4 @@ Route to focused troubleshooting:
 
 - runtime/config/log locations: [troubleshooting-runtime.md](troubleshooting-runtime.md)
 - debug logging and evidence collection: [debugging-logs.md](debugging-logs.md)
+- tracker bootstrap, hooks, or tracker health workflows: use the `coder-beads` skill

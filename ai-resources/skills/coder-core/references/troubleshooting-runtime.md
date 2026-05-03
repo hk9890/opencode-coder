@@ -1,6 +1,6 @@
 # Troubleshooting Runtime/Config (Core)
 
-Focused troubleshooting for plugin/runtime issues that do not require beads-specific diagnostics.
+Focused troubleshooting for plugin/runtime issues.
 
 ## Plugin appears disabled or missing
 
@@ -53,6 +53,4 @@ Collect evidence and escalate with:
 - [bug-reporting.md](bug-reporting.md)
 - [session-dump.md](session-dump.md)
 
-## Boundary reminder
-
-For tracker-specific errors, hooks, or `bd doctor` remediation, route to the optional `coder-beads` companion skill.
+For tracker-specific errors, hooks, or `bd doctor` remediation, use the `coder-beads` skill.

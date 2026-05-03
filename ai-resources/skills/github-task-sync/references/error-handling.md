@@ -12,7 +12,6 @@ Common error scenarios and resolutions for GitHub task synchronization.
 - [Error Recovery Patterns](#error-recovery-patterns)
 - [Logging and Debugging](#logging-and-debugging)
 - [Error Message Templates](#error-message-templates)
-- [Best Practices](#best-practices)
 
 ## Prerequisites Errors
 
@@ -116,8 +115,6 @@ Verify:
 ```
 
 **Resolution**: Ensure in beads project, then retry
-
-**Boundary**: direct/manual `bd init ... --skip-agents` is beads-state/hooks setup only. It does not own markdown/project-doc generation or refresh.
 
 ### Repository Not Detected
 
@@ -581,14 +578,3 @@ Detailed technical error messages:
   Error output: <stderr>
   Context: <relevant state information>
 ```
-
-## Best Practices
-
-1. **Check prerequisites first**: Validate environment before starting sync
-2. **Handle errors gracefully**: One failure shouldn't stop entire operation
-3. **Show clear messages**: Users need actionable information
-4. **Log for debugging**: Detailed logs help troubleshoot issues
-5. **Provide recovery**: Offer ways to retry or fix failures
-6. **Don't rollback**: Keep successful operations, only retry failures
-7. **Validate inputs**: Check data before making API calls
-8. **Rate limit awareness**: Check limits before batch operations

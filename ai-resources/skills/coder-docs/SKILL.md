@@ -53,18 +53,12 @@ Supporting references:
 - For review flow, explicitly state read-only behavior and return findings with severity, evidence, and suggested fixes.
 - For AGENTS guidance, keep output concise and routing-oriented; do not inline full procedures that belong in docs or skills.
 
-## Ownership boundary
+## Runtime routing guardrails
 
-This skill owns:
+Use `coder-docs` for docs lifecycle work (create, update, improve, review) and AGENTS routing alignment.
 
-- docs lifecycle guidance and execution model
-- project-doc setup and taxonomy guidance
-- docs update/improve/review execution guidance
-- AGENTS generation guidance and routing structure
-- project-doc content review guidance
+If the request is primarily about non-doc workflows, route directly:
 
-Do not use this skill as the primary workflow for:
-
-- plugin bug reporting
-- debugging-log triage
-- external tracker synchronization
+- plugin/runtime bug reporting or runtime troubleshooting → `coder-core`
+- observability or log triage → `observability-triage`
+- external tracker synchronization (GitHub/Jira) → `task-sync` (and backend sync skills)

@@ -7,15 +7,6 @@ description: "Bidirectional synchronization between beads and external task syst
 
 Orchestrate bidirectional synchronization between beads and external task tracking systems.
 
-## About This Skill
-
-This skill provides system-agnostic workflow guidance for task synchronization. It:
-
-- Detects sync direction (import, export, or bidirectional)
-- Identifies which backend system to use (GitHub, Jira, etc.)
-- Delegates implementation to backend-specific skills
-- Ensures safe, user-controlled synchronization with conflict detection
-
 ## Decision Tree
 
 When this skill loads, follow these steps:
@@ -73,8 +64,6 @@ High-level steps for importing external issues into beads:
 
 **For detailed workflow**: Load [references/import-workflow.md](references/import-workflow.md)
 
-Backend skills should follow this workflow and implement system-specific commands.
-
 ## Export Workflow
 
 High-level steps for exporting beads issues to external system:
@@ -89,8 +78,6 @@ High-level steps for exporting beads issues to external system:
 5. Show export summary (count, mappings, any errors)
 
 **For detailed workflow**: Load [references/export-workflow.md](references/export-workflow.md)
-
-Backend skills should follow this workflow and implement system-specific commands.
 
 ## Bidirectional Workflow
 
@@ -172,8 +159,6 @@ Conflicts Detected:
 
 ## Metadata Conventions
 
-Backend skills should follow these label patterns:
-
 ### Label Patterns
 
 - `source:external` - Issue was imported from external system
@@ -196,12 +181,3 @@ When exporting beads to external system:
 2. Capture external ID from response
 3. Add label `system:ID` to bead (e.g., `github:123`)
 4. Do NOT add `source:external` label (indicates direction)
-
-## Reference Files
-
-Load these for detailed workflows and guidelines:
-
-- **[import-workflow.md](references/import-workflow.md)** - Complete import process with deduplication, mapping, and reporting
-- **[export-workflow.md](references/export-workflow.md)** - Complete export process with eligibility checks, user confirmation, and ID tracking
-- **[bidirectional-workflow.md](references/bidirectional-workflow.md)** - Combined workflow with conflict detection and resolution strategies
-- **[safety-guidelines.md](references/safety-guidelines.md)** - Detailed conflict scenarios with resolution patterns and agentic decision tree

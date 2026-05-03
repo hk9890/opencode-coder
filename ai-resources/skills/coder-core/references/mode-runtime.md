@@ -1,6 +1,6 @@
 # Mode & Runtime Guidance (Core)
 
-Canonical core guidance for plugin runtime mode behavior.
+Plugin runtime mode behavior guidance.
 
 ## Saved mode source of truth
 

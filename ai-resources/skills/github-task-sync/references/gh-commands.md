@@ -9,7 +9,6 @@ Complete reference for all `gh` CLI commands used in GitHub task synchronization
 - [Export Commands](#export-commands)
 - [Update Commands](#update-commands)
 - [Error Handling Patterns](#error-handling-patterns)
-- [Best Practices](#best-practices)
 - [Command Cheat Sheet](#command-cheat-sheet)
 - [Integration with Beads](#integration-with-beads)
 
@@ -324,67 +323,6 @@ Solution: Check internet connection, try again
 ```
 Cause: Firewall, proxy, or GitHub outage
 Solution: Check network, verify GitHub status at https://www.githubstatus.com/
-```
-
-## Best Practices
-
-### JSON Parsing
-
-Use `jq` for parsing JSON output:
-
-```bash
-# Extract issue number
-gh issue view 123 --repo $REPO --json number -q '.number'
-
-# Extract all label names
-gh issue view 123 --repo $REPO --json labels -q '.labels[].name'
-
-# Check if issue is closed
-STATE=$(gh issue view 123 --repo $REPO --json state -q '.state')
-if [ "$STATE" = "CLOSED" ]; then
-  echo "Issue is closed"
-fi
-```
-
-### Error Handling in Scripts
-
-```bash
-# Capture both stdout and stderr
-OUTPUT=$(gh issue list --repo $REPO 2>&1)
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-  echo "Error: $OUTPUT"
-  exit 1
-fi
-```
-
-### Batch Operations
-
-For multiple issues, process in loop with error handling:
-
-```bash
-for issue in $(bd list --json | jq -r '.[] | select(any(.labels[]?; startswith("github:"))) | .id'); do
-  # Extract GitHub number
-  GITHUB_NUM=$(bd show $issue --json | jq -r '.[0].labels[] | select(startswith("github:")) | sub("github:"; "")')
-  
-  # Process issue
-  if ! gh issue close $GITHUB_NUM --repo $REPO 2>&1; then
-    echo "Warning: Failed to close #$GITHUB_NUM"
-    # Continue with other issues
-  fi
-done
-```
-
-### Rate Limiting Strategy
-
-```bash
-# Check rate limit before batch operation
-REMAINING=$(gh api rate_limit --jq '.rate.remaining')
-if [ "$REMAINING" -lt 10 ]; then
-  echo "Warning: Only $REMAINING API calls remaining"
-  echo "Consider waiting before running large batch operations"
-fi
 ```
 
 ## Command Cheat Sheet

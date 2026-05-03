@@ -380,19 +380,6 @@ Question:
    3. Skip this issue"
 ```
 
-## Best Practices Summary
-
-1. **Compare first**: Always fetch both states before deciding
-2. **Categorize conflicts**: Safe vs unsafe vs destructive
-3. **Auto-resolve safe**: Don't bother user with obvious cases
-4. **Ask for ambiguous**: When in doubt, ask
-5. **Provide context**: Show user why there's a conflict
-6. **Offer recommendations**: Guide user when appropriate
-7. **Make it reversible**: Prefer reversible operations
-8. **Log decisions**: Track what was auto-resolved vs user-resolved
-9. **Show summary**: User should see final results
-10. **Never surprise**: Always preview destructive operations
-
 ## Preview Format Standards
 
 ### For Auto-Resolved Changes

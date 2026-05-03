@@ -1,6 +1,6 @@
 # Log Analyzer Tool
 
-This reference is for **plugin developers** working in the `opencode-coder` repository. The log analyzer CLI tool lives at `scripts/log-analyzer/` and is not shipped with the published package.
+The log analyzer CLI tool is located at `scripts/log-analyzer/` in the `opencode-coder` repository.
 
 ---
 
@@ -22,14 +22,12 @@ The tool automatically locates your OpenCode log directory based on your operati
 
 ### Running the Log Analyzer
 
-The log analyzer requires the Bun runtime. It's located in the plugin development repository:
+The log analyzer requires the Bun runtime:
 
 ```bash
 # From the opencode-coder repository root
 bun run scripts/log-analyzer
 ```
-
-**Note**: This tool is primarily for plugin developers and advanced troubleshooting. Regular users should start with basic debug logging and only use the analyzer when directed by maintainers.
 
 ### Interactive Mode
 
