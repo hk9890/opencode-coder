@@ -1,7 +1,7 @@
 ---
 description: Critical thinker — questions everything, reviews anything
 mode: subagent
-model: github-copilot/claude-opus-4.7
+model: github-copilot/claude-opus-4.6
 variant: high
 color: '#F59E0B'
 ---
